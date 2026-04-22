@@ -157,4 +157,7 @@ return [
     'close'             => 'إغلاق',
     'thank_you'         => 'شكرًا',
     'cashier'           => 'أمين الصندوق',
+    'Select a supplier to view their account' => 'اختر موردًا لعرض حسابه',
+    'total_stock_value' => 'القيمة الإجمالية للمخزون'
+
 ];

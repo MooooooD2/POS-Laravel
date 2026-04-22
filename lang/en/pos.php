@@ -156,5 +156,7 @@ return [
     'language'          => 'Language',
     'close'             => 'Close',
     'thank_you'         => 'Thank you',
-    'cashier'         => 'Cashier'
+    'cashier'         => 'Cashier',
+    'Select a supplier to view their account' => 'Select a supplier to view their account',
+    'total_stock_value' => 'Total Stock Value',
 ];

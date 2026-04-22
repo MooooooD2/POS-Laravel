@@ -125,7 +125,7 @@
     <div class="tab-pane fade" id="stockTab">
         <div class="row g-3 mb-3" id="stockStats">
             <div class="col-md-4">
-                <div class="stat-card blue"><p class="mb-1 opacity-75 small">Total Stock Value</p>
+                <div class="stat-card blue"><p class="mb-1 opacity-75 small">{{ __('pos.total_stock_value') }}</p>
                     <h4 class="mb-0" id="stockTotalVal">-</h4></div>
             </div>
             <div class="col-md-4">

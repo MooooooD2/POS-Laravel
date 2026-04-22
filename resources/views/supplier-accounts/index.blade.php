@@ -70,7 +70,7 @@
 
         <div id="noSupplierPanel" class="text-center text-muted py-5">
             <i class="fas fa-balance-scale fa-4x mb-3 d-block opacity-25"></i>
-            <p>Select a supplier to view their account</p>
+            <p> @lang('pos.Select a supplier to view their account')</p>
         </div>
     </div>
 </div>
