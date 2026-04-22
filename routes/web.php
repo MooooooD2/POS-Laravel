@@ -97,11 +97,5 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/returns', [ReturnController::class, 'index'])->name('returns');
     Route::post('/api/returns', [ReturnController::class, 'store'])->name('returns.store');
 
-    // Language Switch - تغيير اللغة
-    Route::get('/lang/{locale}', function ($locale) {
-        if (in_array($locale, ['ar', 'en'])) {
-            session(['locale' => $locale]);
-        }
-        return redirect()->back();
-    })->name('lang.switch');
+   
 });
