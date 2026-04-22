@@ -20,7 +20,7 @@ return new class extends Migration {
             $table->date('expected_date')->nullable();
             $table->date('received_date')->nullable();
             $table->text('notes')->nullable();
-            $table->foreignId('created_by')->constrained('employees');
+            $table->foreignId('created_by')->constrained('users');
             $table->string('created_by_name');
             $table->timestamps();
         });

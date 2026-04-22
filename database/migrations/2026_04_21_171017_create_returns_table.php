@@ -17,7 +17,7 @@ return new class extends Migration {
             $table->text('reason')->nullable();
             $table->enum('status', ['completed'])->default('completed');
             $table->timestamp('return_date');
-            $table->foreignId('processed_by')->constrained('employees');
+            $table->foreignId('processed_by')->constrained('users');
             $table->string('processed_by_name');
             $table->timestamps();
         });

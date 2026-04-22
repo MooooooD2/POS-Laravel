@@ -13,8 +13,8 @@ return new class extends Migration {
             $table->decimal('total', 10, 2);
             $table->decimal('discount', 10, 2)->default(0);
             $table->decimal('final_total', 10, 2);
-            $table->enum('payment_method', ['كاش', 'فيزا', 'تحويل', 'محفظة']);
-            $table->foreignId('cashier_id')->constrained('employees');
+            $table->enum('payment_method', ['cash', 'card', 'transfer', 'wallet']);
+            $table->foreignId('cashier_id')->constrained('users');
             $table->string('cashier_name');
             $table->timestamp('date');
             $table->enum('status', ['completed', 'cancelled'])->default('completed');
