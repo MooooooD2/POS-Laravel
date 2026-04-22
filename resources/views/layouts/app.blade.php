@@ -9,7 +9,8 @@
     <title>@yield('title', __('pos.app_name'))</title>
 
     {{-- Remove default favicon / No icon --}}
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' dominant-baseline='middle' font-size='80'>🏪</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' dominant-baseline='middle' font-size='80'>🏪</text></svg>">
 
     {{-- Bootstrap RTL/LTR --}}
     @if (app()->getLocale() === 'ar')
@@ -27,226 +28,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap"
             rel="stylesheet">
     @endif
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --sidebar-width: 260px;
-            --sidebar-bg: #1e293b;
-            --sidebar-text: #cbd5e1;
-            --sidebar-active: #3b82f6;
-        }
-
-        @if (app()->getLocale() === 'ar')
-            /* Apply Arabic font to all elements EXCEPT icons */
-            body,
-            html,
-            div:not(.fa):not(.fas):not(.far):not(.fab),
-            span:not(.fa):not(.fas):not(.far):not(.fab),
-            p,
-            h1,
-            h2,
-            h3,
-            h4,
-            h5,
-            h6,
-            a,
-            button,
-            input,
-            select,
-            textarea,
-            .card,
-            .sidebar-menu a,
-            .dropdown-menu,
-            .modal-content,
-            .form-control,
-            .btn {
-                font-family: 'Cairo', 'Tajawal', 'Segoe UI', 'Tahoma', sans-serif !important;
-            }
-
-            /* Keep icons with their default font */
-            i,
-            .fa,
-            .fas,
-            .far,
-            .fab,
-            .fal,
-            .fad,
-            [class*=" fa-"],
-            [class^="fa-"] {
-                font-family: "Font Awesome 6 Free" !important;
-            }
-
-            /* For solid icons */
-            .fas,
-            .fa-solid {
-                font-family: "Font Awesome 6 Free" !important;
-                font-weight: 900 !important;
-            }
-
-            /* For regular icons */
-            .far,
-            .fa-regular {
-                font-family: "Font Awesome 6 Free" !important;
-                font-weight: 400 !important;
-            }
-
-            /* For brands */
-            .fab,
-            .fa-brands {
-                font-family: "Font Awesome 6 Brands" !important;
-                font-weight: 400 !important;
-            }
-        @else
-            body {
-                font-family: 'Cairo', sans-serif;
-            }
-        @endif
-
-        /* Sidebar */
-        #sidebar {
-            width: var(--sidebar-width);
-            min-height: 100vh;
-            background: var(--sidebar-bg);
-            position: fixed;
-            {{ app()->getLocale() === 'ar' ? 'right: 0;' : 'left: 0;' }} top: 0;
-            z-index: 1000;
-            transition: transform 0.3s ease;
-            overflow-y: auto;
-        }
-
-        .sidebar-brand {
-            padding: 1.5rem 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            font-size: 1.1rem;
-            font-weight: 700;
-        }
-
-        .sidebar-menu a {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1.25rem;
-            color: var(--sidebar-text);
-            text-decoration: none;
-            transition: all 0.2s;
-            border-radius: 0.375rem;
-            margin: 0.15rem 0.5rem;
-        }
-
-        .sidebar-menu a:hover,
-        .sidebar-menu a.active {
-            background: var(--sidebar-active);
-            color: #fff;
-        }
-
-        .sidebar-menu a i {
-            width: 20px;
-            text-align: center;
-        }
-
-        /* Main content */
-        #main-content {
-            {{ app()->getLocale() === 'ar' ? 'margin-right: var(--sidebar-width);' : 'margin-left: var(--sidebar-width);' }} min-height: 100vh;
-        }
-
-        /* Top navbar */
-        #topbar {
-            background: #fff;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 0.75rem 1.5rem;
-            position: sticky;
-            top: 0;
-            z-index: 999;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .page-content {
-            padding: 1.5rem;
-        }
-
-        /* Cards */
-        .card {
-            border: none;
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
-        }
-
-        .card-header {
-            background: #fff;
-            border-bottom: 1px solid #f1f5f9;
-            padding: 1rem 1.25rem;
-            font-weight: 600;
-        }
-
-        /* Stats cards */
-        .stat-card {
-            border-radius: 0.75rem;
-            color: #fff;
-            padding: 1.25rem;
-        }
-
-        .stat-card.blue {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        }
-
-        .stat-card.green {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .stat-card.orange {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        .stat-card.red {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-
-        .stat-card.purple {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        }
-
-        /* Badges */
-        .badge-low-stock {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .badge-out-stock {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .badge-in-stock {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            #sidebar {
-                transform: translateX({{ app()->getLocale() === 'ar' ? '100%' : '-100%' }});
-            }
-
-            #sidebar.show {
-                transform: translateX(0);
-            }
-
-            #main-content {
-                margin: 0 !important;
-            }
-        }
-
-        /* Toast notifications */
-        .toast-container {
-            position: fixed;
-            top: 1rem;
-            {{ app()->getLocale() === 'ar' ? 'left: 1rem;' : 'right: 1rem;' }} z-index: 9999;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
 
     @stack('styles')
 </head>
@@ -424,6 +206,14 @@
         // Format date - تنسيق التاريخ
         function formatDate(date) {
             return new Date(date).toLocaleDateString(LOCALE === 'ar' ? 'ar-EG' : 'en-US');
+        }
+
+        // Add RTL/LTR class to body based on locale
+        const locale = '{{ app()->getLocale() }}';
+        if (locale === 'ar') {
+            document.body.classList.add('rtl');
+        } else {
+            document.body.classList.add('ltr');
         }
     </script>
 

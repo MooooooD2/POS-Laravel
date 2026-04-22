@@ -1,0 +1,254 @@
+/* styles.css */
+
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --sidebar-width: 260px;
+    --sidebar-bg: #1e293b;
+    --sidebar-text: #cbd5e1;
+    --sidebar-active: #3b82f6;
+}
+
+/* Base RTL/LTR support - will be toggled by adding 'rtl' or 'ltr' class to body */
+body {
+    font-family: 'Cairo', 'Tajawal', 'Segoe UI', 'Tahoma', sans-serif;
+}
+
+/* RTL Support for Arabic */
+body.rtl {
+    direction: rtl;
+}
+
+/* LTR Support for English */
+body.ltr {
+    direction: ltr;
+}
+
+/* Arabic font for all elements EXCEPT icons - when RTL class is present */
+body.rtl,
+body.rtl div:not(.fa):not(.fas):not(.far):not(.fab),
+body.rtl span:not(.fa):not(.fas):not(.far):not(.fab),
+body.rtl p,
+body.rtl h1,
+body.rtl h2,
+body.rtl h3,
+body.rtl h4,
+body.rtl h5,
+body.rtl h6,
+body.rtl a,
+body.rtl button,
+body.rtl input,
+body.rtl select,
+body.rtl textarea,
+body.rtl .card,
+body.rtl .sidebar-menu a,
+body.rtl .dropdown-menu,
+body.rtl .modal-content,
+body.rtl .form-control,
+body.rtl .btn {
+    font-family: 'Cairo', 'Tajawal', 'Segoe UI', 'Tahoma', sans-serif !important;
+}
+
+/* Keep icons with their default font */
+i,
+.fa,
+.fas,
+.far,
+.fab,
+.fal,
+.fad,
+[class*=" fa-"],
+[class^="fa-"] {
+    font-family: "Font Awesome 6 Free" !important;
+}
+
+/* For solid icons */
+.fas,
+.fa-solid {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+}
+
+/* For regular icons */
+.far,
+.fa-regular {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 400 !important;
+}
+
+/* For brands */
+.fab,
+.fa-brands {
+    font-family: "Font Awesome 6 Brands" !important;
+    font-weight: 400 !important;
+}
+
+/* Sidebar - LTR (default) */
+#sidebar {
+    width: var(--sidebar-width);
+    min-height: 100vh;
+    background: var(--sidebar-bg);
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+}
+
+/* Sidebar - RTL */
+body.rtl #sidebar {
+    left: auto;
+    right: 0;
+}
+
+.sidebar-brand {
+    padding: 1.5rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.sidebar-menu a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    transition: all 0.2s;
+    border-radius: 0.375rem;
+    margin: 0.15rem 0.5rem;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.active {
+    background: var(--sidebar-active);
+    color: #fff;
+}
+
+.sidebar-menu a i {
+    width: 20px;
+    text-align: center;
+}
+
+/* Main content - LTR (default) */
+#main-content {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+}
+
+/* Main content - RTL */
+body.rtl #main-content {
+    margin-left: 0;
+    margin-right: var(--sidebar-width);
+}
+
+/* Top navbar */
+#topbar {
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.75rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.page-content {
+    padding: 1.5rem;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+}
+
+.card-header {
+    background: #fff;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+}
+
+/* Stats cards */
+.stat-card {
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.25rem;
+}
+
+.stat-card.blue {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.stat-card.green {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.stat-card.orange {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.stat-card.red {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.stat-card.purple {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+/* Badges */
+.badge-low-stock {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-out-stock {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-in-stock {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #sidebar {
+        transform: translateX(-100%);
+    }
+
+    body.rtl #sidebar {
+        transform: translateX(100%);
+    }
+
+    #sidebar.show {
+        transform: translateX(0);
+    }
+
+    #main-content,
+    body.rtl #main-content {
+        margin: 0 !important;
+    }
+}
+
+/* Toast notifications - LTR (default) */
+.toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 9999;
+}
+
+/* Toast notifications - RTL */
+body.rtl .toast-container {
+    right: auto;
+    left: 1rem;
+}
