@@ -154,4 +154,7 @@ return [
     'logout'            => 'Logout',
     'welcome'           => 'Welcome',
     'language'          => 'Language',
+    'close'             => 'Close',
+    'thank_you'         => 'Thank you',
+    'cashier'         => 'Cashier'
 ];

@@ -154,4 +154,7 @@ return [
     'logout'            => 'تسجيل الخروج',
     'welcome'           => 'مرحباً',
     'language'          => 'اللغة',
+    'close'             => 'إغلاق',
+    'thank_you'         => 'شكرًا',
+    'cashier'           => 'أمين الصندوق',
 ];
