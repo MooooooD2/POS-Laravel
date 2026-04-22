@@ -176,3 +176,8 @@ pos-system/
     ├── web.php
     └── api.php
 ```
+## remaining modules
+# 1- handel returns report 
+# 2- add feature of scan product
+# 3- configuration with hardware like (printer)
+```
