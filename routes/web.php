@@ -1,17 +1,18 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseOrderController;
-use App\Http\Controllers\SupplierPaymentController;
-use App\Http\Controllers\SupplierAccountController;
-use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReturnController;
+use App\Http\Controllers\SupplierAccountController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SupplierPaymentController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,11 +25,13 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/session-info', [AuthController::class, 'sessionInfo'])->name('session.info');
+Route::get('/lang/{locale}', [LanguageController::class, 'switch'])->name('lang.switch');
+Route::get('/lang/{locale}/translations', [LanguageController::class, 'getTranslations'])->name('lang.translations');
+
 
 // Protected Routes - المسارات المحمية
 Route::middleware(['auth'])->group(function () {
 
-    // Home & Dashboard - الرئيسية ولوحة التحكم
     Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/api/dashboard-data', [DashboardController::class, 'data'])->name('dashboard.data');

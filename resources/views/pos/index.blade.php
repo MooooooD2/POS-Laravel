@@ -172,6 +172,8 @@
     let cart = [];
     let paymentMethod = 'cash';
     let searchTimeout;
+    let lastInvoice = null; // Store the last created invoice
+    const isRTL = document.documentElement.dir === 'rtl';
 
     // Search product
     document.getElementById('searchInput').addEventListener('input', function () {
@@ -208,7 +210,10 @@
         if (existing) {
             existing.quantity++;
         } else {
-            if (product.quantity <= 0) { showToast('{{ __("pos.insufficient_stock", ["name" => "this product"]) }}', 'danger'); return; }
+            if (product.quantity <= 0) { 
+                showToast('{{ __("pos.insufficient_stock", ["name" => "this product"]) }}', 'danger'); 
+                return; 
+            }
             cart.push({
                 product_id:   product.id,
                 product_name: product.name,
@@ -222,11 +227,10 @@
 
     function renderCart() {
         const tbody = document.getElementById('cartBody');
-        const emptyRow = document.getElementById('emptyRow');
 
         if (cart.length === 0) {
             tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="text-center text-muted py-5">
-                <i class="fas fa-shopping-cart fa-3x mb-3 d-block opacity-25"></i>{{ __('pos.cart_empty') }}</td></tr>`;
+                <i class="fas fa-shopping-cart fa-3x mb-3 d-block opacity-25"></i>{{ __('pos.cart_empty') }}<\/td><\/tr>`;
             document.getElementById('completeSaleBtn').disabled = true;
             document.getElementById('cartCount').textContent = 0;
             updateTotals();
@@ -235,21 +239,21 @@
 
         tbody.innerHTML = cart.map((item, idx) => `
             <tr class="cart-row">
-                <td>${idx + 1}</td>
-                <td>${item.product_name}</td>
-                <td>${formatCurrency(item.price)}</td>
-                <td>
-                    <div class="d-flex align-items-center gap-1">
-                        <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(${idx}, -1)">−</button>
+                <td class="text-${isRTL ? 'start' : 'start'}">${idx + 1}<\/td>
+                <td class="text-${isRTL ? 'start' : 'start'}">${escapeHtml(item.product_name)}<\/td>
+                <td class="text-${isRTL ? 'start' : 'end'}">${formatCurrency(item.price)}<\/td>
+                <td class="text-center">
+                    <div class="d-flex align-items-center gap-1 ${isRTL ? 'flex-row' : 'flex-row'}">
+                        <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(${idx}, -1)">−<\/button>
                         <input type="number" class="form-control form-control-sm text-center" style="width:60px"
                             value="${item.quantity}" min="1" max="${item.max_qty}"
                             onchange="setQty(${idx}, this.value)">
-                        <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(${idx}, 1)">+</button>
-                    </div>
-                </td>
-                <td class="fw-semibold">${formatCurrency(item.price * item.quantity)}</td>
-                <td><button class="btn btn-sm btn-outline-danger" onclick="removeItem(${idx})"><i class="fas fa-trash"></i></button></td>
-            </tr>`).join('');
+                        <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(${idx}, 1)">+<\/button>
+                    <\/div>
+                <\/td>
+                <td class="fw-semibold text-${isRTL ? 'start' : 'end'}">${formatCurrency(item.price * item.quantity)}<\/td>
+                <td class="text-center"><button class="btn btn-sm btn-outline-danger" onclick="removeItem(${idx})"><i class="fas fa-trash"><\/i><\/button><\/td>
+            <\/tr>`).join('');
 
         document.getElementById('completeSaleBtn').disabled = false;
         document.getElementById('cartCount').textContent = cart.reduce((s, i) => s + i.quantity, 0);
@@ -281,18 +285,34 @@
     }
 
     function calcChange() {
-        const total = parseFloat(document.getElementById('displayTotal').textContent.replace(/[^\d.]/g, '')) || 0;
+        const total = parseFloat(document.getElementById('displayTotal').textContent.replace(/[^\d.-]/g, '')) || 0;
         const cash  = parseFloat(document.getElementById('cashReceived').value) || 0;
-        document.getElementById('changeAmount').textContent = formatCurrency(Math.max(0, cash - total));
+        const change = Math.max(0, cash - total);
+        document.getElementById('changeAmount').textContent = formatCurrency(change);
+        
+        // Change color based on amount
+        const changeElement = document.getElementById('changeAmount');
+        if (change > 0) {
+            changeElement.style.color = '#10b981';
+        } else if (change === 0) {
+            changeElement.style.color = '#6c757d';
+        } else {
+            changeElement.style.color = '#ef4444';
+        }
     }
 
     function setPayment(method) {
         paymentMethod = method;
         ['cash','card','transfer'].forEach(m => {
             const btn = document.getElementById('btn' + m.charAt(0).toUpperCase() + m.slice(1));
-            btn.className = `payment-btn btn ${m === method ? 'btn-success' : 'btn-outline-secondary'}`;
+            if (btn) {
+                btn.className = `payment-btn btn ${m === method ? 'btn-success' : 'btn-outline-secondary'}`;
+            }
         });
-        document.getElementById('cashPanel').style.display = method === 'cash' ? 'block' : 'none';
+        const cashPanel = document.getElementById('cashPanel');
+        if (cashPanel) {
+            cashPanel.style.display = method === 'cash' ? 'block' : 'none';
+        }
     }
 
     async function completeSale() {
@@ -311,13 +331,15 @@
             });
 
             if (res.success) {
+                lastInvoice = res.invoice;
                 showInvoiceModal(res.invoice);
-                showToast('{{ __("pos.sale_completed") }}');
+                showToast('{{ __("pos.sale_completed") }}', 'success');
             } else {
                 showToast(res.message, 'danger');
             }
         } catch(e) {
             showToast('{{ __("pos.error") }}', 'danger');
+            console.error('Sale error:', e);
         } finally {
             btn.disabled  = false;
             btn.innerHTML = '<i class="fas fa-check-circle me-2"></i>{{ __("pos.complete_sale") }}';
@@ -327,52 +349,195 @@
     function showInvoiceModal(invoice) {
         const items = invoice.items.map(i => `
             <tr>
-                <td>${i.product_name}</td>
-                <td class="text-center">${i.quantity}</td>
-                <td class="text-end">${formatCurrency(i.price)}</td>
-                <td class="text-end">${formatCurrency(i.subtotal)}</td>
-            </tr>`).join('');
+                <td class="text-${isRTL ? 'start' : 'start'}">${escapeHtml(i.product_name)}<\/td>
+                <td class="text-center">${i.quantity}<\/td>
+                <td class="text-${isRTL ? 'start' : 'end'}">${formatCurrency(i.price)}<\/td>
+                <td class="text-${isRTL ? 'start' : 'end'}">${formatCurrency(i.subtotal)}<\/td>
+            <\/tr>`).join('');
 
+        const alignment = isRTL ? 'right' : 'left';
+        
         document.getElementById('invoiceBody').innerHTML = `
-            <div class="text-center mb-3">
-                <h5>{{ __('pos.app_name') }}</h5>
-                <p class="text-muted mb-0">{{ __('pos.invoice_number') }}: <strong>${invoice.invoice_number}</strong></p>
-                <small class="text-muted">${new Date().toLocaleString()}</small>
-            </div>
-            <table class="table table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>{{ __('pos.product_name') }}</th>
-                        <th class="text-center">{{ __('pos.quantity') }}</th>
-                        <th class="text-end">{{ __('pos.unit_price') }}</th>
-                        <th class="text-end">{{ __('pos.subtotal') }}</th>
-                    </tr>
-                </thead>
-                <tbody>${items}</tbody>
-                <tfoot>
-                    <tr><td colspan="3" class="text-end">{{ __('pos.subtotal') }}</td><td class="text-end">${formatCurrency(invoice.total)}</td></tr>
-                    ${invoice.discount > 0 ? `<tr><td colspan="3" class="text-end text-danger">{{ __('pos.discount') }}</td><td class="text-end text-danger">-${formatCurrency(invoice.discount)}</td></tr>` : ''}
-                    <tr class="table-dark fw-bold"><td colspan="3" class="text-end">{{ __('pos.total') }}</td><td class="text-end">${formatCurrency(invoice.final_total)}</td></tr>
-                </tfoot>
-            </table>
-            <div class="text-center text-muted small mt-2">{{ __('pos.payment_method') }}: ${invoice.payment_method}</div>`;
+            <div class="text-center mb-3" id="printableInvoice">
+                <div style="font-family: monospace; text-align: ${isRTL ? 'right' : 'left'};">
+                    <h5>{{ __('pos.app_name') }}</h5>
+                    <p class="mb-0">{{ __('pos.invoice_number') }}: <strong>${invoice.invoice_number}</strong></p>
+                    <small class="text-muted">${new Date().toLocaleString()}</small>
+                    <hr>
+                    <table class="table table-sm" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th class="text-${isRTL ? 'start' : 'start'}">{{ __('pos.product_name') }}<\/th>
+                                <th class="text-center">{{ __('pos.quantity') }}<\/th>
+                                <th class="text-${isRTL ? 'start' : 'end'}">{{ __('pos.unit_price') }}<\/th>
+                                <th class="text-${isRTL ? 'start' : 'end'}">{{ __('pos.subtotal') }}<\/th>
+                            <\/tr>
+                        </thead>
+                        <tbody>${items}<\/tbody>
+                        <tfoot>
+                            <tr><td colspan="3" class="text-${isRTL ? 'start' : 'end'}"><strong>{{ __('pos.subtotal') }}<\/strong><\/td><td class="text-${isRTL ? 'start' : 'end'}">${formatCurrency(invoice.total)}<\/td><\/tr>
+                            ${invoice.discount > 0 ? `<tr><td colspan="3" class="text-${isRTL ? 'start' : 'end'} text-danger"><strong>{{ __('pos.discount') }}<\/strong><\/td><td class="text-${isRTL ? 'start' : 'end'} text-danger">-${formatCurrency(invoice.discount)}<\/td><\/tr>` : ''}
+                            <tr style="border-top:2px solid #000"><td colspan="3" class="text-${isRTL ? 'start' : 'end'}"><strong>{{ __('pos.total') }}<\/strong><\/td><td class="text-${isRTL ? 'start' : 'end'}"><strong>${formatCurrency(invoice.final_total)}<\/strong><\/td><\/tr>
+                        </tfoot>
+                    <\/table>
+                    <hr>
+                    <div>{{ __('pos.payment_method') }}: ${invoice.payment_method}<\/div>
+                    <div>{{ __('pos.cashier') }}: ${invoice.cashier_name}<\/div>
+                    <div class="text-muted small mt-3">{{ __('pos.thank_you') }}<\/div>
+                <\/div>
+            <\/div>`;
 
         new bootstrap.Modal(document.getElementById('invoiceModal')).show();
     }
 
-    function printInvoice() { window.print(); }
+    function printInvoice() {
+        const printContent = document.getElementById('printableInvoice');
+        if (!printContent) {
+            showToast('No invoice to print', 'danger');
+            return;
+        }
+
+        const isRTLPrint = document.documentElement.dir === 'rtl';
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html dir="${isRTLPrint ? 'rtl' : 'ltr'}">
+            <head>
+                <title>Invoice ${lastInvoice?.invoice_number || ''}</title>
+                <meta charset="utf-8">
+                <style>
+                    body {
+                        font-family: ${isRTLPrint ? "'Cairo', 'Courier New', monospace" : "'Courier New', monospace"};
+                        margin: 0;
+                        padding: 20px;
+                        font-size: 14px;
+                        text-align: ${isRTLPrint ? 'right' : 'left'};
+                    }
+                    .invoice-container {
+                        max-width: 300px;
+                        margin: 0 auto;
+                        padding: 10px;
+                    }
+                    .text-center { text-align: center; }
+                    .text-end { text-align: ${isRTLPrint ? 'left' : 'right'}; }
+                    .text-start { text-align: ${isRTLPrint ? 'right' : 'left'}; }
+                    .text-muted { color: #6c757d; }
+                    .small { font-size: 12px; }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 10px 0;
+                    }
+                    th, td {
+                        padding: 5px;
+                        border-bottom: 1px dotted #ddd;
+                        text-align: ${isRTLPrint ? 'right' : 'left'};
+                    }
+                    th {
+                        border-bottom: 1px solid #000;
+                    }
+                    td.text-end {
+                        text-align: ${isRTLPrint ? 'left' : 'right'};
+                    }
+                    hr {
+                        border: none;
+                        border-top: 1px dashed #000;
+                        margin: 10px 0;
+                    }
+                    @media print {
+                        body { margin: 0; padding: 0; }
+                        button { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="invoice-container">
+                    ${printContent.innerHTML}
+                </div>
+                <div class="text-center" style="margin-top: 20px;">
+                    <button onclick="window.print()" style="padding: 10px 20px; margin: 10px;">{{ __('pos.print') }}</button>
+                    <button onclick="window.close()" style="padding: 10px 20px; margin: 10px;">{{ __('pos.close') }}</button>
+                </div>
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                        }, 500);
+                    }
+                <\/script>
+            </body>
+            </html>
+        `);
+        
+        printWindow.document.close();
+    }
 
     function newSale() {
         cart = [];
         document.getElementById('discountInput').value = 0;
         document.getElementById('cashReceived').value = '';
         renderCart();
-        bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('invoiceModal'));
+        if (modal) modal.hide();
         document.getElementById('searchInput').focus();
+        updateTotals();
     }
 
-    // Init
+    // Helper functions
+    function formatCurrency(amount) {
+        const locale = LOCALE === 'ar' ? 'ar-EG' : 'en-US';
+        return new Intl.NumberFormat(locale, { 
+            style: 'currency', 
+            currency: 'EGP',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(amount || 0);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Handle input direction for RTL/LTR
+    function adjustInputDirection() {
+        const inputs = document.querySelectorAll('input, textarea');
+        inputs.forEach(input => {
+            if (isRTL) {
+                input.style.textAlign = 'right';
+                input.dir = 'rtl';
+            } else {
+                input.style.textAlign = 'left';
+                input.dir = 'ltr';
+            }
+        });
+    }
+
+    // Initialize
     setPayment('cash');
-    document.addEventListener('click', e => { if (!e.target.closest('.product-search')) closeSearch(); });
+    adjustInputDirection();
+    
+    document.addEventListener('click', e => { 
+        if (!e.target.closest('.product-search')) closeSearch(); 
+    });
+    
+    // Listen for language changes
+    document.addEventListener('DOMContentLoaded', function() {
+        // Re-adjust direction when content loads
+        adjustInputDirection();
+        
+        // Watch for dynamic input additions
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length) {
+                    adjustInputDirection();
+                }
+            });
+        });
+        
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
 </script>
 @endpush

@@ -8,56 +8,62 @@
 <div class="row g-3 mb-4" id="statsRow">
     <div class="col-sm-6 col-xl-3">
         <div class="stat-card blue">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <p class="mb-1 opacity-75 small">{{ __('pos.today_sales') }}</p>
-                    <h3 class="mb-0 fw-bold" id="todaySalesTotal">-</h3>
-                    <small id="todaySalesCount" class="opacity-75"></small>
+            <div>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-title">{{ __('pos.today_sales') }}</div>
+                        <div class="stat-value" id="todaySalesTotal">-</div>
+                        <div class="stat-footer" id="todaySalesCount"></div>
+                    </div>
+                    <i class="fas fa-shopping-cart stat-icon"></i>
                 </div>
-                <i class="fas fa-shopping-cart fa-2x opacity-50"></i>
-            </div>
-            <div class="mt-2">
-                <small id="growthBadge"></small>
+                <div id="growthBadge"></div>
             </div>
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
         <div class="stat-card green">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <p class="mb-1 opacity-75 small">{{ __('pos.total_revenue') }}</p>
-                    <h3 class="mb-0 fw-bold" id="totalRevenue">-</h3>
+            <div>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-title">{{ __('pos.total_revenue') }}</div>
+                        <div class="stat-value" id="totalRevenue">-</div>
+                        <div class="stat-footer invisible">Placeholder</div>
+                    </div>
+                    <i class="fas fa-coins stat-icon"></i>
                 </div>
-                <i class="fas fa-coins fa-2x opacity-50"></i>
             </div>
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
         <div class="stat-card orange">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <p class="mb-1 opacity-75 small">{{ __('pos.low_stock') }}</p>
-                    <h3 class="mb-0 fw-bold" id="lowStockCount">-</h3>
-                    <small class="opacity-75">{{ __('pos.out_of_stock') }}: <span id="outOfStockCount">-</span></small>
+            <div>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-title">{{ __('pos.low_stock') }}</div>
+                        <div class="stat-value" id="lowStockCount">-</div>
+                        <div class="stat-footer">{{ __('pos.out_of_stock') }}: <span id="outOfStockCount">-</span></div>
+                    </div>
+                    <i class="fas fa-exclamation-triangle stat-icon"></i>
                 </div>
-                <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
             </div>
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
         <div class="stat-card purple">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <p class="mb-1 opacity-75 small">{{ __('pos.total_products') }}</p>
-                    <h3 class="mb-0 fw-bold" id="totalProducts">-</h3>
-                    <small class="opacity-75">{{ __('pos.total_suppliers') }}: <span id="totalSuppliers">-</span></small>
+            <div>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-title">{{ __('pos.total_products') }}</div>
+                        <div class="stat-value" id="totalProducts">-</div>
+                        <div class="stat-footer">{{ __('pos.total_suppliers') }}: <span id="totalSuppliers">-</span></div>
+                    </div>
+                    <i class="fas fa-boxes stat-icon"></i>
                 </div>
-                <i class="fas fa-boxes fa-2x opacity-50"></i>
             </div>
         </div>
     </div>
 </div>
-
 {{-- Tables Row --}}
 <div class="row g-3">
     {{-- Recent Invoices --}}
