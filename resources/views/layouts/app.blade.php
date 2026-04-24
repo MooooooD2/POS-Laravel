@@ -79,6 +79,9 @@
             <a href="{{ route('returns') }}" class="{{ request()->routeIs('returns') ? 'active' : '' }}">
                 <i class="fas fa-undo"></i> {{ __('pos.returns') }}
             </a>
+            <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
+                <i class="fas fa-cog"></i> {{ __('pos.settings') }}
+            </a>
         </div>
     </nav>
 

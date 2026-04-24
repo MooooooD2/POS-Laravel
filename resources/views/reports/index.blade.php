@@ -11,6 +11,11 @@
         </button>
     </li>
     <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#returnsTab" onclick="loadReturnsReport()">
+            <i class="fas fa-undo-alt me-1"></i>{{ __('Returns Report') }}
+        </button>
+    </li>
+    <li class="nav-item">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#stockTab" onclick="loadStockReport()">
             <i class="fas fa-boxes me-1"></i>{{ __('pos.stock_report') }}
         </button>
@@ -20,6 +25,7 @@
 <div class="tab-content">
     {{-- Sales Report --}}
     <div class="tab-pane fade show active" id="salesTab">
+        <!-- Your existing sales report HTML -->
         <div class="card mb-3">
             <div class="card-body">
                 <div class="row g-3 align-items-end">
@@ -49,7 +55,7 @@
             </div>
         </div>
 
-        {{-- Summary Stats --}}
+        <!-- Summary Stats -->
         <div class="row g-3 mb-4" id="salesStats" style="display:none!important">
             <div class="col-md-3">
                 <div class="stat-card blue"><p class="mb-1 opacity-75 small">{{ __('pos.total') }}</p>
@@ -70,7 +76,7 @@
         </div>
 
         <div class="row g-3">
-            {{-- Invoices table --}}
+            <!-- Invoices table -->
             <div class="col-lg-8">
                 <div class="card">
                     <div class="card-header">{{ __('pos.recent_invoices') }}</div>
@@ -96,7 +102,7 @@
                 </div>
             </div>
 
-            {{-- Top products --}}
+            <!-- Top products -->
             <div class="col-lg-4">
                 <div class="card">
                     <div class="card-header">{{ __('pos.top_products') }}</div>
@@ -111,6 +117,111 @@
                                     </tr>
                                 </thead>
                                 <tbody id="salesTopBody">
+                                    <tr><td colspan="3" class="text-center text-muted py-3">-</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Returns Report Tab --}}
+    <div class="tab-pane fade" id="returnsTab">
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">{{ __('pos.start_date') }}</label>
+                        <input type="date" class="form-control" id="returnsStart" value="{{ date('Y-m-01') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">{{ __('pos.end_date') }}</label>
+                        <input type="date" class="form-control" id="returnsEnd" value="{{ date('Y-m-d') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="returnsStatus">
+                            <option value="">{{ __('pos.filter') }} - All</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" onclick="loadReturnsReport()">
+                            <i class="fas fa-search me-1"></i>{{ __('pos.filter') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Returns Summary Stats --}}
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="stat-card blue">
+                    <p class="mb-1 opacity-75 small">Total Returned Value</p>
+                    <h4 class="mb-0" id="returnsTotal">-</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card orange">
+                    <p class="mb-1 opacity-75 small">Total Returns Count</p>
+                    <h4 class="mb-0" id="returnsCount">-</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card purple">
+                    <p class="mb-1 opacity-75 small">Avg Return Value</p>
+                    <h4 class="mb-0" id="returnsAvg">-</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            {{-- Returns table --}}
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">Returns List</div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+                            <table class="table table-hover mb-0 table-sm">
+                                <thead class="table-dark sticky-top">
+                                    <tr>
+                                        <th>Return #</th>
+                                        <th>Invoice #</th>
+                                        <th>Customer</th>
+                                        <th>Total Amount</th>
+                                        <th>Reason</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="returnsBody">
+                                    <tr><td colspan="7" class="text-center text-muted py-4">Select date range to load</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Top returned products --}}
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">Top Returned Products</div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 table-sm">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>{{ __('pos.product_name') }}</th>
+                                        <th>Qty</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="returnsTopBody">
                                     <tr><td colspan="3" class="text-center text-muted py-3">-</td></tr>
                                 </tbody>
                             </table>
@@ -207,6 +318,47 @@ async function loadSalesReport() {
                 <td><span class="badge bg-secondary me-1">${i+1}</span>${p.product_name}</td>
                 <td>${p.total_qty}</td>
                 <td>${formatCurrency(p.total_sales)}</td>
+            </tr>`).join('')
+        : '<tr><td colspan="3" class="text-center text-muted py-3">-</td></tr>';
+}
+
+async function loadReturnsReport() {
+    const start = document.getElementById('returnsStart').value;
+    const end = document.getElementById('returnsEnd').value;
+    const status = document.getElementById('returnsStatus').value;
+
+    const res = await apiCall('{{ route("reports.returns") }}', 'POST', { 
+        start_date: start, 
+        end_date: end, 
+        status: status || undefined 
+    });
+
+    // Update stats
+    document.getElementById('returnsTotal').textContent = formatCurrency(res.total_returned);
+    document.getElementById('returnsCount').textContent = res.total_count;
+    document.getElementById('returnsAvg').textContent = formatCurrency(res.total_count > 0 ? res.total_returned / res.total_count : 0);
+
+    // Returns table
+    document.getElementById('returnsBody').innerHTML = (res.returns || []).length
+        ? res.returns.map(ret => `
+            <tr>
+                <td><span class="badge bg-danger">${ret.return_number}</span></td>
+                <td>${ret.invoice_number || '-'}</td>
+                <td>${ret.customer_name || 'Walk-in'}</td>
+                <td>${formatCurrency(ret.total_amount)}</td>
+                <td>${ret.reason || '-'}</td>
+                <td><span class="badge ${ret.status === 'completed' ? 'bg-success' : 'bg-secondary'}">${ret.status}</span></td>
+                <td class="text-muted small">${formatDate(ret.return_date)}</td>
+            </tr>`).join('')
+        : '<tr><td colspan="7" class="text-center text-muted py-3">{{ __("pos.no_data") }}</td></tr>';
+
+    // Top returned products
+    document.getElementById('returnsTopBody').innerHTML = (res.top_returned_products || []).length
+        ? res.top_returned_products.map((p, i) => `
+            <tr>
+                <td><span class="badge bg-secondary me-1">${i+1}</span>${p.product_name}</td>
+                <td class="text-danger">${p.total_qty}</td>
+                <td class="text-danger">${formatCurrency(p.total_amount)}</td>
             </tr>`).join('')
         : '<tr><td colspan="3" class="text-center text-muted py-3">-</td></tr>';
 }
