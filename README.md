@@ -177,7 +177,6 @@ pos-system/
     └── api.php
 ```
 # remaining modules
-## 1- handel returns report 
-## 2- add feature of scan product
-## 3- configuration with hardware like (printer)
+## 1- add feature of scan product
+## 2- configuration with hardware like (printer)
 ```
