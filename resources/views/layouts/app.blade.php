@@ -351,7 +351,7 @@
                                 ${p.category ? ' &bull; ' + p.category : ''}
                             </div>
                         </div>
-                        <span class="badge bg-danger bg-opacity-15 text-danger border border-danger" style="font-size:0.65rem">${isAr ? 'نفذ' : 'Empty'}</span>
+                        <span class="badge bg-danger bg-opacity-15 text-white border border-danger" style="font-size:0.65rem">${isAr ? 'نفذ' : 'Empty'}</span>
                     </a>`;
                 });
             }
@@ -371,7 +371,7 @@
                                 ${p.category ? ' &bull; ' + p.category : ''}
                             </div>
                         </div>
-                        <span class="badge bg-warning bg-opacity-15 text-warning border border-warning" style="font-size:0.65rem">${isAr ? 'منخفض' : 'Low'}</span>
+                        <span class="badge bg-warning bg-opacity-15 text-white border border-warning" style="font-size:0.65rem">${isAr ? 'منخفض' : 'Low'}</span>
                     </a>`;
                 });
             }

@@ -224,8 +224,7 @@ function renderProducts(products) {
     
     tbody.innerHTML = products.map((p, i) => {
         // Escape product name for JavaScript
-        const escapedName = p.name.replace(/`/g, '\\`').replace(/\$/g, '\\$');
-        const escapedBarcode = (p.barcode || '').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+        const escapedName = p.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         
         return `
             <tr>
@@ -234,7 +233,7 @@ function renderProducts(products) {
                 <td><code>${escapeHtml(p.barcode || '-')}</code></td>
                 <td>${escapeHtml(p.category || '-')}</td>
                 <td class="text-success fw-semibold">${formatCurrency(p.price)}</td>
-                <td class="text-muted">${formatCurrency(p.cost_price)}</td>
+                <td class="text-muted">${formatCurrency(p.cost_price || 0)}</td>
                 <td class="fw-bold ${p.quantity === 0 ? 'text-danger' : p.low_stock ? 'text-warning' : 'text-success'}">${p.quantity}</td>
                 <td>
                     ${p.quantity === 0
@@ -246,10 +245,10 @@ function renderProducts(products) {
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-warning text-white" title="{{ __('pos.barcode') }}" 
-                            onclick="showBarcode(${p.id}, \`${escapedName}\`, \`${escapedBarcode}\`, ${p.price})">
+                            onclick="showBarcode(${p.id}, '${escapedName.replace(/'/g, "\\'")}', '${(p.barcode || '').replace(/'/g, "\\'")}', ${p.price})">
                             <i class="fas fa-barcode"></i>
                         </button>
-                        <button class="btn btn-success" onclick="showAddStock(${p.id}, \`${escapedName}\`)">
+                        <button class="btn btn-success" onclick="showAddStock(${p.id}, '${escapedName.replace(/'/g, "\\'")}')">
                             <i class="fas fa-plus"></i>
                         </button>
                         <button class="btn btn-primary" onclick="editProduct(${p.id})">
@@ -264,7 +263,6 @@ function renderProducts(products) {
         `;
     }).join('');
 }
-
 // Helper function to escape HTML
 function escapeHtml(str) {
     if (!str) return '';
@@ -275,20 +273,30 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
-function editProduct(p) {
-    document.getElementById('productId').value       = p.id;
-    document.getElementById('productName').value     = p.name;
-    document.getElementById('productPrice').value    = p.price;
-    document.getElementById('productCostPrice').value= p.cost_price;
-    document.getElementById('productMinStock').value = p.min_stock;
-    document.getElementById('productBarcode').value  = p.barcode || '';
-    document.getElementById('productCategory').value = p.category || '';
-    document.getElementById('productSupplier').value = p.supplier || '';
+async function editProduct(productId) {
+    // Find the product from allProducts array
+    const product = allProducts.find(p => p.id === productId);
+    if (!product) {
+        showToast('{{ __("pos.product_not_found") }}', 'danger');
+        return;
+    }
+    
+    // Populate the form with product data
+    document.getElementById('productId').value = product.id;
+    document.getElementById('productName').value = product.name;
+    document.getElementById('productPrice').value = product.price;
+    document.getElementById('productCostPrice').value = product.cost_price || 0;
+    document.getElementById('productMinStock').value = product.min_stock || 5;
+    document.getElementById('productBarcode').value = product.barcode || '';
+    document.getElementById('productCategory').value = product.category || '';
+    document.getElementById('productSupplier').value = product.supplier || '';
     document.getElementById('productQuantity').disabled = true;
+    document.getElementById('productQuantity').value = product.quantity;
     document.getElementById('productModalTitle').textContent = '{{ __("pos.edit_product") }}';
+    
+    // Show the modal
     new bootstrap.Modal(document.getElementById('addProductModal')).show();
 }
-
 async function saveProduct() {
     const id   = document.getElementById('productId').value;
     const data = {
