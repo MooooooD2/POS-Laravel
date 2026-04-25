@@ -145,6 +145,41 @@ DESCRIPTION: Product management with search, CRUD, stock management
         </div>
     </div>
 </div>
+
+{{-- ─── BARCODE MODAL ──────────────────────────────────────────────────────── --}}
+<div class="modal fade" id="barcodeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-barcode me-2"></i>{{ app()->getLocale() === 'ar' ? 'باركود المنتج' : 'Product Barcode' }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4" id="barcodeModalBody">
+                <p id="barcodeProductName" class="fw-bold mb-1"></p>
+                <p id="barcodeProductPrice" class="text-success mb-3"></p>
+                <div id="barcodeContainer" class="d-flex justify-content-center mb-2">
+                    <svg id="barcodeSvg"></svg>
+                </div>
+                <p id="barcodeValue" class="text-muted small font-monospace mb-3"></p>
+                <div id="barcodeGenerateSection" class="d-none">
+                    <p class="text-warning small">{{ app()->getLocale() === 'ar' ? 'لا يوجد باركود، قم بتوليد واحد:' : 'No barcode. Generate one:' }}</p>
+                    <button class="btn btn-sm btn-outline-primary" onclick="generateBarcode()">
+                        <i class="fas fa-magic me-1"></i>{{ app()->getLocale() === 'ar' ? 'توليد باركود' : 'Generate Barcode' }}
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button class="btn btn-success" onclick="printBarcode()">
+                    <i class="fas fa-print me-1"></i>{{ app()->getLocale() === 'ar' ? 'طباعة' : 'Print' }}
+                </button>
+                <button class="btn btn-outline-secondary" onclick="downloadBarcode()">
+                    <i class="fas fa-download me-1"></i>{{ app()->getLocale() === 'ar' ? 'تحميل' : 'Download' }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -180,13 +215,24 @@ function filterProducts() {
 }
 
 function renderProducts(products) {
-    document.getElementById('productsBody').innerHTML = products.length
-        ? products.map((p, i) => `
+    const tbody = document.getElementById('productsBody');
+    
+    if (!products.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">{{ __("pos.no_data") }}</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = products.map((p, i) => {
+        // Escape product name for JavaScript
+        const escapedName = p.name.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+        const escapedBarcode = (p.barcode || '').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+        
+        return `
             <tr>
                 <td>${i+1}</td>
-                <td class="fw-semibold">${p.name}</td>
-                <td><code>${p.barcode || '-'}</code></td>
-                <td>${p.category || '-'}</td>
+                <td class="fw-semibold">${escapeHtml(p.name)}</td>
+                <td><code>${escapeHtml(p.barcode || '-')}</code></td>
+                <td>${escapeHtml(p.category || '-')}</td>
                 <td class="text-success fw-semibold">${formatCurrency(p.price)}</td>
                 <td class="text-muted">${formatCurrency(p.cost_price)}</td>
                 <td class="fw-bold ${p.quantity === 0 ? 'text-danger' : p.low_stock ? 'text-warning' : 'text-success'}">${p.quantity}</td>
@@ -194,20 +240,41 @@ function renderProducts(products) {
                     ${p.quantity === 0
                         ? '<span class="badge bg-danger">{{ __("pos.out_of_stock") }}</span>'
                         : p.low_stock
-                        ? '<span class="badge badge-low-stock">{{ __("pos.low_stock") }}</span>'
-                        : '<span class="badge badge-in-stock">OK</span>'}
+                        ? '<span class="badge bg-warning text-dark">{{ __("pos.low_stock") }}</span>'
+                        : '<span class="badge bg-success">OK</span>'}
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-success" onclick="showAddStock(${p.id},'${p.name}')"><i class="fas fa-plus"></i></button>
-                        <button class="btn btn-primary" onclick="editProduct(${JSON.stringify(p).replace(/"/g,'&quot;')})"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-danger" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-warning text-white" title="{{ __('pos.barcode') }}" 
+                            onclick="showBarcode(${p.id}, \`${escapedName}\`, \`${escapedBarcode}\`, ${p.price})">
+                            <i class="fas fa-barcode"></i>
+                        </button>
+                        <button class="btn btn-success" onclick="showAddStock(${p.id}, \`${escapedName}\`)">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="btn btn-primary" onclick="editProduct(${p.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteProduct(${p.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </td>
-            </tr>`).join('')
-        : '<tr><td colspan="9" class="text-center text-muted py-4">{{ __("pos.no_data") }}</td></tr>';
+            </tr>
+        `;
+    }).join('');
 }
 
+// Helper function to escape HTML
+function escapeHtml(str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 function editProduct(p) {
     document.getElementById('productId').value       = p.id;
     document.getElementById('productName').value     = p.name;
@@ -290,5 +357,109 @@ document.getElementById('addProductModal').addEventListener('show.bs.modal', fun
 });
 
 loadProducts();
+
+// ─── BARCODE GENERATOR ────────────────────────────────────────────────────────
+let _barcodeProductId = null;
+let _currentBarcodeValue = '';
+
+async function loadJsBarcode() {
+    if (window.JsBarcode) return;
+    await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+    });
+}
+
+async function showBarcode(id, name, barcode, price) {
+    _barcodeProductId = id;
+    _currentBarcodeValue = barcode;
+    document.getElementById('barcodeProductName').textContent = name;
+    document.getElementById('barcodeProductPrice').textContent = price ? formatCurrency(price) : '';
+
+    await loadJsBarcode();
+
+    if (barcode) {
+        document.getElementById('barcodeGenerateSection').classList.add('d-none');
+        renderBarcode(barcode);
+    } else {
+        document.getElementById('barcodeSvg').innerHTML = '';
+        document.getElementById('barcodeValue').textContent = '';
+        document.getElementById('barcodeGenerateSection').classList.remove('d-none');
+    }
+
+    new bootstrap.Modal(document.getElementById('barcodeModal')).show();
+}
+
+function renderBarcode(value) {
+    try {
+        JsBarcode('#barcodeSvg', value, {
+            format: 'CODE128',
+            width: 2,
+            height: 80,
+            displayValue: true,
+            fontSize: 14,
+            margin: 10,
+            background: '#ffffff',
+            lineColor: '#000000',
+        });
+        document.getElementById('barcodeValue').textContent = value;
+        _currentBarcodeValue = value;
+    } catch(e) {
+        document.getElementById('barcodeValue').textContent = '{{ app()->getLocale() === "ar" ? "باركود غير صالح" : "Invalid barcode" }}';
+    }
+}
+
+async function generateBarcode() {
+    // EAN13-style: timestamp-based unique code
+    const code = String(Date.now()).slice(-12).padStart(12, '0');
+    // Save barcode to product via API
+    const res = await apiCall(`/api/products/${_barcodeProductId}`, 'PUT', { barcode: code });
+    if (res.success) {
+        document.getElementById('barcodeGenerateSection').classList.add('d-none');
+        renderBarcode(code);
+        loadProducts();
+    }
+}
+
+function printBarcode() {
+    const name = document.getElementById('barcodeProductName').textContent;
+    const price = document.getElementById('barcodeProductPrice').textContent;
+    const svgEl = document.getElementById('barcodeSvg');
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const svgBase64 = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+
+    const win = window.open('', '_blank', 'width=400,height=300');
+    win.document.write(`<!DOCTYPE html><html><head><title>Barcode</title>
+    <style>
+        body { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; font-family:sans-serif; }
+        .label { text-align:center; padding:16px; border:1px solid #ddd; border-radius:8px; }
+        .prod-name { font-weight:bold; font-size:14px; margin-bottom:4px; }
+        .prod-price { color:#16a34a; font-size:13px; margin-bottom:8px; }
+    </style></head><body>
+    <div class="label">
+        <div class="prod-name">${name}</div>
+        <div class="prod-price">${price}</div>
+        <img src="${svgBase64}" style="max-width:260px">
+    </div>
+    <script>window.onload=()=>{window.print();window.close();}<\/script>
+    </body></html>`);
+    win.document.close();
+}
+
+function downloadBarcode() {
+    const svgEl = document.getElementById('barcodeSvg');
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const blob = new Blob([svgData], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `barcode-${_currentBarcodeValue || 'product'}.svg`;
+    a.click();
+}
+
+function formatCurrency(v) {
+    return new Intl.NumberFormat('{{ app()->getLocale() }}', { minimumFractionDigits: 2 }).format(v);
+}
 </script>
 @endpush

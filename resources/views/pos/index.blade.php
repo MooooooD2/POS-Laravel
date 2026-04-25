@@ -4,6 +4,45 @@
 
 @push('styles')
     <style>
+        /* Add to your styles section */
+#reader {
+    min-height: 400px;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#reader video {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+#scanResult {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    z-index: 1050;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+#manualBarcodeInput {
+    font-size: 16px;
+    direction: ltr;
+    text-align: left;
+}
         .pos-layout {
             display: grid;
             grid-template-columns: 1fr 400px;
@@ -311,6 +350,47 @@
             </div>
         </div>
     </div>
+
+<div class="modal fade" id="cameraScanModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-camera me-2"></i>
+                    {{ app()->getLocale() === 'ar' ? 'مسح الباركود' : 'Scan Barcode' }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="reader" style="width: 100%; min-height: 400px; background: #000;"></div>
+                <div id="scanResult" class="alert alert-success m-3" style="display: none;">
+                    <span id="scanResultText"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="row w-100">
+                    <div class="col-8">
+                        <input type="text" class="form-control" id="manualBarcodeInput" 
+                            placeholder="{{ app()->getLocale() === 'ar' ? 'أو أدخل الباركود يدوياً' : 'Or enter barcode manually' }}">
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-primary w-100" onclick="submitManualBarcode()">
+                            <i class="fas fa-search me-1"></i>{{ __('pos.search') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes scanLine {
+    0%   { top: 0; opacity: 1; }
+    90%  { top: calc(100% - 2px); opacity: 1; }
+    100% { top: 0; opacity: 0; }
+}
+</style>
 @endsection
 
 @push('scripts')
@@ -711,15 +791,42 @@
         showToast('لا توجد فاتورة للطباعة', 'danger');
         return;
     }
+    
     const printableHtml = generatePrintableInvoice(currentInvoice);
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(printableHtml);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.onafterprint = function() { printWindow.close(); };
+    
+    // Create hidden iframe for printing
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute; width:0; height:0; border:none; visibility:hidden;';
+    document.body.appendChild(iframe);
+    
+    const iframeDoc = iframe.contentWindow.document;
+    iframeDoc.write(printableHtml);
+    iframeDoc.close();
+    
+    // Print and cleanup
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    
+    iframe.contentWindow.onafterprint = function() {
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+        }, 500);
+    };
 }
 
+// Optional: Add this for print button that also closes modal
+function printAndCloseModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('invoiceModal'));
+    if (modal) {
+        modal.hide();
+        // Small delay to allow modal to close before printing
+        setTimeout(() => {
+            printInvoice();
+        }, 300);
+    } else {
+        printInvoice();
+    }
+}
 function generatePrintableInvoice(invoice) {
     const isRTL = document.documentElement.dir === 'rtl' || document.documentElement.lang === 'ar';
     const direction = isRTL ? 'rtl' : 'ltr';
@@ -1048,15 +1155,413 @@ function generatePrintableInvoice(invoice) {
             setTimeout(() => toast.remove(), 3000);
         }
 
-        function openCameraModal() {
-            showToast('{{ app()->getLocale() === 'ar' ? 'قريباً: مسح الكاميرا' : 'Coming soon: Camera scan' }}', 'info');
-        }
-
+        
         // Init
         setPayment(POS_SETTINGS.defaultPayment);
         document.addEventListener('click', e => {
             if (!e.target.closest('.product-search')) closeSearch();
         });
         document.getElementById('searchInput').focus();
+
+// ─── SIMPLE WORKING BARCODE SCANNER USING html5-qrcode ─────────────────────────
+let html5QrCode = null;
+let isScanning = false;
+
+// Load html5-qrcode library dynamically
+function loadHtml5Qrcode() {
+    return new Promise((resolve, reject) => {
+        if (window.Html5Qrcode) {
+            resolve();
+            return;
+        }
+        
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+        script.onload = () => {
+            // Wait a bit for the library to fully initialize
+            setTimeout(() => {
+                if (window.Html5Qrcode) {
+                    resolve();
+                } else {
+                    reject(new Error('Html5Qrcode library not loaded properly'));
+                }
+            }, 500);
+        };
+        script.onerror = () => {
+            reject(new Error('Failed to load html5-qrcode library'));
+        };
+        document.head.appendChild(script);
+    });
+}
+
+async function openCameraModal() {
+    // Ensure any existing scanner is stopped
+    await stopBarcodeScanner();
+    
+    const modalElement = document.getElementById('cameraScanModal');
+    const modal = new bootstrap.Modal(modalElement);
+    
+    // Clear previous scanner container
+    const readerDiv = document.getElementById('reader');
+    if (readerDiv) {
+        readerDiv.innerHTML = '';
+    }
+    
+    // Hide any previous result
+    const resultDiv = document.getElementById('scanResult');
+    if (resultDiv) {
+        resultDiv.style.display = 'none';
+    }
+    
+    // Clear manual input
+    const manualInput = document.getElementById('manualBarcodeInput');
+    if (manualInput) {
+        manualInput.value = '';
+    }
+    
+    modal.show();
+    
+    // Start scanner when modal is fully shown
+    modalElement.addEventListener('shown.bs.modal', function onShown() {
+        modalElement.removeEventListener('shown.bs.modal', onShown);
+        startBarcodeScanner();
+    });
+    
+    // Cleanup when modal is hidden
+    modalElement.addEventListener('hidden.bs.modal', function onHidden() {
+        modalElement.removeEventListener('hidden.bs.modal', onHidden);
+        stopBarcodeScanner();
+    });
+}
+
+async function startBarcodeScanner() {
+    if (isScanning) {
+        return;
+    }
+    
+    const readerDiv = document.getElementById('reader');
+    if (!readerDiv) {
+        console.error('Reader div not found');
+        return;
+    }
+    
+    // Clear previous content
+    readerDiv.innerHTML = '';
+    
+    try {
+        // Load the library
+        await loadHtml5Qrcode();
+        
+        // Create new scanner instance
+        html5QrCode = new Html5Qrcode("reader");
+        
+        // Scanner configuration
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 200 },
+            aspectRatio: 1.0,
+            rememberLastUsedCamera: true,
+        };
+        
+        // Start scanning
+        await html5QrCode.start(
+            { facingMode: "environment" }, // Use back camera
+            config,
+            (decodedText) => {
+                // Success callback - scan detected
+                if (decodedText) {
+                    handleScannedBarcode(decodedText);
+                }
+            },
+            (errorMessage) => {
+                // Error callback - we ignore individual scan errors
+                // This is normal when no barcode is in view
+                // console.debug("Scanning...", errorMessage);
+            }
+        );
+        
+        isScanning = true;
+        
+        // Add a visual scan line effect
+        addScanLineEffect();
+        
+    } catch (err) {
+        console.error("Error starting scanner:", err);
+        showToast(getTranslation(
+            'تعذر بدء الكاميرا. يرجى التأكد من منح صلاحيات الكاميرا',
+            'Cannot start camera. Please ensure camera permissions are granted'
+        ), 'danger');
+        
+        // Show the manual input more prominently
+        const manualInput = document.getElementById('manualBarcodeInput');
+        if (manualInput) {
+            manualInput.placeholder = getTranslation(
+                'تعذر بدء الكاميرا - أدخل الباركود يدوياً',
+                'Camera failed - enter barcode manually'
+            );
+            manualInput.classList.add('border-danger');
+        }
+    }
+}
+
+function addScanLineEffect() {
+    const readerDiv = document.getElementById('reader');
+    if (!readerDiv) return;
+    
+    // Remove existing scan line if any
+    const existingLine = document.getElementById('scanLine');
+    if (existingLine) existingLine.remove();
+    
+    // Create scan line
+    const scanLine = document.createElement('div');
+    scanLine.id = 'scanLine';
+    scanLine.style.cssText = `
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #00ff00, #00ff00, transparent);
+        animation: scanLine 2s linear infinite;
+        pointer-events: none;
+        z-index: 10;
+    `;
+    
+    // Make sure reader has relative position
+    if (getComputedStyle(readerDiv).position === 'static') {
+        readerDiv.style.position = 'relative';
+    }
+    
+    readerDiv.appendChild(scanLine);
+}
+
+function stopBarcodeScanner() {
+    return new Promise(async (resolve) => {
+        if (html5QrCode && isScanning) {
+            try {
+                await html5QrCode.stop();
+            } catch (err) {
+                console.warn("Error stopping scanner:", err);
+            } finally {
+                html5QrCode = null;
+                isScanning = false;
+                
+                // Remove scan line
+                const scanLine = document.getElementById('scanLine');
+                if (scanLine) scanLine.remove();
+                
+                resolve();
+            }
+        } else {
+            resolve();
+        }
+    });
+}
+
+function handleScannedBarcode(barcode) {
+    if (!barcode) return;
+    
+    // Stop scanner immediately
+    stopBarcodeScanner();
+    
+    // Show success message
+    const resultDiv = document.getElementById('scanResult');
+    const resultText = document.getElementById('scanResultText');
+    if (resultDiv && resultText) {
+        resultText.innerHTML = `<i class="fas fa-check-circle me-2"></i>${getTranslation(
+            `تم مسح: ${barcode}`,
+            `Scanned: ${barcode}`
+        )}`;
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'alert alert-success m-3';
+    }
+    
+    // Play beep sound
+    if (POS_SETTINGS.posSound) {
+        beep();
+    }
+    
+    // Close modal after short delay
+    setTimeout(() => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('cameraScanModal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+        // Process the barcode
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = barcode;
+            // Small delay to ensure modal is closed
+            setTimeout(() => {
+                handleSearch(barcode, true);
+            }, 100);
+        }
+    }, 500);
+}
+
+function submitManualBarcode() {
+    const input = document.getElementById('manualBarcodeInput');
+    const barcode = input ? input.value.trim() : '';
+    
+    if (!barcode) {
+        showToast(getTranslation(
+            'الرجاء إدخال الباركود',
+            'Please enter barcode'
+        ), 'danger');
+        return;
+    }
+    
+    // Stop scanner if running
+    stopBarcodeScanner();
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('cameraScanModal'));
+    if (modal) {
+        modal.hide();
+    }
+    
+    // Clear input
+    if (input) {
+        input.value = '';
+    }
+    
+    // Process barcode after modal closes
+    setTimeout(() => {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = barcode;
+            handleSearch(barcode, true);
+        }
+    }, 100);
+}
+
+function getTranslation(arabic, english) {
+    const isArabic = document.documentElement.lang === 'ar' || 
+                     document.documentElement.dir === 'rtl' ||
+                     window.location.pathname.includes('/ar/');
+    return isArabic ? arabic : english;
+}
+
+// Add camera button with better error handling
+function initCameraButton() {
+    const cameraButton = document.querySelector('button[title="Camera scan"], button[onclick="openCameraModal()"]');
+    if (cameraButton && !cameraButton.hasAttribute('data-camera-initialized')) {
+        cameraButton.setAttribute('data-camera-initialized', 'true');
+        
+        // Override onclick to handle errors
+        const originalOnClick = cameraButton.onclick;
+        cameraButton.onclick = async function(e) {
+            e.preventDefault();
+            try {
+                // Check if camera is supported
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    showToast(getTranslation(
+                        'جهازك لا يدعم الكاميرا',
+                        'Your device does not support camera'
+                    ), 'danger');
+                    return;
+                }
+                
+                await openCameraModal();
+            } catch (error) {
+                console.error('Camera error:', error);
+                showToast(getTranslation(
+                    'تعذر فتح الكاميرا. يرجى استخدام الإدخال اليدوي',
+                    'Cannot open camera. Please use manual entry'
+                ), 'danger');
+            }
+        };
+    }
+}
+
+// Add enter key support for manual input
+function initManualInput() {
+    const manualInput = document.getElementById('manualBarcodeInput');
+    if (manualInput) {
+        manualInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitManualBarcode();
+            }
+        });
+    }
+}
+
+// Add scan line animation CSS if not present
+function addScanLineStyles() {
+    if (!document.getElementById('scanLineStyles')) {
+        const style = document.createElement('style');
+        style.id = 'scanLineStyles';
+        style.textContent = `
+            @keyframes scanLine {
+                0% {
+                    top: 0%;
+                    opacity: 1;
+                }
+                95% {
+                    top: calc(100% - 2px);
+                    opacity: 1;
+                }
+                100% {
+                    top: 0%;
+                    opacity: 0;
+                }
+            }
+            
+            #reader {
+                position: relative;
+                min-height: 400px;
+                background: #000;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            
+            #reader video {
+                width: 100%;
+                height: auto;
+                object-fit: cover;
+            }
+            
+            .camera-loading {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                z-index: 5;
+                background: rgba(0,0,0,0.7);
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-size: 14px;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    addScanLineStyles();
+    initCameraButton();
+    initManualInput();
+    
+    // Also add manual entry button if needed
+    const cameraButton = document.querySelector('button[title="Camera scan"]');
+    if (cameraButton && !document.getElementById('manualEntryBtn')) {
+        const manualBtn = document.createElement('button');
+        manualBtn.id = 'manualEntryBtn';
+        manualBtn.className = 'btn btn-outline-secondary ms-2';
+        manualBtn.title = getTranslation('إدخال يدوي', 'Manual Entry');
+        manualBtn.innerHTML = '<i class="fas fa-keyboard"></i>';
+        manualBtn.onclick = () => {
+            const barcode = prompt(getTranslation('أدخل الباركود:', 'Enter barcode:'));
+            if (barcode && barcode.trim()) {
+                document.getElementById('searchInput').value = barcode.trim();
+                handleSearch(barcode.trim(), true);
+            }
+        };
+        cameraButton.parentNode.insertBefore(manualBtn, cameraButton.nextSibling);
+    }
+});
     </script>
 @endpush
