@@ -18,6 +18,22 @@ class DashboardController extends Controller
         return view('dashboard.index');
     }
 
+    public function lowStockProducts()
+    {
+        $lowStock = Product::whereRaw('quantity <= min_stock AND quantity > 0')
+            ->orderByRaw('quantity - min_stock ASC')
+            ->get(['id', 'name', 'quantity', 'min_stock', 'category']);
+
+        $outOfStock = Product::where('quantity', 0)
+            ->get(['id', 'name', 'quantity', 'min_stock', 'category']);
+
+        return response()->json([
+            'low_stock' => $lowStock,
+            'out_of_stock' => $outOfStock,
+            'total_alerts' => $lowStock->count() + $outOfStock->count(),
+        ]);
+    }
+
     public function data()
     {
         $today = today()->toDateString();

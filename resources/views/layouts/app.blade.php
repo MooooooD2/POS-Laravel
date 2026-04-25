@@ -131,6 +131,34 @@
                 <h6 class="mb-0 fw-semibold">@yield('page-title', __('pos.dashboard'))</h6>
             </div>
             <div class="d-flex align-items-center gap-3">
+                {{-- Low Stock Notification Bell --}}
+                <div class="dropdown" id="stockNotifDropdown">
+                    <button class="btn btn-sm btn-outline-secondary position-relative" id="stockBellBtn"
+                        data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                        onclick="loadStockAlerts()" title="{{ app()->getLocale() === 'ar' ? 'تنبيهات المخزون' : 'Stock Alerts' }}">
+                        <i class="fas fa-bell"></i>
+                        <span id="stockBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                            style="font-size:0.6rem"></span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-0 shadow"
+                        style="min-width:320px; max-width:380px; max-height:420px; overflow-y:auto; border-radius:10px">
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom bg-warning bg-opacity-10">
+                            <span class="fw-bold small">
+                                <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                {{ app()->getLocale() === 'ar' ? 'تنبيهات المخزون' : 'Stock Alerts' }}
+                            </span>
+                            <a href="{{ route('warehouse') }}" class="btn btn-xs btn-link btn-sm text-decoration-none p-0 small">
+                                {{ app()->getLocale() === 'ar' ? 'عرض الكل' : 'View All' }}
+                            </a>
+                        </div>
+                        <div id="stockAlertsList">
+                            <div class="text-center py-3 text-muted small">
+                                <i class="fas fa-spinner fa-spin me-1"></i>
+                                {{ app()->getLocale() === 'ar' ? 'جاري التحميل...' : 'Loading...' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 {{-- Language Toggle --}}
                 <div class="dropdown">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
@@ -208,9 +236,10 @@
 
         // Helper: Show toast notification - عرض إشعار
         function showToast(message, type = 'success') {
+            const colorMap = { success: 'success', error: 'danger', warning: 'warning text-dark' };
+            const bgClass = colorMap[type] || 'success';
             const toastEl = document.createElement('div');
-            toastEl.className =
-                `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+            toastEl.className = `toast align-items-center text-white bg-${bgClass} border-0`;
             toastEl.setAttribute('role', 'alert');
             toastEl.innerHTML = `
             <div class="d-flex">
@@ -265,6 +294,117 @@
         } else {
             document.body.classList.add('ltr');
         }
+    </script>
+
+    <script>
+    // ── Stock Alert Notification Bell ──────────────────────────────────
+    (function initStockBell() {
+        const isAr = LOCALE === 'ar';
+
+        async function fetchAlerts() {
+            try {
+                const res = await fetch('{{ route("dashboard.low-stock") }}', {
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN }
+                });
+                return await res.json();
+            } catch (e) { return null; }
+        }
+
+        function renderAlerts(data) {
+            const badge = document.getElementById('stockBadge');
+            const list  = document.getElementById('stockAlertsList');
+            if (!data) {
+                list.innerHTML = `<div class="text-center py-3 text-danger small">${isAr ? 'فشل تحميل البيانات' : 'Failed to load'}</div>`;
+                return;
+            }
+
+            const total = data.total_alerts;
+            if (total > 0) {
+                badge.textContent = total > 99 ? '99+' : total;
+                badge.classList.remove('d-none');
+            } else {
+                badge.classList.add('d-none');
+            }
+
+            if (total === 0) {
+                list.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle text-success fa-2x mb-2 d-block"></i>
+                        <span class="text-muted small">${isAr ? 'المخزون بخير، لا توجد تنبيهات' : 'All stock levels are fine'}</span>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+
+            if (data.out_of_stock && data.out_of_stock.length > 0) {
+                html += `<div class="px-3 pt-2 pb-1">
+                    <span class="badge bg-danger mb-1">${isAr ? 'نفد المخزون' : 'Out of Stock'}</span>
+                </div>`;
+                data.out_of_stock.forEach(p => {
+                    html += `<a href="{{ route('warehouse') }}" class="dropdown-item d-flex align-items-center gap-2 py-2 border-bottom text-decoration-none">
+                        <span class="flex-shrink-0 text-danger"><i class="fas fa-times-circle"></i></span>
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="fw-semibold small text-truncate">${p.name}</div>
+                            <div class="text-muted" style="font-size:0.72rem">
+                                ${isAr ? 'الكمية: ' : 'Qty: '}<strong class="text-danger">0</strong>
+                                ${p.category ? ' &bull; ' + p.category : ''}
+                            </div>
+                        </div>
+                        <span class="badge bg-danger bg-opacity-15 text-danger border border-danger" style="font-size:0.65rem">${isAr ? 'نفذ' : 'Empty'}</span>
+                    </a>`;
+                });
+            }
+
+            if (data.low_stock && data.low_stock.length > 0) {
+                html += `<div class="px-3 pt-2 pb-1">
+                    <span class="badge bg-warning text-dark mb-1">${isAr ? 'مخزون منخفض' : 'Low Stock'}</span>
+                </div>`;
+                data.low_stock.forEach(p => {
+                    html += `<a href="{{ route('warehouse') }}" class="dropdown-item d-flex align-items-center gap-2 py-2 border-bottom text-decoration-none">
+                        <span class="flex-shrink-0 text-warning"><i class="fas fa-exclamation-triangle"></i></span>
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="fw-semibold small text-truncate">${p.name}</div>
+                            <div class="text-muted" style="font-size:0.72rem">
+                                ${isAr ? 'الكمية: ' : 'Qty: '}<strong class="text-warning">${p.quantity}</strong>
+                                ${isAr ? ' / الحد الأدنى: ' : ' / Min: '}<strong>${p.min_stock}</strong>
+                                ${p.category ? ' &bull; ' + p.category : ''}
+                            </div>
+                        </div>
+                        <span class="badge bg-warning bg-opacity-15 text-warning border border-warning" style="font-size:0.65rem">${isAr ? 'منخفض' : 'Low'}</span>
+                    </a>`;
+                });
+            }
+
+            list.innerHTML = html;
+        }
+
+        window.loadStockAlerts = async function() {
+            const list = document.getElementById('stockAlertsList');
+            list.innerHTML = `<div class="text-center py-3 text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>${isAr ? 'جاري التحميل...' : 'Loading...'}</div>`;
+            const data = await fetchAlerts();
+            renderAlerts(data);
+        };
+
+        // Auto-load badge count on page load
+        fetchAlerts().then(data => {
+            if (!data) return;
+            const badge = document.getElementById('stockBadge');
+            const total = data.total_alerts;
+            if (total > 0) {
+                badge.textContent = total > 99 ? '99+' : total;
+                badge.classList.remove('d-none');
+                // Show a toast on page load if there are alerts
+                if (total > 0) {
+                    const msg = isAr
+                        ? `⚠️ تنبيه: ${total} منتج ${total === 1 ? 'قرب على النفاذ أو نفذ' : 'منتجات قربت على النفاذ أو نفذت'} من المخزون`
+                        : `⚠️ Alert: ${total} product${total > 1 ? 's' : ''} with low or no stock`;
+                    setTimeout(() => showToast(msg, 'warning'), 1000);
+                }
+            }
+        });
+    })();
+    // ────────────────────────────────────────────────────────────────────
     </script>
 
     @stack('scripts')

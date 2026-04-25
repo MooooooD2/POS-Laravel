@@ -33,6 +33,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/api/dashboard-data', [DashboardController::class, 'data'])->name('dashboard.data');
+    Route::get('/api/low-stock-products', [DashboardController::class, 'lowStockProducts'])->name('dashboard.low-stock');
 
     // ── POS (users with permission) ──────────────────────────────────────
     Route::middleware(['permission:view_pos'])->group(function () {
