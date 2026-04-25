@@ -17,7 +17,7 @@
     </li>
     <li class="nav-item">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#accountStmtTab">
-            <i class="fas fa-file-alt me-1"></i>Account Statement
+            <i class="fas fa-file-alt me-1"></i>{{ __('pos.Account Statement') }}
         </button>
     </li>
 </ul>
@@ -39,7 +39,7 @@
                     </div>
                     <div class="col-md-3">
                         <button class="btn btn-primary w-100" onclick="loadIncomeStatement()">
-                            <i class="fas fa-search me-1"></i>Generate
+                            <i class="fas fa-search me-1"></i> {{ __('pos.Generate') }}
                         </button>
                     </div>
                 </div>
@@ -139,7 +139,7 @@
             <div class="card-body">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
-                        <label class="form-label">Account</label>
+                        <label class="form-label">{{ __('pos.Account') }}</label>
                         <select class="form-select" id="stmtAccount">
                             <option value="">-- Select Account --</option>
                         </select>

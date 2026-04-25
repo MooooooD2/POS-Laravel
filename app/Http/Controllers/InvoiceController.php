@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\Setting;
+use App\Http\Requests\StoreInvoiceRequest;
 use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 
@@ -57,17 +58,9 @@ class InvoiceController extends Controller
         return response()->json(['success' => false, 'message' => __('pos.product_not_found')]);
     }
 
-    public function createInvoice(Request $request)
+    public function createInvoice(StoreInvoiceRequest $request)
     {
-        $data = $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.product_name' => 'required|string',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0',
-            'payment_method' => 'required|in:cash,card,transfer,wallet',
-        ]);
+        $data = $request->validated();
 
         try {
             $invoice = $this->invoiceService->createInvoice($data);

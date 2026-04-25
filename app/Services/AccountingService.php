@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
+use App\Services\SequenceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -24,13 +25,8 @@ class AccountingService
                 throw new \Exception(__('pos.journal_unbalanced'));
             }
 
-            $entryNumber = 'JE-' . date('Ymd') . '-' . str_pad(
-                JournalEntry::whereDate('created_at', today())->count() + 1,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
-
+            // ✅ FIX: Atomic journal entry numbering
+            $entryNumber = SequenceService::next('journal');
             $entry = JournalEntry::create([
                 'entry_number' => $entryNumber,
                 'entry_date' => $data['entry_date'],

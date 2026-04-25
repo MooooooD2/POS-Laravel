@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreReturnRequest;
 use App\Services\ReturnService;
 use Illuminate\Http\Request;
 
@@ -11,18 +12,9 @@ class ReturnController extends Controller
 
     public function index() { return view('returns.index'); }
 
-    public function store(Request $request)
+    public function store(StoreReturnRequest $request)
     {
-        $data = $request->validate([
-            'invoice_id'    => 'required|exists:invoices,id',
-            'customer_name' => 'nullable|string',
-            'reason'        => 'nullable|string',
-            'items'         => 'required|array|min:1',
-            'items.*.product_id'   => 'required|exists:products,id',
-            'items.*.product_name' => 'required|string',
-            'items.*.quantity'     => 'required|integer|min:1',
-            'items.*.price'        => 'required|numeric|min:0',
-        ]);
+        $data = $request->validated();
 
         try {
             $return = $this->returnService->processReturn($data);

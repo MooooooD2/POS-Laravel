@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Services\SequenceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,13 +23,8 @@ class InvoiceService
     public function createInvoice(array $data): Invoice
     {
         return DB::transaction(function () use ($data) {
-            $prefix = Setting::get('invoice_prefix', 'INV');
-            $invoiceNumber = $prefix . '-' . date('Ymd') . '-' . str_pad(
-                Invoice::whereDate('created_at', today())->count() + 1,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
+            // Atomic invoice numbering — آمن ضد التزامن
+            $invoiceNumber = SequenceService::next('invoice', Setting::get('invoice_prefix', 'INV'));
 
             $total = 0;
             foreach ($data['items'] as $item) {
@@ -65,6 +61,7 @@ class InvoiceService
                 'cashier_id' => Auth::user()->id,
                 'cashier_name' => Auth::user()->full_name,
                 'status' => 'completed',
+                'date' => now(),
             ]);
 
             foreach ($data['items'] as $item) {

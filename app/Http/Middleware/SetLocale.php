@@ -9,37 +9,25 @@ use Illuminate\Support\Facades\Session;
 
 class SetLocale
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @return mixed
-     */
     public function handle(Request $request, Closure $next)
     {
-        // Check if locale exists in session
+        // 1. Session takes priority
         if (Session::has('locale')) {
             $locale = Session::get('locale');
         }
-        // Check if user is logged in and has a language preference
-        else if (auth()->check() && auth()->user()->language) {
+        // 2. ✅ FIX: Safely read language from user (column now exists)
+        elseif (auth()->check() && !empty(auth()->user()->language)) {
             $locale = auth()->user()->language;
         }
-        // Default to Arabic
+        // 3. Default from config
         else {
             $locale = config('app.locale', 'ar');
         }
 
-        // Validate locale
+        // Validate — only allow ar or en
         if (in_array($locale, ['ar', 'en'])) {
             App::setLocale($locale);
-            // Set direction for RTL/LTR
-            if ($locale === 'ar') {
-                session(['direction' => 'rtl']);
-            } else {
-                session(['direction' => 'ltr']);
-            }
+            session(['direction' => $locale === 'ar' ? 'rtl' : 'ltr']);
         }
 
         return $next($request);

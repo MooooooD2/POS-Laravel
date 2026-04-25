@@ -41,48 +41,83 @@
             <i class="fas fa-cash-register me-2"></i>
             {{ __('pos.app_name') }}
         </div>
-        <div class="sidebar-menu mt-2">
-            <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                <i class="fas fa-tachometer-alt"></i> {{ __('pos.dashboard') }}
-            </a>
-            <a href="{{ route('pos') }}" class="{{ request()->routeIs('pos') ? 'active' : '' }}">
-                <i class="fas fa-cash-register"></i> {{ __('pos.pos') }}
-            </a>
-            <a href="{{ route('warehouse') }}" class="{{ request()->routeIs('warehouse') ? 'active' : '' }}">
-                <i class="fas fa-boxes"></i> {{ __('pos.warehouse') }}
-            </a>
-            <a href="{{ route('suppliers') }}" class="{{ request()->routeIs('suppliers') ? 'active' : '' }}">
-                <i class="fas fa-truck"></i> {{ __('pos.suppliers') }}
-            </a>
-            <a href="{{ route('purchase-orders') }}"
-                class="{{ request()->routeIs('purchase-orders') ? 'active' : '' }}">
-                <i class="fas fa-file-invoice"></i> {{ __('pos.purchase_orders') }}
-            </a>
-            <a href="{{ route('supplier-payments') }}"
-                class="{{ request()->routeIs('supplier-payments') ? 'active' : '' }}">
-                <i class="fas fa-money-bill-wave"></i> {{ __('pos.supplier_payments') }}
-            </a>
-            <a href="{{ route('supplier-accounts') }}"
-                class="{{ request()->routeIs('supplier-accounts') ? 'active' : '' }}">
-                <i class="fas fa-balance-scale"></i> {{ __('pos.supplier_accounts') }}
-            </a>
-            <a href="{{ route('accounting') }}" class="{{ request()->routeIs('accounting') ? 'active' : '' }}">
-                <i class="fas fa-book"></i> {{ __('pos.accounting') }}
-            </a>
-            <a href="{{ route('reports') }}" class="{{ request()->routeIs('reports') ? 'active' : '' }}">
-                <i class="fas fa-chart-bar"></i> {{ __('pos.reports') }}
-            </a>
-            <a href="{{ route('financial-reports') }}"
-                class="{{ request()->routeIs('financial-reports') ? 'active' : '' }}">
-                <i class="fas fa-file-alt"></i> {{ __('pos.financial_reports') }}
-            </a>
-            <a href="{{ route('returns') }}" class="{{ request()->routeIs('returns') ? 'active' : '' }}">
-                <i class="fas fa-undo"></i> {{ __('pos.returns') }}
-            </a>
-            <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
-                <i class="fas fa-cog"></i> {{ __('pos.settings') }}
-            </a>
-        </div>
+       {{-- Update the sidebar menu section --}}
+<div class="sidebar-menu mt-2">
+    {{-- Dashboard - All authenticated users --}}
+    <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+        <i class="fas fa-tachometer-alt"></i> {{ __('pos.dashboard') }}
+    </a>
+
+    {{-- POS - Check permission instead of role --}}
+    @permission('view_pos')
+        <a href="{{ route('pos') }}" class="{{ request()->routeIs('pos') ? 'active' : '' }}">
+            <i class="fas fa-cash-register"></i> {{ __('pos.pos') }}
+        </a>
+    @endpermission
+
+    {{-- Returns - Check permission --}}
+    @permission('view_returns')
+        <a href="{{ route('returns') }}" class="{{ request()->routeIs('returns') ? 'active' : '' }}">
+            <i class="fas fa-undo"></i> {{ __('pos.returns') }}
+        </a>
+    @endpermission
+
+    {{-- Warehouse & Products - Check permission --}}
+    @permission('view_warehouse')
+        <a href="{{ route('warehouse') }}" class="{{ request()->routeIs('warehouse') ? 'active' : '' }}">
+            <i class="fas fa-boxes"></i> {{ __('pos.warehouse') }}
+        </a>
+    @endpermission
+
+    @permission('view_suppliers')
+        <a href="{{ route('suppliers') }}" class="{{ request()->routeIs('suppliers') ? 'active' : '' }}">
+            <i class="fas fa-truck"></i> {{ __('pos.suppliers') }}
+        </a>
+    @endpermission
+
+    @permission('view_purchase_orders')
+        <a href="{{ route('purchase-orders') }}" class="{{ request()->routeIs('purchase-orders') ? 'active' : '' }}">
+            <i class="fas fa-file-invoice"></i> {{ __('pos.purchase_orders') }}
+        </a>
+    @endpermission
+
+    @permission('view_supplier_payments')
+        <a href="{{ route('supplier-payments') }}" class="{{ request()->routeIs('supplier-payments') ? 'active' : '' }}">
+            <i class="fas fa-money-bill-wave"></i> {{ __('pos.supplier_payments') }}
+        </a>
+
+        <a href="{{ route('supplier-accounts') }}" class="{{ request()->routeIs('supplier-accounts') ? 'active' : '' }}">
+            <i class="fas fa-balance-scale"></i> {{ __('pos.supplier_accounts') }}
+        </a>
+    @endpermission
+
+    {{-- Reports - Check permission --}}
+    @permission('view_reports')
+        <a href="{{ route('reports') }}" class="{{ request()->routeIs('reports') ? 'active' : '' }}">
+            <i class="fas fa-chart-bar"></i> {{ __('pos.reports') }}
+        </a>
+    @endpermission
+
+    {{-- Accounting & Financial Reports - Check permission --}}
+    @permission('view_accounting')
+        <a href="{{ route('accounting') }}" class="{{ request()->routeIs('accounting') ? 'active' : '' }}">
+            <i class="fas fa-book"></i> {{ __('pos.accounting') }}
+        </a>
+    @endpermission
+
+    @permission('view_financial_reports')
+        <a href="{{ route('financial-reports') }}" class="{{ request()->routeIs('financial-reports') ? 'active' : '' }}">
+            <i class="fas fa-file-alt"></i> {{ __('pos.financial_reports') }}
+        </a>
+    @endpermission
+
+    {{-- Settings - Check permission --}}
+    @permission('view_settings')
+        <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
+            <i class="fas fa-cog"></i> {{ __('pos.settings') }}
+        </a>
+    @endpermission
+</div>
     </nav>
 
     {{-- Main Content --}}
@@ -125,7 +160,19 @@
                         {{ auth()->user()->full_name }}
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><span class="dropdown-item-text text-muted small">{{ auth()->user()->role }}</span></li>
+                        {{-- Display user role(s) properly --}}
+                        <li>
+                            <span class="dropdown-item-text text-muted small">
+                                @php
+                                    $roles = auth()->user()->getRoleNames();
+                                @endphp
+                                @if($roles->count() > 0)
+                                    {{ ucfirst($roles->implode(', ')) }}
+                                @else
+                                    {{ __('pos.no_role') }}
+                                @endif
+                            </span>
+                        </li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>

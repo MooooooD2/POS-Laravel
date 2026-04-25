@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SupplierPayment;
 use App\Models\SupplierAccount;
 use App\Models\Supplier;
+use App\Services\SequenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -35,12 +36,8 @@ class SupplierPaymentController extends Controller
         ]);
 
         DB::transaction(function () use ($data) {
-            $paymentNumber = 'PAY-' . date('Ymd') . '-' . str_pad(
-                SupplierPayment::whereDate('created_at', today())->count() + 1,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
+            // ✅ FIX: Atomic payment numbering
+            $paymentNumber = SequenceService::next('payment');
 
             $supplier = Supplier::find($data['supplier_id']);
             $payment = SupplierPayment::create(array_merge($data, [

@@ -6,6 +6,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
 use App\Models\SupplierAccount;
+use App\Services\SequenceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,12 +22,8 @@ class PurchaseOrderService
     public function createPurchaseOrder(array $data): PurchaseOrder
     {
         return DB::transaction(function () use ($data) {
-            $poNumber = 'PO-' . date('Ymd') . '-' . str_pad(
-                PurchaseOrder::whereDate('created_at', today())->count() + 1,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
+            // ✅ FIX: Atomic PO numbering
+            $poNumber = SequenceService::next('purchase');
 
             $totalAmount = collect($data['items'])->sum(fn($i) => $i['cost_price'] * $i['quantity']);
             $discount = $data['discount'] ?? 0;

@@ -36,10 +36,9 @@ class SettingController extends Controller
 
         foreach ($data['settings'] as $item) {
             Setting::set($item['key'], $item['value'] ?? '');
+            // ✅ FIX: Clear only this specific setting key, not ALL cache
+            Cache::forget('setting_' . $item['key']);
         }
-
-        // Clear all setting caches
-        Cache::flush();
 
         return response()->json(['success' => true, 'message' => __('pos.settings_saved')]);
     }

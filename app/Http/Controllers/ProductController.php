@@ -6,6 +6,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,18 +31,9 @@ class ProductController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreProductRequest $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'cost_price' => 'nullable|numeric|min:0',
-            'quantity' => 'required|integer|min:0',
-            'min_stock' => 'nullable|integer|min:0',
-            'barcode' => 'nullable|string|unique:products,barcode',
-            'category' => 'nullable|string',
-            'supplier' => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $product = Product::create($data);
 
@@ -51,17 +44,9 @@ class ProductController extends Controller
         return response()->json(['success' => true, 'product' => $product]);
     }
 
-    public function update(Request $request, Product $product)
+    public function update(UpdateProductRequest $request, Product $product)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'cost_price' => 'nullable|numeric|min:0',
-            'min_stock' => 'nullable|integer|min:0',
-            'barcode' => 'nullable|string|unique:products,barcode,' . $product->id,
-            'category' => 'nullable|string',
-            'supplier' => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $product->update($data);
         return response()->json(['success' => true, 'product' => $product]);
