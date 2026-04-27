@@ -18,7 +18,7 @@ class User extends Authenticatable
     ];
 
     // Use 'username' as login field instead of 'email'
-    public function getAuthIdentifierName() { return 'username'; }
+    // public function getAuthIdentifierName() { return 'username'; }
 
     public function invoices()       { return $this->hasMany(Invoice::class, 'cashier_id'); }
     public function stockMovements() { return $this->hasMany(StockMovement::class, 'employee_id'); }

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\SalesReturn;
 use App\Models\User;
 use App\Services\ReturnService;
+use App\Services\SequenceService;
 use App\Services\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -24,14 +25,14 @@ class ReturnServiceTest extends TestCase
         parent::setUp();
 
         DB::table('sequences')->insert([
-            ['name' => 'return',  'prefix' => 'RET', 'value' => 0],
-            ['name' => 'invoice', 'prefix' => 'INV', 'value' => 0],
+            ['name' => 'sales_return', 'prefix' => 'RET', 'value' => 0],
+            ['name' => 'invoice',      'prefix' => 'INV', 'value' => 0],
         ]);
 
         $user = User::factory()->create(['role' => 'cashier', 'language' => 'ar']);
         $this->actingAs($user);
 
-        $this->service = new ReturnService(new StockService());
+        $this->service = new ReturnService(new StockService(), new SequenceService());
     }
 
     private function createInvoiceWithItem(int $qty = 5, float $price = 100.0): array
@@ -87,7 +88,7 @@ class ReturnServiceTest extends TestCase
         $this->assertEquals($initialQty + 3, $product->fresh()->quantity);
     }
 
-    public function test_throws_exception_when_return_exceeds_invoice_quantity(): void
+    public function test_throws_when_return_exceeds_invoice_quantity(): void
     {
         [$invoice, $product] = $this->createInvoiceWithItem(2);
 
@@ -98,34 +99,39 @@ class ReturnServiceTest extends TestCase
             'items'      => [[
                 'product_id'   => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => 99, // more than the 2 in invoice
+                'quantity'     => 99,
                 'price'        => 100.0,
             ]],
         ]);
     }
 
-    public function test_throws_exception_when_already_fully_returned(): void
+    public function test_throws_when_already_fully_returned(): void
     {
         [$invoice, $product] = $this->createInvoiceWithItem(2);
 
-        // First return — full qty
         $this->service->processReturn([
             'invoice_id' => $invoice->id,
-            'items'      => [[
-                'product_id' => $product->id, 'product_name' => $product->name,
-                'quantity'   => 2, 'price' => 100.0,
-            ]],
+            'items'      => [['product_id' => $product->id, 'product_name' => $product->name, 'quantity' => 2, 'price' => 100.0]],
         ]);
 
-        // Second return should fail
         $this->expectException(\Exception::class);
 
         $this->service->processReturn([
             'invoice_id' => $invoice->id,
-            'items'      => [[
-                'product_id' => $product->id, 'product_name' => $product->name,
-                'quantity'   => 1, 'price' => 100.0,
-            ]],
+            'items'      => [['product_id' => $product->id, 'product_name' => $product->name, 'quantity' => 1, 'price' => 100.0]],
+        ]);
+    }
+
+    public function test_throws_for_item_not_in_invoice(): void
+    {
+        [$invoice, $product] = $this->createInvoiceWithItem(2);
+        $otherProduct = Product::factory()->create(['quantity' => 10]);
+
+        $this->expectException(\Exception::class);
+
+        $this->service->processReturn([
+            'invoice_id' => $invoice->id,
+            'items'      => [['product_id' => $otherProduct->id, 'product_name' => $otherProduct->name, 'quantity' => 1, 'price' => 100.0]],
         ]);
     }
 }

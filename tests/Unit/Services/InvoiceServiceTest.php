@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\InvoiceService;
+use App\Services\SequenceService;
 use App\Services\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -21,13 +22,12 @@ class InvoiceServiceTest extends TestCase
     {
         parent::setUp();
 
-        // Setup sequence table
         DB::table('sequences')->insert(['name' => 'invoice', 'prefix' => 'INV', 'value' => 0]);
 
         $user = User::factory()->create(['role' => 'cashier', 'language' => 'ar']);
         $this->actingAs($user);
 
-        $this->service = new InvoiceService(new StockService());
+        $this->service = new InvoiceService(new StockService(), new SequenceService());
     }
 
     public function test_creates_invoice_successfully(): void
@@ -108,10 +108,9 @@ class InvoiceServiceTest extends TestCase
         ]);
     }
 
-    public function test_invoice_number_is_unique_for_each_invoice(): void
+    public function test_invoice_number_is_unique(): void
     {
-        $product = Product::factory()->create(['quantity' => 100, 'price' => 10.00]);
-
+        $product  = Product::factory()->create(['quantity' => 100, 'price' => 10.00]);
         $itemData = [
             'payment_method' => 'cash',
             'discount'       => 0,
@@ -131,7 +130,7 @@ class InvoiceServiceTest extends TestCase
         $this->assertNotEquals($inv2->invoice_number, $inv3->invoice_number);
     }
 
-    public function test_creates_invoice_items_correctly(): void
+    public function test_creates_multiple_invoice_items(): void
     {
         $p1 = Product::factory()->create(['quantity' => 10, 'price' => 100.00]);
         $p2 = Product::factory()->create(['quantity' => 10, 'price' => 50.00]);
@@ -146,6 +145,26 @@ class InvoiceServiceTest extends TestCase
         ]);
 
         $this->assertCount(2, $invoice->items);
-        $this->assertEquals(350.00, $invoice->total); // (2×100) + (3×50)
+        $this->assertEquals(350.00, $invoice->total);
+    }
+
+    public function test_stock_check_validates_all_items_before_writing(): void
+    {
+        $p1 = Product::factory()->create(['quantity' => 10, 'price' => 100.00]);
+        $p2 = Product::factory()->create(['quantity' => 1,  'price' => 50.00]);  // insufficient
+
+        $this->expectException(\Exception::class);
+
+        $this->service->createInvoice([
+            'payment_method' => 'cash',
+            'discount'       => 0,
+            'items'          => [
+                ['product_id' => $p1->id, 'product_name' => $p1->name, 'quantity' => 5,  'price' => 100.00],
+                ['product_id' => $p2->id, 'product_name' => $p2->name, 'quantity' => 99, 'price' => 50.00],
+            ],
+        ]);
+
+        // p1 stock should NOT be deducted because the whole transaction rolled back
+        $this->assertEquals(10, $p1->fresh()->quantity);
     }
 }
