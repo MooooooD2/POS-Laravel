@@ -273,10 +273,58 @@
             return res.json();
         }
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('show');
+// Replace the toggleSidebar function with this Safari-compatible version
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    
+    // Force reflow before toggling for Safari
+    if (sidebar.classList.contains('show')) {
+        sidebar.classList.remove('show');
+        // Ensure transform is applied
+        if (LOCALE === 'ar') {
+            sidebar.style.transform = 'translateX(100%)';
+        } else {
+            sidebar.style.transform = 'translateX(-100%)';
         }
+    } else {
+        sidebar.classList.add('show');
+        sidebar.style.transform = 'translateX(0)';
+    }
+}
 
+// Also add this to ensure sidebar works on load
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && window.innerWidth <= 768) {
+        if (LOCALE === 'ar') {
+            sidebar.style.transform = 'translateX(100%)';
+        } else {
+            sidebar.style.transform = 'translateX(-100%)';
+        }
+    }
+});
+
+// Handle window resize for Safari
+let resizeTimer;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+        const sidebar = document.getElementById('sidebar');
+        if (window.innerWidth > 768) {
+            sidebar.style.transform = '';
+            sidebar.classList.remove('show');
+        } else {
+            if (!sidebar.classList.contains('show')) {
+                if (LOCALE === 'ar') {
+                    sidebar.style.transform = 'translateX(100%)';
+                } else {
+                    sidebar.style.transform = 'translateX(-100%)';
+                }
+            }
+        }
+    }, 250);
+});
         // Format currency - تنسيق العملة
         function formatCurrency(amount) {
             return new Intl.NumberFormat(LOCALE === 'ar' ? 'ar-EG' : 'en-US', {
