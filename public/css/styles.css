@@ -253,15 +253,19 @@ body.rtl .toast-container {
     left: 1rem;
 }
 
-/* Replace the existing responsive section with this */
+/* Responsive - Clean version without duplicates */
 @media (max-width: 768px) {
     #sidebar {
         transform: translateX(-100%);
         transition: transform 0.3s ease;
+        left: 0 !important;
+        right: auto !important;
     }
 
     body.rtl #sidebar {
         transform: translateX(100%);
+        left: auto !important;
+        right: 0 !important;
     }
 
     #sidebar.show {
@@ -274,7 +278,7 @@ body.rtl .toast-container {
     }
 }
 
-/* iOS-specific fixes */
+/* iOS Safari specific fixes */
 @supports (-webkit-touch-callout: none) {
     #sidebar {
         -webkit-transform: translateX(-100%);
@@ -290,4 +294,22 @@ body.rtl .toast-container {
         -webkit-transform: translateX(0) !important;
         transform: translateX(0) !important;
     }
+}
+
+/* Ensure sidebar has correct positioning */
+#sidebar {
+    width: var(--sidebar-width);
+    min-height: 100vh;
+    background: var(--sidebar-bg);
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100000;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+}
+
+body.rtl #sidebar {
+    left: auto;
+    right: 0;
 }
