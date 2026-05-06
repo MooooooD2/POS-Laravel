@@ -257,20 +257,16 @@ body.rtl .toast-container {
     #sidebar {
         position: fixed;
         top: 0;
-        left: 0;
+        left: 0 !important;
     }
 
     [dir="rtl"] #sidebar {
-        left: auto;
-        right: 0;
-        transform: translateX(100%);
+        left: auto !important;
+        right: 0 !important;
+        transform: translateX(100%) !important;
     }
 
     [dir="rtl"] #sidebar.show {
-        transform: translateX(0);
+        transform: translateX(0) !important;
     }
-}
-.sidebar-brand {
-    display: flex;
-    align-items: center;
 }
