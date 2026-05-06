@@ -273,60 +273,65 @@
             return res.json();
         }
 
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const isRTL = document.body.classList.contains('rtl');
-    
-    if (sidebar.classList.contains('show')) {
-        sidebar.classList.remove('show');
-        // Prevent body scroll when sidebar is closed
-        document.body.style.overflow = '';
-    } else {
-        sidebar.classList.add('show');
-        // Prevent body scroll when sidebar is open (optional)
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-// Close sidebar when clicking outside on mobile (improves UX)
-document.addEventListener('click', function(event) {
-    const sidebar = document.getElementById('sidebar');
-    const isMobile = window.innerWidth <= 768;
-    const toggles = document.querySelectorAll('[onclick="toggleSidebar()"], button[onclick*="toggleSidebar"]');
-    let isToggle = false;
-    
-    toggles.forEach(toggle => {
-        if (toggle.contains(event.target)) {
-            isToggle = true;
-        }
+(function() {
+    // Ensure DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get sidebar element
+        const sidebar = document.getElementById('sidebar');
+        
+        // Create overlay for better UX
+        const overlay = document.createElement('div');
+        overlay.id = 'sidebar-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+            cursor: pointer;
+        `;
+        document.body.appendChild(overlay);
+        
+        // Improved toggle function
+        window.toggleSidebar = function() {
+            const isOpen = sidebar.classList.contains('show');
+            
+            if (isOpen) {
+                sidebar.classList.remove('show');
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+            } else {
+                sidebar.classList.add('show');
+                overlay.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            }
+        };
+        
+        // Close sidebar when clicking overlay
+        overlay.addEventListener('click', function() {
+            if (sidebar.classList.contains('show')) {
+                toggleSidebar();
+            }
+        });
+        
+        // Close sidebar when window is resized above mobile breakpoint
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768 && sidebar.classList.contains('show')) {
+                toggleSidebar();
+            }
+        });
+        
+        // Handle escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar.classList.contains('show')) {
+                toggleSidebar();
+            }
+        });
     });
-    
-    if (isMobile && sidebar && sidebar.classList.contains('show') && !sidebar.contains(event.target) && !isToggle) {
-        toggleSidebar();
-    }
-});
-
-// Close sidebar on orientation change
-window.addEventListener('orientationchange', function() {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar && window.innerWidth > 768) {
-        sidebar.classList.remove('show');
-        document.body.style.overflow = '';
-    }
-});
-        // Format currency - تنسيق العملة
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat(LOCALE === 'ar' ? 'ar-EG' : 'en-US', {
-                style: 'currency',
-                currency: 'EGP',
-                minimumFractionDigits: 2
-            }).format(amount || 0);
-        }
-
-        // Format date - تنسيق التاريخ
-        function formatDate(date) {
-            return new Date(date).toLocaleDateString(LOCALE === 'ar' ? 'ar-EG' : 'en-US');
-        }
+})();
 
         // Add RTL/LTR class to body based on locale
         const locale = '{{ app()->getLocale() }}';
