@@ -40,6 +40,10 @@
         <div class="sidebar-brand">
             <i class="fas fa-cash-register me-2"></i>
             {{ __('pos.app_name') }}
+              <button class="btn btn-sm d-md-none ms-auto" onclick="toggleSidebar()" 
+            style="background:none; border:none; color:inherit; opacity:0.7; padding:0; line-height:1;">
+        <i class="fas fa-times fa-lg"></i>
+    </button>
         </div>
        {{-- Update the sidebar menu section --}}
 <div class="sidebar-menu mt-2">

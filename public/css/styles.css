@@ -252,3 +252,25 @@ body.rtl .toast-container {
     right: auto;
     left: 1rem;
 }
+
+@media (max-width: 767px) {
+    #sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+
+    [dir="rtl"] #sidebar {
+        left: auto;
+        right: 0;
+        transform: translateX(100%);
+    }
+
+    [dir="rtl"] #sidebar.show {
+        transform: translateX(0);
+    }
+}
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+}
