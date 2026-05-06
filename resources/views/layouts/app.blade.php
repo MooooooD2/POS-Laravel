@@ -273,10 +273,47 @@
             return res.json();
         }
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('show');
-        }
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const isRTL = document.body.classList.contains('rtl');
+    
+    if (sidebar.classList.contains('show')) {
+        sidebar.classList.remove('show');
+        // Prevent body scroll when sidebar is closed
+        document.body.style.overflow = '';
+    } else {
+        sidebar.classList.add('show');
+        // Prevent body scroll when sidebar is open (optional)
+        document.body.style.overflow = 'hidden';
+    }
+}
 
+// Close sidebar when clicking outside on mobile (improves UX)
+document.addEventListener('click', function(event) {
+    const sidebar = document.getElementById('sidebar');
+    const isMobile = window.innerWidth <= 768;
+    const toggles = document.querySelectorAll('[onclick="toggleSidebar()"], button[onclick*="toggleSidebar"]');
+    let isToggle = false;
+    
+    toggles.forEach(toggle => {
+        if (toggle.contains(event.target)) {
+            isToggle = true;
+        }
+    });
+    
+    if (isMobile && sidebar && sidebar.classList.contains('show') && !sidebar.contains(event.target) && !isToggle) {
+        toggleSidebar();
+    }
+});
+
+// Close sidebar on orientation change
+window.addEventListener('orientationchange', function() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && window.innerWidth > 768) {
+        sidebar.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+});
         // Format currency - تنسيق العملة
         function formatCurrency(amount) {
             return new Intl.NumberFormat(LOCALE === 'ar' ? 'ar-EG' : 'en-US', {

@@ -253,20 +253,41 @@ body.rtl .toast-container {
     left: 1rem;
 }
 
-@media (max-width: 767px) {
+/* Replace the existing responsive section with this */
+@media (max-width: 768px) {
     #sidebar {
-        position: fixed;
-        top: 0;
-        left: 0 !important;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
     }
 
-    [dir="rtl"] #sidebar {
-        left: auto !important;
-        right: 0 !important;
-        transform: translateX(100%) !important;
+    body.rtl #sidebar {
+        transform: translateX(100%);
     }
 
-    [dir="rtl"] #sidebar.show {
+    #sidebar.show {
+        transform: translateX(0) !important;
+    }
+
+    #main-content,
+    body.rtl #main-content {
+        margin: 0 !important;
+    }
+}
+
+/* iOS-specific fixes */
+@supports (-webkit-touch-callout: none) {
+    #sidebar {
+        -webkit-transform: translateX(-100%);
+        transform: translateX(-100%);
+    }
+
+    body.rtl #sidebar {
+        -webkit-transform: translateX(100%);
+        transform: translateX(100%);
+    }
+
+    #sidebar.show {
+        -webkit-transform: translateX(0) !important;
         transform: translateX(0) !important;
     }
 }
