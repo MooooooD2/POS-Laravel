@@ -33,7 +33,8 @@
     @stack('styles')
 </head>
 
-<body class="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
+<body>
+
     {{-- Sidebar --}}
     <nav id="sidebar">
         <div class="sidebar-brand">
@@ -272,78 +273,10 @@
             return res.json();
         }
 
-        // Replace the toggleSidebar function with this improved version
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const isRTL = document.body.classList.contains('rtl');
-    
-    if (sidebar.classList.contains('show')) {
-        sidebar.classList.remove('show');
-        document.body.style.overflow = '';
-        // Remove overlay if exists
-        const overlay = document.getElementById('sidebar-overlay');
-        if (overlay) overlay.remove();
-    } else {
-        sidebar.classList.add('show');
-        document.body.style.overflow = 'hidden';
-        
-        // Create overlay for better UX on mobile
-        if (window.innerWidth <= 768) {
-            let overlay = document.getElementById('sidebar-overlay');
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.id = 'sidebar-overlay';
-                overlay.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0,0,0,0.5);
-                    z-index: 99999;
-                    cursor: pointer;
-                `;
-                overlay.onclick = function() {
-                    toggleSidebar();
-                };
-                document.body.appendChild(overlay);
-            }
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
         }
-    }
-}
 
-// Close sidebar when window resizes above mobile breakpoint
-window.addEventListener('resize', function() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    if (window.innerWidth > 768 && sidebar && sidebar.classList.contains('show')) {
-        sidebar.classList.remove('show');
-        if (overlay) overlay.remove();
-        document.body.style.overflow = '';
-    }
-});
-
-// Close sidebar on escape key
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebar-overlay');
-        if (sidebar && sidebar.classList.contains('show')) {
-            toggleSidebar();
-        }
-    }
-});
-
-// Ensure sidebar state is correct on page load for RTL
-document.addEventListener('DOMContentLoaded', function() {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar && window.innerWidth > 768) {
-        sidebar.classList.remove('show');
-        const overlay = document.getElementById('sidebar-overlay');
-        if (overlay) overlay.remove();
-        document.body.style.overflow = '';
-    }
-});
         // Format currency - تنسيق العملة
         function formatCurrency(amount) {
             return new Intl.NumberFormat(LOCALE === 'ar' ? 'ar-EG' : 'en-US', {
