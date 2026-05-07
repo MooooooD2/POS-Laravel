@@ -8,51 +8,54 @@ use Illuminate\Support\Facades\Session;
 
 class LanguageController extends Controller
 {
+    private const SUPPORTED_LOCALES = ['ar', 'en'];
+
     /**
      * Switch application language
-     *
-     * @param  string  $locale
-     * @return \Illuminate\Http\RedirectResponse
      */
-    public function switch($locale)
+    public function switch(string $locale)
     {
-        // Check if the locale is supported
-        $supportedLocales = ['en', 'ar'];
-
-        if (in_array($locale, $supportedLocales)) {
-            App::setLocale($locale);
-            Session::put('locale', $locale);
-
-            // Set direction for RTL/LTR
-            if ($locale === 'ar') {
-                Session::put('direction', 'rtl');
-            } else {
-                Session::put('direction', 'ltr');
-            }
-
-            // Update user's language preference if logged in
-            if (auth()->check()) {
-                auth()->user()->update(['language' => $locale]);
-            }
+        // القائمة البيضاء — مضمونة من الـ route where clause أيضاً
+        if (!in_array($locale, self::SUPPORTED_LOCALES, true)) {
+            return redirect()->back();
         }
 
-        // Redirect back to the previous page
+        App::setLocale($locale);
+        Session::put('locale', $locale);
+        Session::put('direction', $locale === 'ar' ? 'rtl' : 'ltr');
+
+        if (auth()->check()) {
+            auth()->user()->update(['language' => $locale]);
+        }
+
         return redirect()->back();
     }
 
     /**
      * Get translations for JavaScript
-     *
-     * @param  string  $locale
-     * @return \Illuminate\Http\JsonResponse
+     * FIX-04: منع Path Traversal
      */
-    public function getTranslations($locale)
+    public function getTranslations(string $locale)
     {
-        $translationFile = resource_path("lang/{$locale}/pos.php");
+        // FIX-04: قائمة بيضاء صارمة
+        if (!in_array($locale, self::SUPPORTED_LOCALES, true)) {
+            return response()->json([], 400);
+        }
 
-        if (file_exists($translationFile)) {
-            $translations = include $translationFile;
-            return response()->json($translations);
+        // بناء المسار بعد التحقق
+        $translationFile = resource_path('lang/' . $locale . '/pos.php');
+
+        // تأكيد أن الملف داخل مجلد lang فعلاً (منع ../)
+        $realBase = realpath(resource_path('lang'));
+        $realFile = realpath($translationFile);
+
+        if ($realFile === false || !str_starts_with($realFile, $realBase)) {
+            return response()->json([], 403);
+        }
+
+        if (file_exists($realFile)) {
+            $translations = include $realFile;
+            return response()->json(is_array($translations) ? $translations : []);
         }
 
         return response()->json([]);

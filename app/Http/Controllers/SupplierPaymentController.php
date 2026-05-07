@@ -1,69 +1,53 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use App\Models\Supplier;
+use App\Http\Requests\StoreSupplierPaymentRequest;
 use App\Models\SupplierAccount;
 use App\Models\SupplierPayment;
+use App\Models\Supplier;
 use App\Services\SequenceService;
+use App\Traits\ApiResponse;
+use App\Traits\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class SupplierPaymentController extends Controller
 {
-    public function __construct(private SequenceService $sequenceService) {}
+    use ApiResponse, AuditLog;
 
-    public function index()
-    {
-        return view('supplier-payments.index');
-    }
+    public function index() { return view('supplier-payments.index'); }
 
     public function all(Request $request)
     {
+        $request->validate(['supplier_id' => 'nullable|integer|exists:suppliers,id']);
         $query = SupplierPayment::with('supplier')->orderByDesc('id');
-
-        if ($request->supplier_id) {
-            $query->where('supplier_id', $request->supplier_id);
-        }
-
-        return response()->json(['payments' => $query->paginate(20)]);
+        if ($request->filled('supplier_id')) $query->where('supplier_id', $request->integer('supplier_id'));
+        return $this->success(['payments' => $query->paginate(20)]);
     }
 
-    public function store(Request $request)
+    public function store(StoreSupplierPaymentRequest $request)
     {
-        $data = $request->validate([
-            'supplier_id'    => 'required|exists:suppliers,id',
-            'amount'         => 'required|numeric|min:0.01',
-            'payment_method' => 'required|in:cash,card,transfer,check',
-            'payment_date'   => 'required|date',
-            'notes'          => 'nullable|string|max:500',
-        ]);
+        $this->authorize('create', SupplierPayment::class);
+        $data     = $request->validated();
+        $supplier = Supplier::findOrFail($data['supplier_id']);
 
-        DB::transaction(function () use ($data) {
-            $paymentNumber = $this->sequenceService->next('supplier_payment', 'PAY');
-
-            /** @var Supplier $supplier */
-            $supplier = Supplier::findOrFail($data['supplier_id']);
-
-            $payment = SupplierPayment::create([
-                ...$data,
+        DB::transaction(function () use ($data, $supplier) {
+            $paymentNumber = SequenceService::next('payment');
+            $payment = SupplierPayment::create(array_merge($data, [
                 'payment_number'  => $paymentNumber,
                 'supplier_name'   => $supplier->name,
                 'created_by'      => Auth::id(),
                 'created_by_name' => Auth::user()->full_name,
-            ]);
+            ]));
 
-            // Atomic balance calculation — lock the last row to avoid race conditions
-            $lastBalance = SupplierAccount::where('supplier_id', $data['supplier_id'])
-                ->latest('id')
-                ->lockForUpdate()
-                ->value('balance') ?? 0;
+            $last        = SupplierAccount::where('supplier_id', $data['supplier_id'])->lockForUpdate()->latest()->first();
+            $lastBalance = $last ? $last->balance : 0;
 
             SupplierAccount::create([
                 'supplier_id'      => $data['supplier_id'],
                 'transaction_type' => 'payment',
-                'reference_id'     => $payment->id,
+                'reference_id'     => (int) $payment->id,
                 'reference_number' => $paymentNumber,
                 'debit'            => 0,
                 'credit'           => $data['amount'],
@@ -73,6 +57,7 @@ class SupplierPaymentController extends Controller
             ]);
         });
 
-        return response()->json(['success' => true]);
+        $this->audit('payment.created', SupplierPayment::class, 0, ['supplier' => (string) $supplier->name, 'amount' => $data['amount']]);
+        return $this->success(message: __('pos.payment_created'), code: 201);
     }
 }

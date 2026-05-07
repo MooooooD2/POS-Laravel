@@ -215,88 +215,49 @@ function filterProducts() {
 }
 
 function renderProducts(products) {
-    const tbody = document.getElementById('productsBody');
-    
-    if (!products.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">{{ __("pos.no_data") }}</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = products.map((p, i) => {
-        // Escape product name for JavaScript
-        const escapedName = p.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        
-        return `
+    document.getElementById('productsBody').innerHTML = products.length
+        ? products.map((p, i) => `
             <tr>
                 <td>${i+1}</td>
-                <td class="fw-semibold">${escapeHtml(p.name)}</td>
-                <td><code>${escapeHtml(p.barcode || '-')}</code></td>
-                <td>${escapeHtml(p.category || '-')}</td>
+                <td class="fw-semibold">${p.name}</td>
+                <td><code>${p.barcode || '-'}</code></td>
+                <td>${p.category || '-'}</td>
                 <td class="text-success fw-semibold">${formatCurrency(p.price)}</td>
-                <td class="text-muted">${formatCurrency(p.cost_price || 0)}</td>
+                <td class="text-muted">${formatCurrency(p.cost_price)}</td>
                 <td class="fw-bold ${p.quantity === 0 ? 'text-danger' : p.low_stock ? 'text-warning' : 'text-success'}">${p.quantity}</td>
                 <td>
                     ${p.quantity === 0
                         ? '<span class="badge bg-danger">{{ __("pos.out_of_stock") }}</span>'
                         : p.low_stock
-                        ? '<span class="badge bg-warning text-dark">{{ __("pos.low_stock") }}</span>'
-                        : '<span class="badge bg-success">OK</span>'}
+                        ? '<span class="badge badge-low-stock">{{ __("pos.low_stock") }}</span>'
+                        : '<span class="badge badge-in-stock">OK</span>'}
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-warning text-white" title="{{ __('pos.barcode') }}" 
-                            onclick="showBarcode(${p.id}, '${escapedName.replace(/'/g, "\\'")}', '${(p.barcode || '').replace(/'/g, "\\'")}', ${p.price})">
-                            <i class="fas fa-barcode"></i>
-                        </button>
-                        <button class="btn btn-success" onclick="showAddStock(${p.id}, '${escapedName.replace(/'/g, "\\'")}')">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                        <button class="btn btn-primary" onclick="editProduct(${p.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-danger" onclick="deleteProduct(${p.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <button class="btn btn-warning text-white" title="باركود" onclick="showBarcode(${p.id},${JSON.stringify(p.name||'').replace(/"/g,'&quot;')},${JSON.stringify(p.barcode||'').replace(/"/g,'&quot;')},${p.price})"><i class="fas fa-barcode"></i></button>
+                        <button class="btn btn-success" onclick="showAddStock(${p.id},${JSON.stringify(p.name||'').replace(/"/g,'&quot;')})"><i class="fas fa-plus"></i></button>
+                        <button class="btn btn-primary" onclick="editProduct(${JSON.stringify(p).replace(/"/g,'&quot;')})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
                     </div>
                 </td>
-            </tr>
-        `;
-    }).join('');
+            </tr>`).join('')
+        : '<tr><td colspan="9" class="text-center text-muted py-4">{{ __("pos.no_data") }}</td></tr>';
 }
-// Helper function to escape HTML
-function escapeHtml(str) {
-    if (!str) return '';
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-async function editProduct(productId) {
-    // Find the product from allProducts array
-    const product = allProducts.find(p => p.id === productId);
-    if (!product) {
-        showToast('{{ __("pos.product_not_found") }}', 'danger');
-        return;
-    }
-    
-    // Populate the form with product data
-    document.getElementById('productId').value = product.id;
-    document.getElementById('productName').value = product.name;
-    document.getElementById('productPrice').value = product.price;
-    document.getElementById('productCostPrice').value = product.cost_price || 0;
-    document.getElementById('productMinStock').value = product.min_stock || 5;
-    document.getElementById('productBarcode').value = product.barcode || '';
-    document.getElementById('productCategory').value = product.category || '';
-    document.getElementById('productSupplier').value = product.supplier || '';
+
+function editProduct(p) {
+    document.getElementById('productId').value       = p.id;
+    document.getElementById('productName').value     = p.name;
+    document.getElementById('productPrice').value    = p.price;
+    document.getElementById('productCostPrice').value= p.cost_price;
+    document.getElementById('productMinStock').value = p.min_stock;
+    document.getElementById('productBarcode').value  = p.barcode || '';
+    document.getElementById('productCategory').value = p.category || '';
+    document.getElementById('productSupplier').value = p.supplier || '';
     document.getElementById('productQuantity').disabled = true;
-    document.getElementById('productQuantity').value = product.quantity;
     document.getElementById('productModalTitle').textContent = '{{ __("pos.edit_product") }}';
-    
-    // Show the modal
     new bootstrap.Modal(document.getElementById('addProductModal')).show();
 }
+
 async function saveProduct() {
     const id   = document.getElementById('productId').value;
     const data = {

@@ -1,36 +1,78 @@
 <?php
 
+use App\Http\Middleware\AnomalyDetection;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SessionSecurity;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Session\Middleware\StartSession;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Global web middleware
+        // #36 #37 #XSS تطبيق على كل طلبات الويب
         $middleware->web(append: [
             SetLocale::class,
+            SecurityHeaders::class,    // XSS, CSP, Frame protection
+            SessionSecurity::class,    // #36 Session hijack detection
+            AnomalyDetection::class,   // #37 Anomaly monitoring
         ]);
 
-        // ✅ FIX: Register Spatie role/permission middleware aliases
+        $middleware->api(prepend: [
+            EncryptCookies::class,
+            StartSession::class,
+        ]);
+
         $middleware->alias([
-            'role'       => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            'has.role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'role'       => \Spatie\Permission\Middleware\RoleMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Handle unauthorized role access gracefully
-        $exceptions->render(function (\Spatie\Permission\Exceptions\UnauthorizedException $e, $request) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => __('pos.unauthorized')], 403);
+        // #48 ردود JSON موحدة — بدون Stack Trace في الإنتاج
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'message' => 'غير مصرح.'], 401);
             }
-            abort(403, __('pos.unauthorized'));
+        });
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'message' => 'ليس لديك صلاحية لهذه العملية.'], 403);
+            }
+        });
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'message' => 'بيانات غير صالحة.', 'errors' => $e->errors()], 422);
+            }
+        });
+        $exceptions->render(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'message' => 'العنصر غير موجود.'], 404);
+            }
+        });
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'message' => 'طلبات كثيرة جداً. حاول بعد دقيقة.'], 429);
+            }
+        });
+
+        // Catch-all: any unhandled exception on an AJAX/API request returns JSON
+        // instead of an HTML error page. Never expose the real message in production.
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                $status  = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+                $message = app()->hasDebugModeEnabled()
+                    ? $e->getMessage()
+                    : (__('pos.server_error', [], 'en') ?: 'An unexpected error occurred.');
+                return response()->json(['success' => false, 'message' => $message], $status);
+            }
         });
     })->create();

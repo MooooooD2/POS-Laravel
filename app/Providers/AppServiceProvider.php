@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
-use Spatie\Permission\PermissionRegistrar;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -15,10 +14,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //  Reset Spatie permission cache on boot
-        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
+        // FIX-08: حُذف forgetCachedPermissions() — كان يُبطل Cache في كل طلب HTTP
+        // Spatie يدير cache الصلاحيات تلقائياً بشكل صحيح
 
-        //  Add custom Blade directives for permissions
+        // Custom Blade directives for permissions
         Blade::if('permission', function ($permission) {
             return auth()->user() && auth()->user()->can($permission);
         });
@@ -28,15 +27,13 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Blade::if('anyrole', function ($roles) {
-            if (!auth()->user())
-                return false;
+            if (!auth()->user()) return false;
             $roles = is_array($roles) ? $roles : func_get_args();
             return auth()->user()->hasAnyRole($roles);
         });
 
         Blade::if('allroles', function ($roles) {
-            if (!auth()->user())
-                return false;
+            if (!auth()->user()) return false;
             $roles = is_array($roles) ? $roles : func_get_args();
             return auth()->user()->hasAllRoles($roles);
         });

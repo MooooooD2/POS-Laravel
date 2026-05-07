@@ -96,9 +96,9 @@
                 <span id="loginSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
             </button>
 
-            {{-- <p class="text-center text-muted mt-3 mb-0 small">
+            <p class="text-center text-muted mt-3 mb-0 small">
                 Default: admin / admin123
-            </p> --}}
+            </p>
         </div>
     </div>
 
@@ -125,6 +125,7 @@
             try {
                 const res = await fetch('{{ route("login.post") }}', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -8,32 +7,29 @@ class StoreInvoiceRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check();
+        return auth()->check() && auth()->user()->can('view_pos');
     }
 
     public function rules(): array
     {
         return [
-            'items'                => 'required|array|min:1',
-            'items.*.product_id'   => 'required|exists:products,id',
-            'items.*.product_name' => 'required|string|max:255',
-            'items.*.quantity'     => 'required|integer|min:1|max:99999',
-            'items.*.price'        => 'required|numeric|min:0',
+            'items'                => 'required|array|min:1|max:200',
+            'items.*.product_id'   => 'required|integer|exists:products,id',
+            'items.*.quantity'     => 'required|integer|min:1|max:9999',
+            // السعر لا يأتي من المستخدم — يُحسب في السيرفر من قاعدة البيانات
             'discount'             => 'nullable|numeric|min:0',
             'payment_method'       => 'required|in:cash,card,transfer,wallet',
             'notes'                => 'nullable|string|max:500',
         ];
     }
 
-    public function withValidator($validator): void
+    public function messages(): array
     {
-        $validator->after(function ($v) {
-            $total    = collect($this->items)->sum(fn($i) => ($i['price'] ?? 0) * ($i['quantity'] ?? 0));
-            $discount = $this->discount ?? 0;
-
-            if ($discount > $total) {
-                $v->errors()->add('discount', __('pos.discount_exceeds_total'));
-            }
-        });
+        return [
+            'items.required'            => 'يجب إضافة منتج واحد على الأقل.',
+            'items.*.product_id.exists' => 'المنتج غير موجود.',
+            'items.*.quantity.min'      => 'الكمية يجب أن تكون أكبر من صفر.',
+            'payment_method.in'         => 'طريقة الدفع غير صالحة.',
+        ];
     }
 }

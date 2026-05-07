@@ -125,6 +125,12 @@
         try {
             const data = await apiCall('{{ route("dashboard.data") }}');
 
+            // Guard: if the API returned an error shape instead of dashboard data, bail cleanly
+            if (!data || !data.hasOwnProperty('today_sales_total')) {
+                console.warn('dashboard.data returned unexpected response', data);
+                return;
+            }
+
             // Stats
             document.getElementById('todaySalesTotal').textContent  = formatCurrency(data.today_sales_total);
             document.getElementById('todaySalesCount').textContent  = data.today_sales_count + ' {{ __("pos.invoice_number") }}';
@@ -135,14 +141,15 @@
             document.getElementById('totalSuppliers').textContent   = data.total_suppliers;
 
             // Growth badge
-            const g = data.growth_percentage;
+            const g = data.growth_percentage ?? 0;
             document.getElementById('growthBadge').innerHTML = `
                 <i class="fas fa-arrow-${g >= 0 ? 'up' : 'down'}"></i>
                 ${Math.abs(g)}% {{ __('pos.growth_vs_yesterday') }}`;
 
             // Recent invoices
-            document.getElementById('recentInvoicesBody').innerHTML = data.recent_invoices.length
-                ? data.recent_invoices.map(inv => `
+            const invoices = data.recent_invoices ?? [];
+            document.getElementById('recentInvoicesBody').innerHTML = invoices.length
+                ? invoices.map(inv => `
                     <tr>
                         <td><span class="badge bg-primary-subtle text-primary">${inv.invoice_number}</span></td>
                         <td class="fw-semibold">${formatCurrency(inv.final_total)}</td>
@@ -152,8 +159,9 @@
                 : '<tr><td colspan="4" class="text-center text-muted py-3">{{ __("pos.no_data") }}</td></tr>';
 
             // Top products
-            document.getElementById('topProductsBody').innerHTML = data.top_products.length
-                ? data.top_products.map((p, i) => `
+            const products = data.top_products ?? [];
+            document.getElementById('topProductsBody').innerHTML = products.length
+                ? products.map((p, i) => `
                     <tr>
                         <td><span class="badge bg-secondary me-1">${i+1}</span>${p.name}</td>
                         <td>${p.total_quantity}</td>
@@ -162,7 +170,7 @@
                 : '<tr><td colspan="3" class="text-center text-muted py-3">{{ __("pos.no_data") }}</td></tr>';
 
         } catch(e) {
-            console.error(e);
+            console.error('Dashboard load failed:', e);
         }
     }
 

@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\Invoice;
 use App\Models\Product;
+use App\Models\SalesReturn;
 use App\Services\AccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class ReportController extends Controller
 {
@@ -23,6 +25,9 @@ class ReportController extends Controller
         return view('financial-reports.index');
     }
 
+    /**
+     * FIX-06: تقرير المبيعات — حساب في DB بدل تحميل كل الفواتير في الذاكرة
+     */
     public function salesReport(Request $request)
     {
         $data = $request->validate([
@@ -32,99 +37,118 @@ class ReportController extends Controller
             'cashier_id'     => 'nullable|exists:users,id',
         ]);
 
-        $query = Invoice::with('items')
-            ->where('status', 'completed')
-            ->whereBetween('created_at', [
-                $data['start_date'] . ' 00:00:00',
-                $data['end_date']   . ' 23:59:59',
-            ]);
+        $start = $data['start_date'];
+        $end   = $data['end_date'] . ' 23:59:59';
 
-        if (!empty($data['payment_method'])) {
-            $query->where('payment_method', $data['payment_method']);
-        }
-        if (!empty($data['cashier_id'])) {
-            $query->where('cashier_id', $data['cashier_id']);
-        }
+        $baseQuery = Invoice::where('status', 'completed')
+            ->whereBetween('created_at', [$start, $end]);
 
-        $invoices     = $query->orderByDesc('created_at')->get();
-        $totalRevenue = $invoices->sum('final_total');
-        $totalCount   = $invoices->count();
+        if (!empty($data['payment_method']))
+            $baseQuery->where('payment_method', $data['payment_method']);
+        if (!empty($data['cashier_id']))
+            $baseQuery->where('cashier_id', $data['cashier_id']);
 
-        $byPayment = $invoices->groupBy('payment_method')
-            ->map(fn($g) => ['count' => $g->count(), 'total' => $g->sum('final_total')]);
+        // FIX-06: الإجماليات تُحسب في قاعدة البيانات — لا تحميل للذاكرة
+        $totals = (clone $baseQuery)
+            ->selectRaw('COUNT(*) as total_count, SUM(final_total) as total_revenue, SUM(tax_amount) as total_tax, SUM(discount) as total_discount')
+            ->first();
+
+        // التجميع حسب الدفع في DB
+        $byPayment = (clone $baseQuery)
+            ->selectRaw('payment_method, COUNT(*) as count, SUM(final_total) as total')
+            ->groupBy('payment_method')
+            ->get()
+            ->keyBy('payment_method');
 
         $topProducts = DB::table('invoice_items')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->where('invoices.status', 'completed')
-            ->whereBetween('invoices.created_at', [
-                $data['start_date'] . ' 00:00:00',
-                $data['end_date']   . ' 23:59:59',
-            ])
+            ->whereBetween('invoices.created_at', [$start, $end])
             ->selectRaw('invoice_items.product_name, SUM(invoice_items.quantity) as total_qty, SUM(invoice_items.subtotal) as total_sales')
             ->groupBy('invoice_items.product_id', 'invoice_items.product_name')
             ->orderByDesc('total_sales')
             ->limit(10)
             ->get();
 
-        // Profit calculation using stored cost_price on invoice items
-        $totalCost   = DB::table('invoice_items')
-            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
-            ->where('invoices.status', 'completed')
-            ->whereBetween('invoices.created_at', [
-                $data['start_date'] . ' 00:00:00',
-                $data['end_date']   . ' 23:59:59',
-            ])
-            ->sum(DB::raw('invoice_items.cost_price * invoice_items.quantity'));
+        // FIX-06: Pagination بدل get() بدون حد
+        $invoices = (clone $baseQuery)
+            ->with('items')
+            ->orderByDesc('created_at')
+            ->paginate(50);
 
         return response()->json([
-            'invoices'      => $invoices,
-            'total_revenue' => $totalRevenue,
-            'total_cost'    => $totalCost,
-            'gross_profit'  => $totalRevenue - $totalCost,
-            'total_count'   => $totalCount,
-            'by_payment'    => $byPayment,
-            'top_products'  => $topProducts,
+            'invoices'       => $invoices,
+            'total_revenue'  => $totals->total_revenue  ?? 0,
+            'total_tax'      => $totals->total_tax      ?? 0,
+            'total_discount' => $totals->total_discount ?? 0,
+            'total_count'    => $totals->total_count    ?? 0,
+            'by_payment'     => $byPayment,
+            'top_products'   => $topProducts,
         ]);
     }
 
-    public function stockReport()
-    {
-        $products = Product::orderBy('category')->orderBy('name')->get()
-            ->map(fn($p) => array_merge($p->toArray(), [
-                'stock_value'     => $p->quantity * $p->cost_price,
-                'potential_value' => $p->quantity * $p->price,
-                'profit_margin'   => $p->price > 0
-                    ? round((($p->price - $p->cost_price) / $p->price) * 100, 2)
-                    : 0,
-                'low_stock'       => $p->low_stock,
-            ]));
-
-        return response()->json([
-            'products'          => $products,
-            'total_stock_value' => $products->sum('stock_value'),
-            'low_stock_count'   => $products->where('low_stock', true)->count(),
-            'out_of_stock'      => $products->where('quantity', 0)->count(),
-        ]);
-    }
-
+    /**
+     * FIX-06: تقرير المرتجعات — DB aggregates بدل PHP
+     */
     public function returnsReport(Request $request)
     {
         $data = $request->validate([
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after_or_equal:start_date',
+            'status'     => 'nullable|in:completed,cancelled',
         ]);
 
-        $returns = \App\Models\SalesReturn::with('items')
+        $query = SalesReturn::whereBetween('return_date', [$data['start_date'], $data['end_date']]);
+        if (!empty($data['status'])) $query->where('status', $data['status']);
+
+        // الإجماليات في DB
+        $totals = (clone $query)
             ->where('status', 'completed')
-            ->whereBetween('return_date', [$data['start_date'], $data['end_date']])
-            ->orderByDesc('return_date')
+            ->selectRaw('COUNT(*) as total_count, SUM(total_amount) as total_returned')
+            ->first();
+
+        $topReturnedProducts = DB::table('return_items')
+            ->join('sales_returns', 'return_items.return_id', '=', 'sales_returns.id')
+            ->whereBetween('sales_returns.return_date', [$data['start_date'], $data['end_date']])
+            ->where('sales_returns.status', 'completed')
+            ->selectRaw('return_items.product_name, SUM(return_items.quantity) as total_qty, SUM(return_items.subtotal) as total_amount')
+            ->groupBy('return_items.product_id', 'return_items.product_name')
+            ->orderByDesc('total_qty')
+            ->limit(10)
             ->get();
 
+        $returns = (clone $query)->with(['items'])->orderByDesc('return_date')->paginate(50);
+
         return response()->json([
-            'returns'      => $returns,
-            'total_amount' => $returns->sum('total_amount'),
-            'total_count'  => $returns->count(),
+            'returns'               => $returns,
+            'total_returned'        => $totals->total_returned ?? 0,
+            'total_count'           => $totals->total_count    ?? 0,
+            'top_returned_products' => $topReturnedProducts,
         ]);
+    }
+
+    /**
+     * FIX: تقرير المخزون مع Cache
+     */
+    public function stockReport()
+    {
+        $data = Cache::remember('stock_report', 120, function () {
+            $products = Product::orderBy('category')->orderBy('name')->get()
+                ->map(fn($p) => array_merge($p->toArray(), [
+                    'stock_value'     => $p->quantity * $p->cost_price,
+                    'potential_value' => $p->quantity * $p->price,
+                    'low_stock'       => $p->low_stock,
+                ]));
+
+            return [
+                'products'          => $products,
+                'total_stock_value' => $products->sum('stock_value'),
+                'low_stock_count'   => $products->where('low_stock', true)->count(),
+                'out_of_stock'      => $products->where('quantity', 0)->count(),
+            ];
+        });
+
+        return response()->json($data);
     }
 
     public function incomeStatement(Request $request)
@@ -133,10 +157,7 @@ class ReportController extends Controller
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after_or_equal:start_date',
         ]);
-
-        return response()->json(
-            $this->accountingService->incomeStatement($data['start_date'], $data['end_date'])
-        );
+        return response()->json($this->accountingService->incomeStatement($data['start_date'], $data['end_date']));
     }
 
     public function balanceSheet()
@@ -148,24 +169,20 @@ class ReportController extends Controller
     {
         $data = $request->validate([
             'start_date' => 'required|date',
-            'end_date'   => 'required|date|after_or_equal:start_date',
+            'end_date'   => 'required|date',
         ]);
 
         $lines = $account->lines()
             ->with('entry')
             ->whereHas('entry', fn($q) => $q->whereBetween('entry_date', [$data['start_date'], $data['end_date']]))
-            ->orderBy(
-                \App\Models\JournalEntry::select('entry_date')
-                    ->whereColumn('journal_entry_lines.entry_id', 'journal_entries.id')
-            )
             ->get();
 
         return response()->json([
-            'account'       => $account,
-            'lines'         => $lines,
-            'total_debit'   => $lines->sum('debit'),
-            'total_credit'  => $lines->sum('credit'),
-            'net_balance'   => $lines->sum('debit') - $lines->sum('credit'),
+            'account'      => $account,
+            'lines'        => $lines,
+            'total_debit'  => $lines->sum('debit'),
+            'total_credit' => $lines->sum('credit'),
+            'net_balance'  => $lines->sum('debit') - $lines->sum('credit'),
         ]);
     }
 }

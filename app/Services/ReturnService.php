@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\Invoice;
@@ -11,53 +10,54 @@ use Illuminate\Support\Facades\DB;
 
 class ReturnService
 {
-    public function __construct(
-        private StockService    $stockService,
-        private SequenceService $sequenceService
-    ) {}
+    public function __construct(private StockService $stockService) {}
 
     /**
-     * Process a sales return.
-     * Validates quantities against the original invoice before committing.
+     * #3 الأسعار من DB
+     * #4 Transaction كامل
+     * #5 Lock على المنتجات
+     * #6 التحقق من الكمية القابلة للإرجاع
      */
     public function processReturn(array $data): SalesReturn
     {
         return DB::transaction(function () use ($data) {
-            /** @var Invoice $invoice */
             $invoice = Invoice::with('items')->lockForUpdate()->findOrFail($data['invoice_id']);
 
-            // Pre-validate: ensure no item exceeds its returnable quantity
-            $returnedQtyMap = ReturnItem::whereHas(
-                'salesReturn',
-                fn($q) => $q->where('invoice_id', $invoice->id)->where('status', 'completed')
-            )
-                ->selectRaw('product_id, SUM(quantity) as total_returned')
-                ->groupBy('product_id')
-                ->pluck('total_returned', 'product_id');
+            if ($invoice->status !== 'completed') {
+                throw new \Exception(__('pos.invoice_not_completed'));
+            }
 
+            $returnableQtys = $this->getReturnableQuantities($invoice);
+
+            // #6 التحقق من الكميات قبل المعالجة
             foreach ($data['items'] as $item) {
-                $invoiceItem = $invoice->items->firstWhere('product_id', $item['product_id']);
-                if (!$invoiceItem) {
-                    throw new \Exception(__('pos.item_not_in_invoice', ['name' => $item['product_name']]));
-                }
-
-                $alreadyReturned = $returnedQtyMap[$item['product_id']] ?? 0;
-                $maxReturnable   = $invoiceItem->quantity - $alreadyReturned;
-
-                if ($item['quantity'] > $maxReturnable) {
-                    throw new \Exception(__('pos.return_exceeds_quantity', ['name' => $item['product_name']]));
+                $max = $returnableQtys[$item['product_id']] ?? 0;
+                if ($item['quantity'] <= 0 || $item['quantity'] > $max) {
+                    throw new \Exception(__('pos.return_quantity_exceeded', [
+                        'name' => $item['product_id'],
+                        'max'  => $max,
+                    ]));
                 }
             }
 
-            $returnNumber = $this->sequenceService->next('sales_return', 'RET');
-            $totalAmount  = collect($data['items'])->sum(fn($i) => $i['price'] * $i['quantity']);
+            $returnNumber = SequenceService::next('return');
+
+            // #3 الأسعار من invoice_items في DB — لا من المستخدم
+            $invoiceItemPrices = $invoice->items->keyBy('product_id');
+
+            $totalAmount = 0;
+            foreach ($data['items'] as $item) {
+                $invoiceItem = $invoiceItemPrices->get($item['product_id']);
+                $price       = $invoiceItem ? $invoiceItem->price : 0;
+                $totalAmount += $price * $item['quantity'];
+            }
 
             $return = SalesReturn::create([
                 'return_number'     => $returnNumber,
                 'invoice_id'        => $invoice->id,
                 'invoice_number'    => $invoice->invoice_number,
                 'customer_name'     => $data['customer_name'] ?? null,
-                'total_amount'      => $totalAmount,
+                'total_amount'      => round($totalAmount, 2),
                 'reason'            => $data['reason'] ?? null,
                 'status'            => 'completed',
                 'return_date'       => now()->toDateString(),
@@ -66,28 +66,47 @@ class ReturnService
             ]);
 
             foreach ($data['items'] as $item) {
+                $invoiceItem = $invoiceItemPrices->get($item['product_id']);
+                $price       = $invoiceItem ? $invoiceItem->price : 0;
+
                 ReturnItem::create([
                     'return_id'    => $return->id,
                     'product_id'   => $item['product_id'],
-                    'product_name' => $item['product_name'],
+                    'product_name' => $invoiceItem?->product_name ?? '',
                     'quantity'     => $item['quantity'],
-                    'price'        => $item['price'],
-                    'subtotal'     => $item['price'] * $item['quantity'],
+                    'price'        => $price,
+                    'subtotal'     => round($price * $item['quantity'], 2),
                 ]);
 
-                /** @var Product|null $product */
                 $product = Product::find($item['product_id']);
                 if ($product) {
                     $this->stockService->addStock(
                         $product,
                         $item['quantity'],
                         __('pos.return_note', ['ret' => $returnNumber]),
-                        $return->id
+                        $return->id,
+                        'return'
                     );
                 }
             }
 
             return $return->load('items');
         });
+    }
+
+    private function getReturnableQuantities(Invoice $invoice): array
+    {
+        $already = ReturnItem::whereHas(
+            'salesReturn',
+            fn($q) => $q->where('invoice_id', $invoice->id)->where('status', 'completed')
+        )->selectRaw('product_id, SUM(quantity) as total_returned')
+            ->groupBy('product_id')
+            ->pluck('total_returned', 'product_id');
+
+        $result = [];
+        foreach ($invoice->items as $item) {
+            $result[$item->product_id] = max(0, $item->quantity - ($already[$item->product_id] ?? 0));
+        }
+        return $result;
     }
 }

@@ -1,20 +1,17 @@
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SalesReturn extends Model
 {
-    use HasFactory;
     protected $fillable = [
-        'return_number', 'invoice_id', 'invoice_number',
-        'customer_name', 'total_amount', 'reason',
-        'status', 'return_date', 'processed_by', 'processed_by_name'
+        'return_number', 'invoice_id', 'invoice_number', 'customer_name',
+        'total_amount', 'reason', 'status', 'return_date',
+        'processed_by', 'processed_by_name',
     ];
-
-    protected $casts = ['return_date' => 'date', 'total_amount' => 'float'];
+    protected $hidden = ['processed_by'];
+    protected $casts  = ['return_date' => 'date', 'total_amount' => 'float'];
 
     public function invoice()   { return $this->belongsTo(Invoice::class); }
     public function items()     { return $this->hasMany(ReturnItem::class, 'return_id'); }

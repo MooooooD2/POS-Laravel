@@ -1,64 +1,58 @@
 <?php
-
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StorePurchaseOrderRequest;
+use App\Http\Requests\ReceivePurchaseOrderRequest;
 use App\Models\PurchaseOrder;
 use App\Services\PurchaseOrderService;
+use App\Traits\ApiResponse;
+use App\Traits\AuditLog;
 use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
 {
+    use ApiResponse, AuditLog;
+
     public function __construct(private PurchaseOrderService $poService) {}
 
     public function index() { return view('purchase-orders.index'); }
 
     public function all(Request $request)
     {
-        $query = PurchaseOrder::with('items')->orderByDesc('id');
-        if ($request->supplier_id) $query->where('supplier_id', $request->supplier_id);
-        if ($request->status)      $query->where('status', $request->status);
-        return response()->json(['purchase_orders' => $query->paginate(20)]);
+        $request->validate([
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            'status'      => 'nullable|in:pending,partial,received,cancelled',
+        ]);
+        $query = PurchaseOrder::with('supplier')->orderByDesc('id');
+        if ($request->filled('supplier_id')) $query->where('supplier_id', $request->integer('supplier_id'));
+        if ($request->filled('status'))      $query->where('status', $request->string('status')->toString());
+        return $this->success(['purchase_orders' => $query->paginate(20)]);
     }
 
-    public function store(Request $request)
+    public function store(StorePurchaseOrderRequest $request)
     {
-        $data = $request->validate([
-            'supplier_id'    => 'required|exists:suppliers,id',
-            'order_date'     => 'required|date',
-            'expected_date'  => 'nullable|date',
-            'discount'       => 'nullable|numeric|min:0',
-            'notes'          => 'nullable|string',
-            'items'          => 'required|array|min:1',
-            'items.*.product_id'   => 'nullable|exists:products,id',
-            'items.*.product_name' => 'required|string',
-            'items.*.quantity'     => 'required|integer|min:1',
-            'items.*.cost_price'   => 'required|numeric|min:0',
-            'items.*.selling_price'=> 'nullable|numeric|min:0',
-        ]);
-
+        $this->authorize('create', PurchaseOrder::class);
         try {
-            $po = $this->poService->createPurchaseOrder($data);
-            return response()->json(['success' => true, 'purchase_order' => $po]);
+            $po = $this->poService->createPurchaseOrder($request->validated());
+            $this->audit('po.created', PurchaseOrder::class, (int) $po->id, ['po_number' => $po->po_number]);
+            return $this->success(['purchase_order' => $po], '', 201);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            return $this->error($e->getMessage());
         }
     }
 
-    public function receive(Request $request, PurchaseOrder $purchaseOrder)
+    public function receive(ReceivePurchaseOrderRequest $request, PurchaseOrder $purchaseOrder)
     {
-        $data = $request->validate([
-            'items'                          => 'required|array',
-            'items.*.item_id'                => 'required|exists:purchase_order_items,id',
-            'items.*.received_quantity'      => 'required|integer|min:0',
-            'items.*.cost_price'             => 'nullable|numeric|min:0',
-            'items.*.selling_price'          => 'nullable|numeric|min:0',
-        ]);
-
+        $this->authorize('receive', $purchaseOrder);
+        if (in_array($purchaseOrder->status, ['received', 'cancelled'])) {
+            return $this->error(__('pos.po_already_closed'), 422);
+        }
         try {
-            $po = $this->poService->receivePurchaseOrder($purchaseOrder, $data['items']);
-            return response()->json(['success' => true, 'purchase_order' => $po]);
+            $po = $this->poService->receivePurchaseOrder($purchaseOrder, $request->validated()['items']);
+            $this->audit('po.received', PurchaseOrder::class, (int) $po->id);
+            return $this->success(['purchase_order' => $po]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            return $this->error($e->getMessage());
         }
     }
 }

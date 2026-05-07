@@ -1,89 +1,103 @@
 <?php
-
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AddStockRequest;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Services\StockService;
+use App\Traits\ApiResponse;
+use App\Traits\AuditLog;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    use ApiResponse, AuditLog;
+
     public function __construct(private StockService $stockService) {}
 
-    public function index()
-    {
-        return view('warehouse.index');
-    }
+    public function index() { return view('warehouse.index'); }
 
     public function all(Request $request)
     {
-        $query = Product::orderByDesc('id');
+        $request->validate([
+            'search'    => 'nullable|string|max:100',
+            'category'  => 'nullable|string|max:100',
+            'low_stock' => 'nullable|boolean',
+            'per_page'  => 'nullable|integer|min:10|max:200',
+        ]);
 
-        if ($request->filled('category')) {
-            $query->where('category', $request->category);
-        }
+        $query = Product::query()->orderByDesc('id');
+
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('barcode', $request->search);
-            });
+            $s = $request->string('search')->toString();
+            $query->where(fn($q) =>
+                $q->where('name', 'like', "%{$s}%")->orWhere('barcode', 'like', "%{$s}%")
+            );
+        }
+        if ($request->filled('category')) {
+            $query->where('category', $request->string('category')->toString());
+        }
+        if ($request->boolean('low_stock')) {
+            $query->whereRaw('quantity <= min_stock AND quantity > 0');
         }
 
-        $products = $query->get();
+        if ($request->boolean('all')) {
+            return $this->success(['products' => ProductResource::collection(
+                $query->select('id', 'name', 'price', 'barcode', 'quantity', 'min_stock', 'category')->get()
+            )]);
+        }
 
-        return response()->json([
-            'products' => $products->map(fn($p) => array_merge($p->toArray(), ['low_stock' => $p->low_stock])),
+        return $this->success(['products' =>
+            ProductResource::collection($query->paginate($request->integer('per_page', 50)))
         ]);
     }
 
     public function store(StoreProductRequest $request)
     {
+        $this->authorize('create', Product::class);
         $data    = $request->validated();
         $product = Product::create($data);
 
-        if ($product->quantity > 0) {
-            $this->stockService->addStock($product, $product->quantity, __('pos.new_product_added'));
+        $initial = (int) ($data['initial_quantity'] ?? 0);
+        if ($initial > 0) {
+            $this->stockService->addStock($product, $initial, __('pos.new_product_added'), null, 'initial');
         }
 
-        return response()->json(['success' => true, 'product' => $product], 201);
+        $this->audit('product.created', Product::class, (int) $product->id, ['name' => $product->name]);
+        return $this->success(['product' => new ProductResource($product)], '', 201);
     }
 
     public function update(UpdateProductRequest $request, Product $product)
     {
+        $this->authorize('update', $product);
+        $old = $product->only(['name', 'price', 'cost_price']);
         $product->update($request->validated());
-
-        return response()->json(['success' => true, 'product' => $product]);
+        $this->audit('product.updated', Product::class, (int) $product->id, ['old' => $old, 'new' => $request->validated()]);
+        return $this->success(['product' => new ProductResource($product->fresh())]);
     }
 
     public function destroy(Product $product)
     {
-        if ($product->invoiceItems()->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => __('pos.product_has_sales'),
-            ], 422);
-        }
-
+        $this->authorize('delete', $product);
         $product->delete();
-
-        return response()->json(['success' => true]);
+        $this->audit('product.deleted', Product::class, (int) $product->id, ['name' => $product->name]);
+        return $this->success(message: __('pos.product_deleted'));
     }
 
-    public function addStock(Request $request, Product $product)
+    public function addStock(AddStockRequest $request, Product $product)
     {
-        $data = $request->validate([
-            'quantity' => 'required|integer|min:1',
-            'reason'   => 'nullable|string|max:255',
-        ]);
-
+        $this->authorize('addStock', $product);
+        $data = $request->validated();
         $this->stockService->addStock(
             $product,
             $data['quantity'],
-            $data['reason'] ?? __('pos.manual_stock_add')
+            $data['reason'] ?? __('pos.manual_stock_add'),
+            null,
+            $data['reference_type'] ?? 'adjustment'
         );
-
-        return response()->json(['success' => true, 'new_quantity' => $product->fresh()->quantity]);
+        $this->audit('stock.added', Product::class, (int) $product->id, ['qty' => $data['quantity']]);
+        return $this->success(['new_quantity' => $product->fresh()->quantity]);
     }
 }

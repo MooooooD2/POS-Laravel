@@ -173,13 +173,3 @@ async function submitReturn() {
 </script>
 @endpush
 
-
-{{-- ============================================================
-FILE: resources/views/supplier-payments/index.blade.php
-============================================================ --}}
-{{-- @extends('layouts.app') ... (follows same pattern as suppliers) --}}
-
-{{-- ============================================================
-FILE: resources/views/supplier-accounts/index.blade.php
-============================================================ --}}
-{{-- Shows supplier list with button to view their account ledger --}}

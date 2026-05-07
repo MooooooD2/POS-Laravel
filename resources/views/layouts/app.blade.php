@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', __('pos.app_name'))</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
     {{-- Remove default favicon / No icon --}}
     <link rel="icon"
@@ -262,6 +263,7 @@
         async function apiCall(url, method = 'GET', data = null) {
             const options = {
                 method,
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF_TOKEN,
@@ -356,6 +358,7 @@ window.addEventListener('resize', function() {
         async function fetchAlerts() {
             try {
                 const res = await fetch('{{ route("dashboard.low-stock") }}', {
+                    credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN }
                 });
                 return await res.json();
