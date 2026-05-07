@@ -1196,18 +1196,21 @@
                 }
 
                 switchBtn.onclick = async () => {
-                    window._currentCamIdx =
-                        (window._currentCamIdx + 1) % devices.length;
 
-                    try {
-                        zxingReader.reset();
-                    } catch (e) {}
+    if (!window._cameraDevices?.length) return;
 
-                    startDecode(
-                        devices[window._currentCamIdx].deviceId
-                    );
-                };
+    window._currentCamIdx =
+        (window._currentCamIdx + 1) % window._cameraDevices.length;
 
+    const nextDevice =
+        window._cameraDevices[window._currentCamIdx];
+
+    statusEl.innerHTML =
+        '<i class="fas fa-sync-alt fa-spin me-1"></i>' +
+        '{{ app()->getLocale() === 'ar' ? 'جاري تبديل الكاميرا...' : 'Switching camera...' }}';
+
+    await startDecode(nextDevice.deviceId);
+};
                 startDecode(selectedDevice.deviceId);
 
             } catch (err) {
@@ -1217,55 +1220,59 @@
             }
         }
 
-        function startDecode(deviceId) {
-            const video = document.getElementById('cameraVideo');
-            const statusEl = document.getElementById('cameraStatus');
-            const overlay = document.getElementById('scanOverlay');
+        async function startDecode(deviceId) {
+    const video = document.getElementById('cameraVideo');
+    const statusEl = document.getElementById('cameraStatus');
+    const overlay = document.getElementById('scanOverlay');
 
-            statusEl.textContent =
-                '{{ app()->getLocale() === 'ar' ? 'وجّه الكاميرا نحو الباركود...' : 'Point camera at barcode...' }}';
+    statusEl.textContent =
+        '{{ app()->getLocale() === 'ar' ? 'وجّه الكاميرا نحو الباركود...' : 'Point camera at barcode...' }}';
 
-            zxingReader.decodeFromConstraints({
-                    video: {
-                        deviceId: {
-                            exact: deviceId
-                        },
-                        facingMode: "user"
-                    }
-                },
-                video,
-                (result, err) => {
+    // وقف أي قراءة قديمة
+    try {
+        zxingReader.reset();
+    } catch (e) {}
 
-                    if (!scannerActive) return;
+    zxingReader.decodeFromConstraints(
+        {
+            video: {
+                deviceId: deviceId ? { exact: deviceId } : undefined,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        },
+        video,
+        (result, err) => {
 
-                    if (result) {
-                        const code = result.getText();
+            if (!scannerActive) return;
 
-                        overlay.style.borderColor = '#22c55e';
-                        overlay.style.boxShadow =
-                            '0 0 0 4px rgba(34,197,94,0.4)';
+            if (result) {
+                const code = result.getText();
 
-                        setTimeout(() => {
-                            overlay.style.borderColor = '';
-                            overlay.style.boxShadow = '';
-                        }, 500);
+                overlay.style.borderColor = '#22c55e';
+                overlay.style.boxShadow =
+                    '0 0 0 4px rgba(34,197,94,0.4)';
 
-                        if (POS_SETTINGS.posSound) beep();
+                setTimeout(() => {
+                    overlay.style.borderColor = '';
+                    overlay.style.boxShadow = '';
+                }, 500);
 
-                        bootstrap.Modal
-                            .getInstance(
-                                document.getElementById('cameraScanModal')
-                            )
-                            .hide();
+                if (POS_SETTINGS.posSound) beep();
 
-                        document.getElementById('searchInput').value = code;
+                bootstrap.Modal
+                    .getInstance(
+                        document.getElementById('cameraScanModal')
+                    )
+                    .hide();
 
-                        handleSearch(code, true);
-                    }
-                }
-            );
+                document.getElementById('searchInput').value = code;
+
+                handleSearch(code, true);
+            }
         }
-
+    );
+}
         function stopCameraScanner() {
             scannerActive = false;
             if (zxingReader) {
