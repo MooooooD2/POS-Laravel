@@ -8,7 +8,7 @@
             display: grid;
             grid-template-columns: 1fr 400px;
             gap: 1rem;
-            height: calc(100vh - 130px);
+            min-height: calc(100vh - 130px);
         }
 
         .pos-left {
@@ -181,7 +181,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="cart-table-wrapper">
+                <div class="table-responsive">
                     <table class="table table-hover mb-0" id="cartTable">
                         <thead class="table-light sticky-top">
                             <tr>
@@ -312,56 +312,79 @@
         </div>
     </div>
 
-{{-- ─── CAMERA BARCODE SCANNER MODAL ─────────────────────────────────────── --}}
-<div class="modal fade" id="cameraScanModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title">
-                    <i class="fas fa-camera me-2"></i>
-                    {{ app()->getLocale() === 'ar' ? 'مسح الباركود بالكاميرا' : 'Camera Barcode Scan' }}
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0 bg-black" style="position:relative;min-height:320px">
-                <video id="cameraVideo" style="width:100%;display:block;max-height:400px;object-fit:cover" autoplay muted playsinline></video>
-                {{-- Scan frame overlay --}}
-                <div id="scanOverlay" style="
+    {{-- ─── CAMERA BARCODE SCANNER MODAL ─────────────────────────────────────── --}}
+    <div class="modal fade" id="cameraScanModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-camera me-2"></i>
+                        {{ app()->getLocale() === 'ar' ? 'مسح الباركود بالكاميرا' : 'Camera Barcode Scan' }}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0 bg-black" style="position:relative;min-height:320px">
+                    <video id="cameraVideo" style="width:100%;display:block;max-height:400px;object-fit:cover" autoplay
+                        muted playsinline></video>
+                    {{-- Scan frame overlay --}}
+                    <div id="scanOverlay"
+                        style="
                     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
                     width:220px;height:140px;border:3px solid rgba(255,255,255,0.8);
                     border-radius:12px;pointer-events:none;
                     box-shadow:0 0 0 9999px rgba(0,0,0,0.45);
                     transition:border-color 0.3s,box-shadow 0.3s;
                 ">
-                    <div style="position:absolute;top:-2px;left:-2px;width:22px;height:22px;border-top:4px solid #3b82f6;border-left:4px solid #3b82f6;border-radius:3px 0 0 0"></div>
-                    <div style="position:absolute;top:-2px;right:-2px;width:22px;height:22px;border-top:4px solid #3b82f6;border-right:4px solid #3b82f6;border-radius:0 3px 0 0"></div>
-                    <div style="position:absolute;bottom:-2px;left:-2px;width:22px;height:22px;border-bottom:4px solid #3b82f6;border-left:4px solid #3b82f6;border-radius:0 0 0 3px"></div>
-                    <div style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-bottom:4px solid #3b82f6;border-right:4px solid #3b82f6;border-radius:0 0 3px 0"></div>
-                    {{-- Scan line animation --}}
-                    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#3b82f6,transparent);animation:scanLine 2s linear infinite"></div>
+                        <div
+                            style="position:absolute;top:-2px;left:-2px;width:22px;height:22px;border-top:4px solid #3b82f6;border-left:4px solid #3b82f6;border-radius:3px 0 0 0">
+                        </div>
+                        <div
+                            style="position:absolute;top:-2px;right:-2px;width:22px;height:22px;border-top:4px solid #3b82f6;border-right:4px solid #3b82f6;border-radius:0 3px 0 0">
+                        </div>
+                        <div
+                            style="position:absolute;bottom:-2px;left:-2px;width:22px;height:22px;border-bottom:4px solid #3b82f6;border-left:4px solid #3b82f6;border-radius:0 0 0 3px">
+                        </div>
+                        <div
+                            style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-bottom:4px solid #3b82f6;border-right:4px solid #3b82f6;border-radius:0 0 3px 0">
+                        </div>
+                        {{-- Scan line animation --}}
+                        <div
+                            style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#3b82f6,transparent);animation:scanLine 2s linear infinite">
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer bg-dark text-white d-flex justify-content-between align-items-center">
-                <span id="cameraStatus" class="small text-light">
-                    <i class="fas fa-spinner fa-spin me-1"></i>
-                    {{ app()->getLocale() === 'ar' ? 'جاري التحميل...' : 'Loading...' }}
-                </span>
-                <button id="switchCameraBtn" class="btn btn-sm btn-outline-light" style="display:none">
-                    <i class="fas fa-sync-alt me-1"></i>
-                    {{ app()->getLocale() === 'ar' ? 'تبديل الكاميرا' : 'Switch Camera' }}
-                </button>
+                <div class="modal-footer bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span id="cameraStatus" class="small text-light">
+                        <i class="fas fa-spinner fa-spin me-1"></i>
+                        {{ app()->getLocale() === 'ar' ? 'جاري التحميل...' : 'Loading...' }}
+                    </span>
+                    <button id="switchCameraBtn" class="btn btn-sm btn-outline-light" style="display:none">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        {{ app()->getLocale() === 'ar' ? 'تبديل الكاميرا' : 'Switch Camera' }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<style>
-@keyframes scanLine {
-    0%   { top: 0; opacity: 1; }
-    90%  { top: calc(100% - 2px); opacity: 1; }
-    100% { top: 0; opacity: 0; }
-}
-</style>
+    <style>
+        @keyframes scanLine {
+            0% {
+                top: 0;
+                opacity: 1;
+            }
+
+            90% {
+                top: calc(100% - 2px);
+                opacity: 1;
+            }
+
+            100% {
+                top: 0;
+                opacity: 0;
+            }
+        }
+    </style>
 @endsection
 
 @push('scripts')
@@ -758,64 +781,74 @@
         }
 
         function printInvoice() {
-    if (!currentInvoice) {
-        showToast('لا توجد فاتورة للطباعة', 'danger');
-        return;
-    }
-    const printableHtml = generatePrintableInvoice(currentInvoice);
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(printableHtml);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.onafterprint = function() { printWindow.close(); };
-}
+            if (!currentInvoice) {
+                showToast('لا توجد فاتورة للطباعة', 'danger');
+                return;
+            }
+            const printableHtml = generatePrintableInvoice(currentInvoice);
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printableHtml);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.onafterprint = function() {
+                printWindow.close();
+            };
+        }
 
-function generatePrintableInvoice(invoice) {
-    const isRTL = document.documentElement.dir === 'rtl' || document.documentElement.lang === 'ar';
-    const direction = isRTL ? 'rtl' : 'ltr';
-    const textAlignHead = isRTL ? 'right' : 'left';
-    const textAlignPrice = 'right'; // الأسعار دائماً باليمين
+        function generatePrintableInvoice(invoice) {
+            const isRTL = document.documentElement.dir === 'rtl' || document.documentElement.lang === 'ar';
+            const direction = isRTL ? 'rtl' : 'ltr';
+            const textAlignHead = isRTL ? 'right' : 'left';
+            const textAlignPrice = 'right'; // الأسعار دائماً باليمين
 
-    // ✅ إعداد التواريخ
-    const now = new Date();
-    const dateOptions = { year: 'numeric', month: '2-digit', day: '2-digit' };
-    const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
-    const formattedDate = now.toLocaleDateString(isRTL ? 'ar-EG' : 'en-EG', dateOptions);
-    const formattedTime = now.toLocaleTimeString(isRTL ? 'ar-EG' : 'en-EG', timeOptions);
+            // ✅ إعداد التواريخ
+            const now = new Date();
+            const dateOptions = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            };
+            const timeOptions = {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            const formattedDate = now.toLocaleDateString(isRTL ? 'ar-EG' : 'en-EG', dateOptions);
+            const formattedTime = now.toLocaleTimeString(isRTL ? 'ar-EG' : 'en-EG', timeOptions);
 
-    // ✅ قيم الفاتورة
-    const subtotal = invoice.subtotal || invoice.total || 0;
-    const discount = invoice.discount || 0;
-    const tax = invoice.tax_amount || 0;
-    const finalTotal = invoice.final_total || (subtotal - discount + tax);
-    const paid = invoice.paid_amount || (invoice.payment_method === 'cash' ? finalTotal : finalTotal);
-    const change = invoice.change_amount || Math.max(0, paid - finalTotal);
-    const cashierName = invoice.cashier_name || 'مسؤول المخزون';
+            // ✅ قيم الفاتورة
+            const subtotal = invoice.subtotal || invoice.total || 0;
+            const discount = invoice.discount || 0;
+            const tax = invoice.tax_amount || 0;
+            const finalTotal = invoice.final_total || (subtotal - discount + tax);
+            const paid = invoice.paid_amount || (invoice.payment_method === 'cash' ? finalTotal : finalTotal);
+            const change = invoice.change_amount || Math.max(0, paid - finalTotal);
+            const cashierName = invoice.cashier_name || 'مسؤول المخزون';
 
-    // ✅ ترجمة المحتوى
-    const labels = {
-        header: isRTL ? 'نظام نقطة البيع' : 'POS System',
-        invoiceNo: isRTL ? 'رقم الفاتورة' : 'Invoice No',
-        date: isRTL ? 'التاريخ' : 'Date',
-        time: isRTL ? 'الوقت' : 'Time',
-        product: isRTL ? 'اسم المنتج' : 'Product',
-        qty: isRTL ? 'الكمية' : 'Qty',
-        price: isRTL ? 'سعر الوحدة' : 'Price',
-        total: isRTL ? 'الإجمالي' : 'Total',
-        subtotalLabel: isRTL ? 'المجموع الفرعي' : 'Subtotal',
-        discountLabel: isRTL ? 'الخصم' : 'Discount',
-        taxLabel: isRTL ? 'الضريبة' : 'Tax',
-        finalLabel: isRTL ? 'الإجمالي النهائي' : 'Grand Total',
-        paidLabel: isRTL ? 'المدفوع' : 'Paid',
-        changeLabel: isRTL ? 'الباقي' : 'Change',
-        paymentMethod: isRTL ? 'طريقة الدفع' : 'Payment Method',
-        cashier: isRTL ? 'أمين الصندوق' : 'Cashier',
-        thankYou: isRTL ? 'شكراً لتسوقكم معنا' : 'Thank you for shopping with us'
-    };
+            // ✅ ترجمة المحتوى
+            const labels = {
+                header: isRTL ? 'نظام نقطة البيع' : 'POS System',
+                invoiceNo: isRTL ? 'رقم الفاتورة' : 'Invoice No',
+                date: isRTL ? 'التاريخ' : 'Date',
+                time: isRTL ? 'الوقت' : 'Time',
+                product: isRTL ? 'اسم المنتج' : 'Product',
+                qty: isRTL ? 'الكمية' : 'Qty',
+                price: isRTL ? 'سعر الوحدة' : 'Price',
+                total: isRTL ? 'الإجمالي' : 'Total',
+                subtotalLabel: isRTL ? 'المجموع الفرعي' : 'Subtotal',
+                discountLabel: isRTL ? 'الخصم' : 'Discount',
+                taxLabel: isRTL ? 'الضريبة' : 'Tax',
+                finalLabel: isRTL ? 'الإجمالي النهائي' : 'Grand Total',
+                paidLabel: isRTL ? 'المدفوع' : 'Paid',
+                changeLabel: isRTL ? 'الباقي' : 'Change',
+                paymentMethod: isRTL ? 'طريقة الدفع' : 'Payment Method',
+                cashier: isRTL ? 'أمين الصندوق' : 'Cashier',
+                thankYou: isRTL ? 'شكراً لتسوقكم معنا' : 'Thank you for shopping with us'
+            };
 
-    // ✅ بناء جدول المنتجات
-    const itemsRows = invoice.items.map(item => `
+            // ✅ بناء جدول المنتجات
+            const itemsRows = invoice.items.map(item => `
         <tr>
             <td style="padding:6px 4px; border-bottom:1px solid #ccc; text-align:${textAlignHead};">${escapeHtml(item.product_name)}</td>
             <td style="padding:6px 4px; border-bottom:1px solid #ccc; text-align:center;">${item.quantity}</td>
@@ -824,24 +857,24 @@ function generatePrintableInvoice(invoice) {
         </tr>
     `).join('');
 
-    // ✅ إظهار الضريبة فقط إذا كانت موجودة وفعالة
-    const taxRowHtml = (POS_SETTINGS.taxEnabled && tax > 0) ? `
+            // ✅ إظهار الضريبة فقط إذا كانت موجودة وفعالة
+            const taxRowHtml = (POS_SETTINGS.taxEnabled && tax > 0) ? `
         <tr>
             <td colspan="3" style="padding:6px 4px; text-align:${textAlignPrice}; font-weight:bold;">${labels.taxLabel} (${POS_SETTINGS.taxRate}%)</td>
             <td style="padding:6px 4px; text-align:${textAlignPrice};">${formatCurrency(tax)}</td>
         </tr>
     ` : '';
 
-    // ✅ إظهار الخصم فقط إذا كان موجوداً
-    const discountRowHtml = (discount > 0) ? `
+            // ✅ إظهار الخصم فقط إذا كان موجوداً
+            const discountRowHtml = (discount > 0) ? `
         <tr>
             <td colspan="3" style="padding:6px 4px; text-align:${textAlignPrice}; color:#d9534f;">${labels.discountLabel}</td>
             <td style="padding:6px 4px; text-align:${textAlignPrice}; color:#d9534f;">-${formatCurrency(discount)}</td>
         </tr>
     ` : '';
 
-    // ✅ إظهار المدفوع والباقي فقط إذا كانت طريقة الدفع نقدي
-    const cashPaymentRows = (invoice.payment_method === 'cash') ? `
+            // ✅ إظهار المدفوع والباقي فقط إذا كانت طريقة الدفع نقدي
+            const cashPaymentRows = (invoice.payment_method === 'cash') ? `
         <tr>
             <td colspan="3" style="padding:6px 4px; text-align:${textAlignPrice};">${labels.paidLabel}</td>
             <td style="padding:6px 4px; text-align:${textAlignPrice};">${formatCurrency(paid)}</td>
@@ -852,8 +885,8 @@ function generatePrintableInvoice(invoice) {
         </tr>
     ` : '';
 
-    // ✅ HTML كامل للطباعة
-    return `<!DOCTYPE html>
+            // ✅ HTML كامل للطباعة
+            return `<!DOCTYPE html>
     <html dir="${direction}" lang="${isRTL ? 'ar' : 'en'}">
     <head>
         <title>${labels.invoiceNo} ${invoice.invoice_number}</title>
@@ -1001,7 +1034,8 @@ function generatePrintableInvoice(invoice) {
         </div>
     </body>
     </html>`;
-}
+        }
+
         function getTaxName() {
             const isArabic = document.documentElement.lang === 'ar' || document.documentElement.dir === 'rtl';
             return isArabic ? POS_SETTINGS.taxNameAr : POS_SETTINGS.taxNameEn;
@@ -1109,7 +1143,7 @@ function generatePrintableInvoice(invoice) {
             modal.show();
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('cameraScanModal').addEventListener('shown.bs.modal', startCameraScanner);
             document.getElementById('cameraScanModal').addEventListener('hidden.bs.modal', stopCameraScanner);
         });
@@ -1120,12 +1154,14 @@ function generatePrintableInvoice(invoice) {
             const switchBtn = document.getElementById('switchCameraBtn');
 
             scannerActive = true;
-            statusEl.textContent = '{{ app()->getLocale() === "ar" ? "جاري تشغيل الكاميرا..." : "Starting camera..." }}';
+            statusEl.textContent =
+                '{{ app()->getLocale() === 'ar' ? 'جاري تشغيل الكاميرا...' : 'Starting camera...' }}';
 
             try {
                 // Load ZXing dynamically
                 if (!window.ZXing) {
-                    statusEl.textContent = '{{ app()->getLocale() === "ar" ? "جاري تحميل مكتبة المسح..." : "Loading scanner library..." }}';
+                    statusEl.textContent =
+                        '{{ app()->getLocale() === 'ar' ? 'جاري تحميل مكتبة المسح...' : 'Loading scanner library...' }}';
                     await loadScript('https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js');
                 }
 
@@ -1133,26 +1169,50 @@ function generatePrintableInvoice(invoice) {
 
                 // Get available cameras
                 // Get available cameras
-const devices = await zxingReader.listVideoInputDevices();
-                if (!devices.length) throw new Error('No camera found');
+                // Get available cameras
+                const devices = await zxingReader.listVideoInputDevices();
 
-                // Prefer back camera
-                let selectedDevice = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[0];
+                if (!devices.length) {
+                    throw new Error('No camera found');
+                }
+
+                // في اللابتوب اختار أول كاميرا مباشرة
+                let selectedDevice = devices[0];
+
+                // لو موبايل حاول يجيب الخلفية
+                const backCam = devices.find(d =>
+                    /back|rear|environment/i.test(d.label)
+                );
+
+                if (backCam) {
+                    selectedDevice = backCam;
+                }
+
                 window._cameraDevices = devices;
                 window._currentCamIdx = devices.indexOf(selectedDevice);
 
-                if (devices.length > 1) switchBtn.style.display = 'inline-flex';
+                if (devices.length > 1) {
+                    switchBtn.style.display = 'inline-flex';
+                }
 
                 switchBtn.onclick = async () => {
-                    window._currentCamIdx = (window._currentCamIdx + 1) % devices.length;
-                    await zxingReader.reset();
-                    startDecode(devices[window._currentCamIdx].deviceId);
+                    window._currentCamIdx =
+                        (window._currentCamIdx + 1) % devices.length;
+
+                    try {
+                        zxingReader.reset();
+                    } catch (e) {}
+
+                    startDecode(
+                        devices[window._currentCamIdx].deviceId
+                    );
                 };
 
                 startDecode(selectedDevice.deviceId);
 
             } catch (err) {
-                statusEl.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>${err.message || '{{ app()->getLocale() === "ar" ? "تعذر الوصول للكاميرا" : "Cannot access camera" }}'}</span>`;
+                statusEl.innerHTML =
+                    `<span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>${err.message || '{{ app()->getLocale() === 'ar' ? 'تعذر الوصول للكاميرا' : 'Cannot access camera' }}'}</span>`;
                 console.error('Camera error:', err);
             }
         }
@@ -1162,43 +1222,70 @@ const devices = await zxingReader.listVideoInputDevices();
             const statusEl = document.getElementById('cameraStatus');
             const overlay = document.getElementById('scanOverlay');
 
-            statusEl.textContent = '{{ app()->getLocale() === "ar" ? "وجّه الكاميرا نحو الباركود..." : "Point camera at barcode..." }}';
+            statusEl.textContent =
+                '{{ app()->getLocale() === 'ar' ? 'وجّه الكاميرا نحو الباركود...' : 'Point camera at barcode...' }}';
 
-            zxingReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
-                if (!scannerActive) return;
-                if (result) {
-                    const code = result.getText();
-                    // Flash green
-                    overlay.style.borderColor = '#22c55e';
-                    overlay.style.boxShadow = '0 0 0 4px rgba(34,197,94,0.4)';
-                    setTimeout(() => {
-                        overlay.style.borderColor = '';
-                        overlay.style.boxShadow = '';
-                    }, 500);
+            zxingReader.decodeFromConstraints({
+                    video: {
+                        deviceId: {
+                            exact: deviceId
+                        },
+                        facingMode: "user"
+                    }
+                },
+                video,
+                (result, err) => {
 
-                    if (POS_SETTINGS.posSound) beep();
-                    bootstrap.Modal.getInstance(document.getElementById('cameraScanModal')).hide();
+                    if (!scannerActive) return;
 
-                    // Put barcode in search and process
-                    document.getElementById('searchInput').value = code;
-                    handleSearch(code, true);
+                    if (result) {
+                        const code = result.getText();
+
+                        overlay.style.borderColor = '#22c55e';
+                        overlay.style.boxShadow =
+                            '0 0 0 4px rgba(34,197,94,0.4)';
+
+                        setTimeout(() => {
+                            overlay.style.borderColor = '';
+                            overlay.style.boxShadow = '';
+                        }, 500);
+
+                        if (POS_SETTINGS.posSound) beep();
+
+                        bootstrap.Modal
+                            .getInstance(
+                                document.getElementById('cameraScanModal')
+                            )
+                            .hide();
+
+                        document.getElementById('searchInput').value = code;
+
+                        handleSearch(code, true);
+                    }
                 }
-            });
+            );
         }
 
         function stopCameraScanner() {
             scannerActive = false;
             if (zxingReader) {
-                try { zxingReader.reset(); } catch(e) {}
+                try {
+                    zxingReader.reset();
+                } catch (e) {}
                 zxingReader = null;
             }
         }
 
         function loadScript(src) {
             return new Promise((resolve, reject) => {
-                if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+                if (document.querySelector(`script[src="${src}"]`)) {
+                    resolve();
+                    return;
+                }
                 const s = document.createElement('script');
-                s.src = src; s.onload = resolve; s.onerror = reject;
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = reject;
                 document.head.appendChild(s);
             });
         }
