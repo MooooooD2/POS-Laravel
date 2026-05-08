@@ -72,9 +72,7 @@ class CashRegisterController extends Controller
             'actual_cash' => 'required|numeric|min:0',
             'notes'       => 'nullable|string|max:500',
         ]);
-        dd($session->cashier_id !== Auth::id() , $session->cashier_id , Auth::id());
-
-        if ($session->cashier_id !== Auth::user()->id) {
+        if ($session->cashier_id !== Auth::id()) {
             return $this->error('لا يمكنك إغلاق جلسة كاشير آخر.', 403);
         }
         if ($session->status === 'closed') {

@@ -12,6 +12,8 @@ class CashRegisterSession extends Model
         'invoices_count', 'status', 'notes', 'opened_at', 'closed_at',
     ];
     protected $casts = [
+        'cashier_id'      => 'integer',
+        'invoices_count'  => 'integer',
         'opening_amount'  => 'float',
         'expected_cash'   => 'float',
         'actual_cash'     => 'float',
