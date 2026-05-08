@@ -26,7 +26,7 @@ async function handleLogin() {
         spinner.classList.add("d-none");
         return;
     }
-
+    
     const csrfToken = csrfMeta.content;
     console.log("CSRF Token found:", csrfToken ? "Yes" : "No"); // Debug log
 
@@ -37,12 +37,12 @@ async function handleLogin() {
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRF-TOKEN": csrfToken,
-                Accept: "application/json",
-                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest"
             },
             body: JSON.stringify({ username, password }),
         });
-
+        
         // Handle specific status codes
         if (res.status === 419) {
             alertBox.textContent = "Session expired. Refreshing page...";
@@ -50,14 +50,14 @@ async function handleLogin() {
             setTimeout(() => window.location.reload(), 1500);
             return;
         }
-
+        
         if (res.status === 422) {
             const data = await res.json();
             alertBox.textContent = data.message || "Validation failed";
             alertBox.classList.remove("d-none");
             return;
         }
-
+        
         const data = await res.json();
         if (data.success) {
             window.location.href = data.redirect;
@@ -93,7 +93,7 @@ function togglePassword() {
 document.addEventListener("DOMContentLoaded", function () {
     const loginBtn = document.getElementById("loginBtn");
     const toggleBtn = document.getElementById("togglePasswordBtn");
-
+    
     // Verify CSRF token exists
     const csrfMeta = document.querySelector('meta[name="csrf-token"]');
     if (!csrfMeta) {
