@@ -97,29 +97,17 @@ function togglePassword() {
 
 // Initialize event listeners when DOM is loaded
 document.addEventListener("DOMContentLoaded", function () {
-    const loginBtn = document.getElementById("loginBtn");
+    const loginForm = document.getElementById("loginForm");
     const toggleBtn = document.getElementById("togglePasswordBtn");
-    
-    // Verify CSRF token exists
-    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    if (!csrfMeta) {
-        console.error("CSRF meta tag not found! Login may not work.");
-    } else {
-        console.log("CSRF token found, login ready");
-    }
 
-    if (loginBtn) {
-        loginBtn.addEventListener("click", handleLogin);
+    if (loginForm) {
+        loginForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            handleLogin();
+        });
     }
 
     if (toggleBtn) {
         toggleBtn.addEventListener("click", togglePassword);
     }
-
-    document.addEventListener("keypress", function (e) {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            handleLogin();
-        }
-    });
 });

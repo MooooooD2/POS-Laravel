@@ -72,29 +72,33 @@
 
             <div id="alertBox" class="alert alert-danger d-none" role="alert"></div>
 
-            <div class="mb-3">
-                <label class="form-label fw-semibold">{{ __('pos.username') }}</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                    <input type="text" class="form-control" id="username" placeholder="{{ __('pos.username') }}" required>
+            <form id="loginForm" autocomplete="on" novalidate>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ __('pos.username') }}</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <input type="text" class="form-control" id="username" name="username"
+                            placeholder="{{ __('pos.username') }}" autocomplete="username" required>
+                    </div>
                 </div>
-            </div>
 
-            <div class="mb-4">
-                <label class="form-label fw-semibold">{{ __('pos.password') }}</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                    <input type="password" class="form-control" id="password" placeholder="{{ __('pos.password') }}" required>
-                    <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn">
-                        <i class="fas fa-eye" id="eyeIcon"></i>
-                    </button>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">{{ __('pos.password') }}</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" class="form-control" id="password" name="password"
+                            placeholder="{{ __('pos.password') }}" autocomplete="current-password" required>
+                        <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn">
+                            <i class="fas fa-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <button class="btn-login btn" id="loginBtn">
-                <span id="loginText">{{ __('pos.login') }}</span>
-                <span id="loginSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
-            </button>
+                <button class="btn-login btn" type="submit" id="loginBtn">
+                    <span id="loginText">{{ __('pos.login') }}</span>
+                    <span id="loginSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+                </button>
+            </form>
 
             <p class="text-center text-muted mt-3 mb-0 small">
                 Default: admin / Admin@2026!
