@@ -96,22 +96,20 @@
         </a>
     @endpermission
 
-    {{-- Reports - Check permission --}}
-    @permission('view_reports')
-        <a href="{{ route('reports') }}" class="{{ request()->routeIs('reports') ? 'active' : '' }}">
-            <i class="fas fa-chart-bar"></i> {{ __('pos.reports') }}
-        </a>
-        <a href="{{ route('profit-reports') }}" class="{{ request()->routeIs('profit-reports') ? 'active' : '' }}">
-            <i class="fas fa-percentage"></i> تقرير الربحية
-        </a>
-    @endpermission
+@permission('view_reports')
+    <a href="{{ route('reports') }}" class="{{ request()->routeIs('reports') ? 'active' : '' }}">
+        <i class="fas fa-chart-bar"></i> {{ __('pos.reports') }}
+    </a>
+    <a href="{{ route('profit-reports') }}" class="{{ request()->routeIs('profit-reports') ? 'active' : '' }}">
+        <i class="fas fa-percentage"></i> {{ __('pos.profit_reports') }}
+    </a>
+@endpermission
 
-    {{-- تسوية الخزينة --}}
-    @permission('view_pos')
-        <a href="{{ route('cash-register') }}" class="{{ request()->routeIs('cash-register') ? 'active' : '' }}">
-            <i class="fas fa-cash-register"></i> تسوية الخزينة
-        </a>
-    @endpermission
+@permission('view_pos')
+    <a href="{{ route('cash-register') }}" class="{{ request()->routeIs('cash-register') ? 'active' : '' }}">
+        <i class="fas fa-cash-register"></i> {{ __('pos.cash_register_settlement') }}
+    </a>
+@endpermission
 
     {{-- Accounting & Financial Reports - Check permission --}}
     @permission('view_accounting')

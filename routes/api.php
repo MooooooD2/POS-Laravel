@@ -109,7 +109,7 @@ Route::middleware(['auth', 'permission:add_stock'])->group(function () {
 Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::get('/cash-session/current',       [\App\Http\Controllers\CashRegisterController::class, 'currentSession'])->name('cash-session.current');
     Route::post('/cash-session/open',         [\App\Http\Controllers\CashRegisterController::class, 'open'])->name('cash-session.open');
-    Route::post('/cash-session/{session}/close', [\App\Http\Controllers\CashRegisterController::class, 'close'])->name('cash-session.close');
+    Route::post('/cash-session/{id}/close', [\App\Http\Controllers\CashRegisterController::class, 'close'])->name('cash-session.close');
     Route::get('/cash-session/history',       [\App\Http\Controllers\CashRegisterController::class, 'history'])->name('cash-session.history');
 
     // تقارير الربحية

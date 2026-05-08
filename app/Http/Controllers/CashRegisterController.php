@@ -64,8 +64,10 @@ class CashRegisterController extends Controller
     }
 
     /** إغلاق الجلسة وتسوية الخزينة */
-    public function close(Request $request, CashRegisterSession $session)
+    public function close(Request $request, int $id)
     {
+        $session = CashRegisterSession::findOrFail($id);
+
         $request->validate([
             'actual_cash' => 'required|numeric|min:0',
             'notes'       => 'nullable|string|max:500',
