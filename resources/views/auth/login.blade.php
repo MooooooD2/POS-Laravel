@@ -94,7 +94,7 @@
                     </div>
                 </div>
 
-                <button class="btn-login btn" type="submit" id="loginBtn">
+                <button class="btn-login btn" type="submit" id="loginBtn" onclick="handleLogin(); return false;">
                     <span id="loginText">{{ __('pos.login') }}</span>
                     <span id="loginSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
                 </button>

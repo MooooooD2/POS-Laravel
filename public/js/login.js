@@ -1,107 +1,100 @@
 // public/js/login.js
 
-async function handleLogin() {
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
-    const alertBox = document.getElementById("alertBox");
-    const btn = document.getElementById("loginBtn");
-    const spinner = document.getElementById("loginSpinner");
+var _loginBusy = false;
 
-    if (!username || !password) {
-        alertBox.textContent = "Please enter username and password";
-        alertBox.classList.remove("d-none");
-        return;
-    }
+function handleLogin() {
+    if (_loginBusy) return;
 
-    btn.disabled = true;
-    spinner.classList.remove("d-none");
+    var username  = document.getElementById("username").value.trim();
+    var password  = document.getElementById("password").value;
+    var alertBox  = document.getElementById("alertBox");
+    var btn       = document.getElementById("loginBtn");
+    var spinner   = document.getElementById("loginSpinner");
+
     alertBox.classList.add("d-none");
 
-    // Get CSRF token with validation
-    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    if (!csrfMeta) {
-        alertBox.textContent = "CSRF token not found. Please refresh the page.";
+    if (!username || !password) {
+        alertBox.textContent = "أدخل اسم المستخدم وكلمة المرور";
         alertBox.classList.remove("d-none");
-        btn.disabled = false;
-        spinner.classList.add("d-none");
         return;
     }
-    
-    const csrfToken = csrfMeta.content;
-    console.log("CSRF Token found:", csrfToken ? "Yes" : "No"); // Debug log
 
-    try {
-        const res = await fetch(window.LOGIN_URL || "/login", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": csrfToken,
-                "Accept": "application/json",
-                "X-Requested-With": "XMLHttpRequest"
-            },
-            body: JSON.stringify({ username, password }),
-        });
-        
-        // Handle specific status codes
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (!csrfMeta) {
+        alertBox.textContent = "حدث خطأ. أعد تحميل الصفحة.";
+        alertBox.classList.remove("d-none");
+        return;
+    }
+
+    _loginBusy       = true;
+    btn.disabled     = true;
+    spinner.classList.remove("d-none");
+
+    fetch(window.LOGIN_URL || "/login", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfMeta.content,
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+        },
+        body: JSON.stringify({ username: username, password: password })
+    })
+    .then(function(res) {
         if (res.status === 419) {
-            alertBox.textContent = "Session expired. Refreshing page...";
+            alertBox.textContent = "انتهت الجلسة. جاري تحديث الصفحة...";
             alertBox.classList.remove("d-none");
-            setTimeout(() => window.location.reload(), 1500);
-            return;
+            setTimeout(function() { window.location.reload(); }, 1500);
+            return null;
         }
-
         if (res.status === 429) {
-            alertBox.textContent = "Too many attempts. Please wait a minute and try again.";
+            alertBox.textContent = "محاولات كثيرة. انتظر دقيقة وحاول مجدداً.";
             alertBox.classList.remove("d-none");
-            return;
+            return null;
         }
-        
-        if (res.status === 422) {
-            const data = await res.json();
-            alertBox.textContent = data.message || "Validation failed";
-            alertBox.classList.remove("d-none");
-            return;
-        }
-        
-        const data = await res.json();
+        return res.json();
+    })
+    .then(function(data) {
+        if (!data) return;
         if (data.success) {
             window.location.href = data.redirect;
         } else {
-            alertBox.textContent = data.message || "Login failed";
+            alertBox.textContent = data.message || "بيانات خاطئة";
             alertBox.classList.remove("d-none");
         }
-    } catch (e) {
-        console.error("Login error:", e);
-        alertBox.textContent = "Connection error. Please try again.";
+    })
+    .catch(function() {
+        alertBox.textContent = "خطأ في الاتصال. تحقق من الإنترنت وحاول مجدداً.";
         alertBox.classList.remove("d-none");
-    } finally {
-        btn.disabled = false;
+    })
+    .finally(function() {
+        _loginBusy       = false;
+        btn.disabled     = false;
         spinner.classList.add("d-none");
-    }
+    });
 }
 
 function togglePassword() {
-    const p = document.getElementById("password");
-    const i = document.getElementById("eyeIcon");
-    if (p && i) {
-        if (p.type === "password") {
-            p.type = "text";
-            i.className = "fas fa-eye-slash";
-        } else {
-            p.type = "password";
-            i.className = "fas fa-eye";
-        }
+    var p = document.getElementById("password");
+    var i = document.getElementById("eyeIcon");
+    if (!p || !i) return;
+    if (p.type === "password") {
+        p.type      = "text";
+        i.className = "fas fa-eye-slash";
+    } else {
+        p.type      = "password";
+        i.className = "fas fa-eye";
     }
 }
 
-// Initialize event listeners when DOM is loaded
-document.addEventListener("DOMContentLoaded", function () {
-    const loginForm = document.getElementById("loginForm");
-    const toggleBtn = document.getElementById("togglePasswordBtn");
+// Bind events immediately — script is at bottom of <body>, DOM is ready
+(function() {
+    var form      = document.getElementById("loginForm");
+    var toggleBtn = document.getElementById("togglePasswordBtn");
 
-    if (loginForm) {
-        loginForm.addEventListener("submit", function (e) {
+    if (form) {
+        form.addEventListener("submit", function(e) {
             e.preventDefault();
             handleLogin();
         });
@@ -110,4 +103,4 @@ document.addEventListener("DOMContentLoaded", function () {
     if (toggleBtn) {
         toggleBtn.addEventListener("click", togglePassword);
     }
-});
+})();
