@@ -31,7 +31,7 @@ async function handleLogin() {
     console.log("CSRF Token found:", csrfToken ? "Yes" : "No"); // Debug log
 
     try {
-        const res = await fetch("/login", {
+        const res = await fetch(window.LOGIN_URL || "/login", {
             method: "POST",
             credentials: "same-origin",
             headers: {
