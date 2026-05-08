@@ -123,24 +123,32 @@
 
 {{-- Receive PO Modal --}}
 <div class="modal fade" id="receivePOModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">{{ __('pos.receive_po') }}: <span id="receivePONumber"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-box-open me-2"></i>استلام بضاعة: <span id="receivePONumber"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <div class="alert alert-info py-2 mb-3">
+                    <i class="fas fa-info-circle me-1"></i>
+                    أدخل الكمية المستلمة فعلاً — النظام سيسجل أي فرق مع المورد تلقائياً
+                </div>
                 <input type="hidden" id="receivePOId">
                 <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead class="table-light">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-dark">
                             <tr>
-                                <th>{{ __('pos.product_name') }}</th>
-                                <th>{{ __('pos.quantity') }} ({{ __('pos.po_number') }})</th>
-                                <th>Received So Far</th>
-                                <th>{{ __('pos.quantity') }} to Receive</th>
-                                <th>{{ __('pos.cost_price') }}</th>
-                                <th>{{ __('pos.selling_price') }}</th>
+                                <th>المنتج</th>
+                                <th class="text-center">المطلوب</th>
+                                <th class="text-center">مستلم سابقاً</th>
+                                <th class="text-center">المتبقي</th>
+                                <th class="text-center" style="width:110px">المستلم فعلاً ✏️</th>
+                                <th class="text-center">الفرق</th>
+                                <th>سبب الفرق</th>
+                                <th style="width:100px">سعر التكلفة</th>
                             </tr>
                         </thead>
                         <tbody id="receiveItemsBody"></tbody>
@@ -150,7 +158,7 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
                 <button class="btn btn-success" onclick="submitReceivePO()">
-                    <i class="fas fa-check me-1"></i>{{ __('pos.receive_po') }}
+                    <i class="fas fa-check me-1"></i>تأكيد الاستلام
                 </button>
             </div>
         </div>
@@ -306,39 +314,102 @@ async function savePO() {
 }
 
 function showReceivePO(po) {
-    document.getElementById('receivePOId').value      = po.id;
+    document.getElementById('receivePOId').value           = po.id;
     document.getElementById('receivePONumber').textContent = po.po_number;
 
-    document.getElementById('receiveItemsBody').innerHTML = po.items.map(item => `
-        <tr>
-            <td>${item.product_name}</td>
+    document.getElementById('receiveItemsBody').innerHTML = po.items.map(item => {
+        const pending = item.quantity - (item.received_quantity || 0);
+        return `<tr>
+            <td class="fw-semibold">${escapeHtml(item.product_name)}</td>
             <td class="text-center">${item.quantity}</td>
-            <td class="text-center">${item.received_quantity || 0}</td>
-            <td><input type="number" class="form-control form-control-sm" id="recv_qty_${item.id}"
-                value="${item.quantity - (item.received_quantity || 0)}" min="0"
-                max="${item.quantity - (item.received_quantity || 0)}"></td>
-            <td><input type="number" class="form-control form-control-sm" id="recv_cost_${item.id}"
-                value="${item.cost_price}" step="0.01"></td>
-            <td><input type="number" class="form-control form-control-sm" id="recv_selling_${item.id}"
-                value="${item.selling_price || ''}" step="0.01"></td>
-        </tr>`).join('');
+            <td class="text-center text-success">${item.received_quantity || 0}</td>
+            <td class="text-center fw-bold">${pending}</td>
+            <td>
+                <input type="number" class="form-control form-control-sm" id="recv_qty_${item.id}"
+                    value="${pending}" min="0" oninput="calcDiscrepancy(${item.id}, ${pending})">
+            </td>
+            <td>
+                <span id="disc_${item.id}" class="badge bg-secondary">-</span>
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm" id="recv_disc_notes_${item.id}"
+                    placeholder="سبب الفرق..." style="display:none">
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm" id="recv_cost_${item.id}"
+                    value="${item.cost_price}" step="0.01" style="width:90px">
+            </td>
+        </tr>`;
+    }).join('');
+
+    // حساب الفرق الابتدائي
+    po.items.forEach(item => {
+        const pending = item.quantity - (item.received_quantity || 0);
+        calcDiscrepancy(item.id, pending);
+    });
 
     new bootstrap.Modal(document.getElementById('receivePOModal')).show();
     window._currentPOItems = po.items;
 }
 
+function calcDiscrepancy(itemId, expected) {
+    const received = parseInt(document.getElementById(`recv_qty_${itemId}`)?.value) || 0;
+    const diff     = received - expected;
+    const el       = document.getElementById(`disc_${itemId}`);
+    const notesEl  = document.getElementById(`recv_disc_notes_${itemId}`);
+    if (!el) return;
+    if (diff === 0) {
+        el.textContent  = '✓ مطابق';
+        el.className    = 'badge bg-success';
+        notesEl.style.display = 'none';
+    } else if (diff < 0) {
+        el.textContent  = `${diff} ناقص`;
+        el.className    = 'badge bg-danger';
+        notesEl.style.display = '';
+        notesEl.placeholder   = 'سبب النقص (تلف، سرقة، خطأ مورد...)';
+    } else {
+        el.textContent  = `+${diff} زيادة`;
+        el.className    = 'badge bg-warning text-dark';
+        notesEl.style.display = '';
+        notesEl.placeholder   = 'سبب الزيادة...';
+    }
+}
+
 async function submitReceivePO() {
     const poId  = document.getElementById('receivePOId').value;
-    const items = (window._currentPOItems || []).map(item => ({
-        item_id:           item.id,
-        received_quantity: parseInt(document.getElementById(`recv_qty_${item.id}`)?.value) || 0,
-        cost_price:        parseFloat(document.getElementById(`recv_cost_${item.id}`)?.value) || null,
-        selling_price:     parseFloat(document.getElementById(`recv_selling_${item.id}`)?.value) || null,
-    }));
+    const items = (window._currentPOItems || []).map(item => {
+        const pending  = item.quantity - (item.received_quantity || 0);
+        const received = parseInt(document.getElementById(`recv_qty_${item.id}`)?.value) || 0;
+        const diff     = received - pending;
+        return {
+            item_id:            item.id,
+            received_quantity:  received,
+            cost_price:         parseFloat(document.getElementById(`recv_cost_${item.id}`)?.value) || null,
+            discrepancy_notes:  diff !== 0 ? (document.getElementById(`recv_disc_notes_${item.id}`)?.value || null) : null,
+        };
+    });
+
+    // تحذير لو في فروق قبل الإرسال
+    const withDiscrepancy = items.filter((item, i) => {
+        const pending  = window._currentPOItems[i].quantity - (window._currentPOItems[i].received_quantity || 0);
+        return item.received_quantity !== pending;
+    });
+
+    if (withDiscrepancy.length > 0) {
+        const confirmed = confirm(
+            `⚠️ يوجد فرق في ${withDiscrepancy.length} منتج بين الكمية المطلوبة والمستلمة.\n` +
+            `هل تريد المتابعة وتسجيل الفرق؟`
+        );
+        if (!confirmed) return;
+    }
 
     const res = await apiCall(`/api/purchase-orders/${poId}/receive`, 'POST', { items });
     if (res.success) {
-        showToast('{{ __("pos.success") }}');
+        // إظهار ملخص الاستلام
+        const po = res.purchase_order;
+        const hasDisc = po.items?.some(i => i.discrepancy !== 0);
+        showToast(hasDisc ? '⚠️ تم الاستلام مع وجود فروق — تحقق من التقرير' : '✅ تم الاستلام بنجاح',
+                  hasDisc ? 'warning' : 'success');
         bootstrap.Modal.getInstance(document.getElementById('receivePOModal')).hide();
         loadPOs();
     } else {

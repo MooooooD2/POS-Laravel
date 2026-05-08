@@ -65,12 +65,56 @@
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Customer Name</label>
+                            <label class="form-label">اسم العميل</label>
                             <input type="text" class="form-control" id="returnCustomer">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">{{ __('pos.return_reason') }}</label>
-                            <input type="text" class="form-control" id="returnReason">
+                            <input type="text" class="form-control" id="returnReason"
+                                placeholder="تالف / غير مناسب / خطأ في الطلب...">
+                        </div>
+                        {{-- سيناريو 4: طريقة رد المبلغ --}}
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">طريقة رد المبلغ *</label>
+                            <div class="d-flex gap-3 flex-wrap">
+                                <div class="form-check form-check-inline border rounded p-3 flex-fill text-center"
+                                    style="cursor:pointer" onclick="setRefundMethod('cash', this)">
+                                    <input class="form-check-input d-none" type="radio" name="refundMethod"
+                                        id="refundCash" value="cash" checked>
+                                    <label class="form-check-label" for="refundCash" style="cursor:pointer">
+                                        <i class="fas fa-money-bill-wave fa-2x d-block mb-1 text-success"></i>
+                                        <strong>نقدي</strong><br>
+                                        <small class="text-muted">رد المبلغ كاش من الدرج</small>
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline border rounded p-3 flex-fill text-center"
+                                    style="cursor:pointer" onclick="setRefundMethod('store_credit', this)">
+                                    <input class="form-check-input d-none" type="radio" name="refundMethod"
+                                        id="refundCredit" value="store_credit">
+                                    <label class="form-check-label" for="refundCredit" style="cursor:pointer">
+                                        <i class="fas fa-star fa-2x d-block mb-1 text-primary"></i>
+                                        <strong>رصيد في المحل</strong><br>
+                                        <small class="text-muted">يُحفظ لشراء قادم</small>
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline border rounded p-3 flex-fill text-center"
+                                    style="cursor:pointer" onclick="setRefundMethod('exchange', this)">
+                                    <input class="form-check-input d-none" type="radio" name="refundMethod"
+                                        id="refundExchange" value="exchange">
+                                    <label class="form-check-label" for="refundExchange" style="cursor:pointer">
+                                        <i class="fas fa-exchange-alt fa-2x d-block mb-1 text-warning"></i>
+                                        <strong>استبدال</strong><br>
+                                        <small class="text-muted">استبدال بمنتج آخر</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        {{-- تنبيه طريقة الرد --}}
+                        <div class="col-12" id="refundMethodAlert" style="display:none">
+                            <div class="alert alert-warning py-2 mb-0">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span id="refundMethodNote"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -90,6 +134,24 @@
 <script>
 let currentInvoice = null;
 let returnableItems = [];
+
+function setRefundMethod(value, el) {
+    // تحديث الـ radio
+    document.getElementById(`refund${value.charAt(0).toUpperCase() + value.slice(1).replace('_', '')}`).checked = true;
+    document.querySelectorAll('[onclick^="setRefundMethod"]').forEach(d => {
+        d.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+    });
+    el.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+
+    // تنبيه مناسب لكل طريقة
+    const notes = {
+        cash:         '💵 سيتم رد المبلغ نقداً من درج الكاشير فوراً.',
+        store_credit: '⭐ سيُحفظ المبلغ كرصيد للعميل لاستخدامه في عملية شراء قادمة.',
+        exchange:     '🔄 لا يُرد أي مبلغ — سيستبدل العميل المنتج بمنتج آخر.',
+    };
+    document.getElementById('refundMethodNote').textContent = notes[value];
+    document.getElementById('refundMethodAlert').style.display = 'block';
+}
 
 async function findInvoice() {
     const num = document.getElementById('returnInvoiceNum').value.trim();
@@ -148,17 +210,22 @@ async function submitReturn() {
         }))
         .filter(i => i.quantity > 0);
 
-    if (!items.length) { showToast('Select at least one item to return', 'danger'); return; }
+    if (!items.length) { showToast('اختر منتجاً واحداً على الأقل للإرجاع', 'danger'); return; }
+
+    const refundMethod = document.querySelector('input[name="refundMethod"]:checked')?.value || 'cash';
 
     const res = await apiCall('{{ route("returns.store") }}', 'POST', {
         invoice_id:    currentInvoice.id,
         customer_name: document.getElementById('returnCustomer').value,
         reason:        document.getElementById('returnReason').value,
+        refund_method: refundMethod,
         items,
     });
 
     if (res.success) {
-        showToast('{{ __("pos.success") }}');
+        // تنبيه بطريقة الرد
+        const refundLabels = { cash: 'نقدي من الدرج', store_credit: 'رصيد للعميل', exchange: 'استبدال' };
+        showToast(`✅ تم المرتجع — الرد: ${refundLabels[refundMethod]}`);
         bootstrap.Modal.getInstance(document.getElementById('returnModal')).hide();
         // Reset
         currentInvoice = null; returnableItems = [];

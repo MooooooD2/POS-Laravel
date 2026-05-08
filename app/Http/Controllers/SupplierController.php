@@ -23,7 +23,7 @@ class SupplierController extends Controller
             $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")->orWhere('phone', 'like', "%{$s}%"));
         }
         if ($request->boolean('all')) {
-            return $this->success(['suppliers' => $query->select('id', 'name')->get()]);
+            return $this->success(['suppliers' => $query->select('id', 'name', 'phone', 'email', 'address')->get()]);
         }
         return $this->success(['suppliers' => SupplierResource::collection($query->paginate($request->integer('per_page', 20)))]);
     }

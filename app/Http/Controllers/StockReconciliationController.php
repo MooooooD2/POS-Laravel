@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StockReconciliationRequest;
+use App\Models\Product;
 use App\Services\StockReconciliationService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
@@ -26,15 +27,23 @@ class StockReconciliationController extends Controller
         return $this->success($result);
     }
 
-    /** #21 تقرير حركات منتج للتدقيق */
+    /**
+     * #21 تقرير حركات منتج للتدقيق
+     * FIX-4: التحقق من وجود المنتج ومن صلاحية الوصول إليه
+     */
     public function auditTrail(Request $request, int $productId)
     {
         $request->validate([
             'from' => 'required|date',
             'to'   => 'required|date|after_or_equal:from',
         ]);
+
+        // FIX-4: التحقق من وجود المنتج قبل إرجاع بياناته
+        // findOrFail يُرجع 404 تلقائياً إذا لم يكن المنتج موجوداً
+        $product = Product::findOrFail($productId);
+
         return $this->success(
-            $this->service->productAuditTrail($productId, $request->from, $request->to)
+            $this->service->productAuditTrail($product->id, $request->from, $request->to)
         );
     }
 }

@@ -86,7 +86,7 @@ i,
 /* Sidebar - LTR (default) */
 #sidebar {
     width: var(--sidebar-width);
-    min-height: 100vh;
+    height: 100vh;
     background: var(--sidebar-bg);
     position: fixed;
     left: 0;
@@ -94,6 +94,7 @@ i,
     z-index: 100000;
     /* transition: transform 0.3s ease; */
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* Sidebar - RTL */

@@ -8,7 +8,7 @@
     <title>{{ __('pos.login') }} - {{ __('pos.app_name') }}</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' dominant-baseline='middle' font-size='80'>🏪</text></svg>">
 
-    @if(app()->getLocale() === 'ar')
+    @if(app()->getLocale() === 'aar')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     @else
@@ -85,13 +85,13 @@
                 <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-lock"></i></span>
                     <input type="password" class="form-control" id="password" placeholder="{{ __('pos.password') }}" required>
-                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                    <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn">
                         <i class="fas fa-eye" id="eyeIcon"></i>
                     </button>
                 </div>
             </div>
 
-            <button class="btn-login btn" id="loginBtn" onclick="handleLogin()">
+            <button class="btn-login btn" id="loginBtn">
                 <span id="loginText">{{ __('pos.login') }}</span>
                 <span id="loginSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
             </button>
@@ -103,60 +103,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        async function handleLogin() {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const alertBox = document.getElementById('alertBox');
-            const btn      = document.getElementById('loginBtn');
-            const spinner  = document.getElementById('loginSpinner');
-            const text     = document.getElementById('loginText');
-
-            if (!username || !password) {
-                alertBox.textContent = 'Please enter username and password';
-                alertBox.classList.remove('d-none');
-                return;
-            }
-
-            btn.disabled = true;
-            spinner.classList.remove('d-none');
-            alertBox.classList.add('d-none');
-
-            try {
-                const res = await fetch('{{ route("login.post") }}', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    window.location.href = data.redirect;
-                } else {
-                    alertBox.textContent = data.message || 'Login failed';
-                    alertBox.classList.remove('d-none');
-                }
-            } catch(e) {
-                alertBox.textContent = 'Connection error';
-                alertBox.classList.remove('d-none');
-            } finally {
-                btn.disabled = false;
-                spinner.classList.add('d-none');
-            }
-        }
-
-        function togglePassword() {
-            const p = document.getElementById('password');
-            const i = document.getElementById('eyeIcon');
-            if (p.type === 'password') { p.type = 'text'; i.className = 'fas fa-eye-slash'; }
-            else { p.type = 'password'; i.className = 'fas fa-eye'; }
-        }
-
-        document.addEventListener('keypress', e => { if (e.key === 'Enter') handleLogin(); });
-    </script>
+    <script src="{{ asset('js/login.js') }}"></script>
 </body>
 </html>

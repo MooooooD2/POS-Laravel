@@ -19,6 +19,10 @@ class AnomalyDetection
             if ($request->is('api/invoices') && $request->isMethod('POST') && $response->getStatusCode() === 201) {
                 $this->detectLargeInvoice($request, $response);
             }
+
+            // FIX-8: رصد محاولات تجاوز حد الخصم
+            $this->detectDiscountCapViolation($request, $response);
+
         } catch (\Throwable) {
             // Anomaly detection must never interrupt a business operation
         }
@@ -33,9 +37,6 @@ class AnomalyDetection
         $threshold = (int) config('security.anomaly.requests_per_minute', 100);
         $key       = 'req_count_' . auth()->id() . '_' . now()->format('Hi');
 
-        // Cache::add is a no-op if the key exists (preserves TTL).
-        // Cache::increment then atomically bumps the counter.
-        // This avoids the race where increment creates a key without a TTL.
         Cache::add($key, 0, 60);
         $count = Cache::increment($key);
 
@@ -68,6 +69,39 @@ class AnomalyDetection
                 'ip'             => $request->ip(),
                 'timestamp'      => now()->toIso8601String(),
             ]);
+        }
+    }
+
+    /**
+     * FIX-8: رصد محاولات تجاوز حد الخصم (سُجِّلت من InvoiceService)
+     * هذا يضيف طبقة ثانية من الرصد على مستوى الـ middleware
+     */
+    private function detectDiscountCapViolation(Request $request, Response $response): void
+    {
+        if (!auth()->check()) return;
+        if (!$request->is('api/invoices') || !$request->isMethod('POST')) return;
+
+        // إذا رجع 422 وكان بسبب تجاوز حد الخصم
+        if ($response->getStatusCode() === 422) {
+            $body    = json_decode($response->getContent(), true);
+            $message = $body['message'] ?? '';
+
+            if (str_contains($message, 'discount') || str_contains($message, 'خصم')) {
+                $discountKey   = 'discount_attempt_' . auth()->id();
+                $attemptCount  = Cache::increment($discountKey, 1);
+                Cache::expire($discountKey, 3600);
+
+                // تنبيه عند تكرار محاولات تجاوز الخصم
+                if ($attemptCount >= 3) {
+                    Log::channel('audit')->warning('anomaly.repeated_discount_attempts', [
+                        'user_id'  => auth()->id(),
+                        'username' => auth()->user()->username,
+                        'attempts' => $attemptCount,
+                        'ip'       => $request->ip(),
+                        'timestamp'=> now()->toIso8601String(),
+                    ]);
+                }
+            }
         }
     }
 }

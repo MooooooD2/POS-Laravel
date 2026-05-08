@@ -38,3 +38,13 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['permission:view_reports'])->get('/reports', fn() => view('reports.index'))->name('reports');
     Route::middleware(['permission:manage_roles'])->get('/roles', fn() => view('roles.index'))->name('roles');
 });
+
+// تسوية الخزينة
+Route::middleware(['auth', 'permission:view_pos'])->group(function () {
+    Route::get('/cash-register', fn() => view('cash-register.index'))->name('cash-register');
+});
+
+// تقارير الربحية
+Route::middleware(['auth', 'permission:view_reports'])->group(function () {
+    Route::get('/profit-reports', fn() => view('profit-reports.index'))->name('profit-reports');
+});

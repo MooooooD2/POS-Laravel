@@ -7,30 +7,25 @@ use App\Models\Product;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
     public function __construct(private StockService $stockService) {}
 
-    /**
-     * #3 السعر يُحسب من قاعدة البيانات فقط — لا من المستخدم
-     * #4 Transaction كامل
-     * #5 Lock لمنع Race Condition على المخزون
-     * #6 التحقق من الكمية قبل الخصم
-     */
     public function createInvoice(array $data): Invoice
     {
         return DB::transaction(function () use ($data) {
             $invoiceNumber = SequenceService::next('invoice', Setting::get('invoice_prefix', 'INV'));
 
-            // #5 قفل جميع المنتجات في الفاتورة دفعة واحدة لمنع Race Condition
+            // قفل المنتجات لمنع Race Condition
             $productIds = collect($data['items'])->pluck('product_id')->unique()->toArray();
             $products   = Product::whereIn('id', $productIds)
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
 
-            // #6 التحقق من توفر الكميات قبل أي خصم
+            // التحقق من توفر الكميات
             $allowNeg = Setting::get('allow_negative_stock', false);
             foreach ($data['items'] as $item) {
                 $product = $products->get($item['product_id']);
@@ -42,18 +37,34 @@ class InvoiceService
                 }
             }
 
-            // #3 حساب الإجمالي من أسعار DB — تجاهل أي سعر يُرسله المستخدم
+            // حساب الإجمالي من أسعار DB — لا من المستخدم
             $total = 0;
             foreach ($data['items'] as $item) {
-                $product = $products->get($item['product_id']);
-                $total  += $product->price * $item['quantity'];
+                $total += $products->get($item['product_id'])->price * $item['quantity'];
             }
 
-            // الخصم: لا يتجاوز الإجمالي
-            $discount      = min((float)($data['discount'] ?? 0), $total);
+            // تطبيق حد الخصم الأقصى
+            $maxDiscountPercent = (float) Setting::get('max_discount_percent', env('MAX_DISCOUNT_PERCENT', 20));
+            $requestedDiscount  = (float) ($data['discount'] ?? 0);
+            $maxAllowedDiscount = $total * ($maxDiscountPercent / 100);
+
+            if ($requestedDiscount > $maxAllowedDiscount) {
+                Log::channel('audit')->warning('invoice.discount_cap_exceeded', [
+                    'user_id'            => Auth::id(),
+                    'username'           => Auth::user()->username,
+                    'requested_discount' => $requestedDiscount,
+                    'max_allowed'        => $maxAllowedDiscount,
+                    'total'              => $total,
+                    'ip'                 => request()->ip(),
+                    'timestamp'          => now()->toIso8601String(),
+                ]);
+                throw new \Exception(__('pos.discount_exceeds_limit', ['max' => $maxDiscountPercent]));
+            }
+
+            $discount      = min($requestedDiscount, $total, $maxAllowedDiscount);
             $afterDiscount = $total - $discount;
 
-            // حساب الضريبة من الإعدادات — لا من المستخدم
+            // حساب الضريبة من الإعدادات
             $taxEnabled   = (bool) Setting::get('tax_enabled', false);
             $taxRate      = $taxEnabled ? (float) Setting::get('tax_rate', 0) : 0;
             $taxInclusive = (bool) Setting::get('tax_inclusive', false);
@@ -67,6 +78,27 @@ class InvoiceService
 
             $finalTotal = $afterDiscount + ($taxInclusive ? 0 : $taxAmount);
 
+            // ── حساب المبلغ المدفوع والباقي ──────────────────────────────────────
+            $cashReceived = null;
+            $changeAmount = null;
+
+            if ($data['payment_method'] === 'cash') {
+                $cashReceived = isset($data['cash_received']) && $data['cash_received'] > 0
+                    ? round((float) $data['cash_received'], 2)
+                    : round($finalTotal, 2); // لو ما بعتش cash_received، افترض الزبون دفع بالظبط
+
+                // التحقق أن المبلغ المستلم كافٍ
+                if ($cashReceived < round($finalTotal, 2)) {
+                    throw new \Exception(__('pos.cash_received_insufficient', [
+                        'total'    => round($finalTotal, 2),
+                        'received' => $cashReceived,
+                    ]));
+                }
+
+                $changeAmount = round($cashReceived - $finalTotal, 2);
+            }
+            // ────────────────────────────────────────────────────────────────────
+
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'total'          => round($total, 2),
@@ -74,6 +106,8 @@ class InvoiceService
                 'tax_rate'       => $taxRate,
                 'tax_amount'     => round($taxAmount, 2),
                 'final_total'    => round($finalTotal, 2),
+                'cash_received'  => $cashReceived,
+                'change_amount'  => $changeAmount,
                 'payment_method' => $data['payment_method'],
                 'cashier_id'     => Auth::id(),
                 'cashier_name'   => Auth::user()->full_name,
@@ -89,11 +123,10 @@ class InvoiceService
                     'product_id'   => $product->id,
                     'product_name' => $product->name,
                     'quantity'     => $item['quantity'],
-                    'price'        => $product->price,          // السعر من DB
+                    'price'        => $product->price,
                     'subtotal'     => round($product->price * $item['quantity'], 2),
                 ]);
 
-                // #16-20 خصم المخزون مع تسجيل الحركة والمستخدم
                 $this->stockService->deductStock(
                     $product,
                     $item['quantity'],
@@ -118,7 +151,6 @@ class InvoiceService
         $exact = Product::where('barcode', $query)->first();
         if ($exact) return collect([$exact]);
 
-        // #13 استخدام bindings — لا SQL injection
         return Product::where('name', 'like', '%' . $query . '%')
             ->orWhere('barcode', 'like', '%' . $query . '%')
             ->orderByDesc('quantity')

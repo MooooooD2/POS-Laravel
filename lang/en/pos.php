@@ -233,6 +233,8 @@ return [
     'no_permissions' => 'No permissions found',
     'current_roles' => 'Current Roles',
     'Generate' => 'Generate',
+    'discount_exceeds_limit' => 'Discount exceeds the maximum allowed limit of :max%.',
+    'cash_received_insufficient' => 'Cash received (:received) is less than the total (:total).',
 
 
 ];

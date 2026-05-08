@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * SequenceService — Atomic document numbering
@@ -16,6 +17,8 @@ class SequenceService
     /**
      * Get the next number in a sequence.
      * الحصول على الرقم التالي في التسلسل بشكل آمن وذري
+     *
+     * FIX-5: تسجيل خطأ إذا فشل الـ sequence بدلاً من الفشل الصامت
      *
      * @param  string $name  e.g. 'invoice', 'purchase', 'return'
      * @param  string|null $prefix  Override prefix (optional, uses DB default)
@@ -33,13 +36,22 @@ class SequenceService
         $id = DB::select('SELECT LAST_INSERT_ID() as id')[0]->id;
 
         if (!$id) {
+            // FIX-5: تسجيل التحذير بدلاً من الفشل الصامت
+            Log::warning('sequence.not_found_creating', [
+                'name'      => $name,
+                'timestamp' => now()->toIso8601String(),
+            ]);
+
             // Fallback: insert if sequence doesn't exist
             DB::table('sequences')->insertOrIgnore([
-                'name'  => $name,
-                'value' => 1,
+                'name'   => $name,
+                'value'  => 1,
                 'prefix' => strtoupper($name),
             ]);
-            $id = 1;
+
+            // إعادة القراءة بعد الإنشاء للتأكد من الرقم الصحيح
+            $row = DB::table('sequences')->where('name', $name)->first();
+            $id  = $row?->value ?? 1;
         }
 
         // Get prefix from DB if not overridden

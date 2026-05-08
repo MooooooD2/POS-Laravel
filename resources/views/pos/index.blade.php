@@ -517,18 +517,28 @@
                     return;
                 }
                 existing.quantity++;
+                // تنبيه لو الكمية المتبقية بعد البيع أقل من min_stock
+                const remaining = existing.max_qty - existing.quantity;
+                if (remaining <= (product.min_stock || 5) && remaining > 0) {
+                    showToast(`⚠️ تنبيه: ${product.name} — متبقي ${remaining} قطعة فقط`, 'warning');
+                }
             } else {
                 if (product.quantity <= 0) {
                     showToast('{{ __('pos.insufficient_stock') }}', 'danger');
                     return;
                 }
                 cart.push({
-                    product_id: product.id,
+                    product_id:  product.id,
                     product_name: product.name,
-                    price: product.price,
-                    quantity: 1,
-                    max_qty: product.quantity,
+                    price:       product.price,
+                    quantity:    1,
+                    max_qty:     product.quantity,
+                    min_stock:   product.min_stock || 5,
                 });
+                // تنبيه لو المنتج أصلاً على وشك النفاذ
+                if (product.quantity <= (product.min_stock || 5)) {
+                    showToast(`⚠️ ${product.name} — مخزون منخفض (${product.quantity} قطعة)`, 'warning');
+                }
             }
             renderCart();
         }
@@ -668,6 +678,11 @@
 
             const discount = parseFloat(document.getElementById('discountInput').value) || 0;
 
+            // إرسال المبلغ المستلم للكاش فقط
+            const cashReceived = paymentMethod === 'cash'
+                ? (parseFloat(document.getElementById('cashReceived').value) || 0)
+                : null;
+
             try {
                 const res = await apiCall('{{ route('invoices.create') }}', 'POST', {
                     items: cart.map(i => ({
@@ -678,6 +693,7 @@
                     })),
                     discount,
                     payment_method: paymentMethod,
+                    cash_received: cashReceived,
                 });
 
                 if (res.success) {
@@ -767,8 +783,21 @@
                 </tr>
             </tfoot>
         </table>
-        <div style="text-align: center; margin-top: 15px;">
-            <small style="color: #6c757d;">{{ __('pos.payment_method') }}: ${getPaymentMethodText(invoice.payment_method)}</small>
+        <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 13px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+                <span style="color:#6c757d;">{{ app()->getLocale() === 'ar' ? 'طريقة الدفع' : 'Payment Method' }}</span>
+                <span style="font-weight:600;">${getPaymentMethodText(invoice.payment_method)}</span>
+            </div>
+            ${invoice.payment_method === 'cash' && invoice.cash_received != null ? `
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#198754;">
+                <span style="font-weight:600;">{{ app()->getLocale() === 'ar' ? '💵 المبلغ المدفوع' : '💵 Cash Received' }}</span>
+                <span style="font-weight:700; font-size:15px;">${formatCurrency(invoice.cash_received)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px; background:#fff3cd; border-radius:6px; font-weight:700;">
+                <span style="color:#856404;">{{ app()->getLocale() === 'ar' ? '🔄 الباقي للزبون' : '🔄 Change Due' }}</span>
+                <span style="color:#856404; font-size:16px;">${formatCurrency(invoice.change_amount ?? 0)}</span>
+            </div>
+            ` : ''}
         </div>
         ${POS_SETTINGS.invoiceFooter ? `<div style="text-align: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 11px;">${escapeHtml(POS_SETTINGS.invoiceFooter)}</div>` : ''}
         <div style="text-align: center; margin-top: 10px; font-size: 11px;">
@@ -818,12 +847,13 @@
             const formattedTime = now.toLocaleTimeString(isRTL ? 'ar-EG' : 'en-EG', timeOptions);
 
             // ✅ قيم الفاتورة
-            const subtotal = invoice.subtotal || invoice.total || 0;
-            const discount = invoice.discount || 0;
-            const tax = invoice.tax_amount || 0;
+            const subtotal   = invoice.subtotal || invoice.total || 0;
+            const discount   = invoice.discount || 0;
+            const tax        = invoice.tax_amount || 0;
             const finalTotal = invoice.final_total || (subtotal - discount + tax);
-            const paid = invoice.paid_amount || (invoice.payment_method === 'cash' ? finalTotal : finalTotal);
-            const change = invoice.change_amount || Math.max(0, paid - finalTotal);
+            // cash_received وchange_amount جايين من الـ API مباشرة
+            const paid   = invoice.cash_received ?? finalTotal;
+            const change = invoice.change_amount ?? 0;
             const cashierName = invoice.cashier_name || 'مسؤول المخزون';
 
             // ✅ ترجمة المحتوى
@@ -873,15 +903,15 @@
         </tr>
     ` : '';
 
-            // ✅ إظهار المدفوع والباقي فقط إذا كانت طريقة الدفع نقدي
-            const cashPaymentRows = (invoice.payment_method === 'cash') ? `
-        <tr>
-            <td colspan="3" style="padding:6px 4px; text-align:${textAlignPrice};">${labels.paidLabel}</td>
-            <td style="padding:6px 4px; text-align:${textAlignPrice};">${formatCurrency(paid)}</td>
+            // ✅ إظهار المدفوع والباقي — من قيم الـ API المحفوظة في DB
+            const cashPaymentRows = (invoice.payment_method === 'cash' && invoice.cash_received != null) ? `
+        <tr style="border-top:2px solid #333;">
+            <td colspan="3" style="padding:6px 4px; text-align:${textAlignPrice}; font-weight:bold;">${labels.paidLabel}</td>
+            <td style="padding:6px 4px; text-align:${textAlignPrice}; font-weight:bold; color:#198754;">${formatCurrency(invoice.cash_received)}</td>
         </tr>
-        <tr>
-            <td colspan="3" style="padding:6px 4px; text-align:${textAlignPrice};">${labels.changeLabel}</td>
-            <td style="padding:6px 4px; text-align:${textAlignPrice};">${formatCurrency(change)}</td>
+        <tr style="background:#fff3cd;">
+            <td colspan="3" style="padding:8px 4px; text-align:${textAlignPrice}; font-weight:bold;">${labels.changeLabel}</td>
+            <td style="padding:8px 4px; text-align:${textAlignPrice}; font-weight:bold; font-size:15px; color:#856404;">${formatCurrency(invoice.change_amount ?? 0)}</td>
         </tr>
     ` : '';
 

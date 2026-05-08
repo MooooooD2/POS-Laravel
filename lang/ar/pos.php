@@ -251,4 +251,6 @@ return [
     'Returns Report'               => 'تقرير المرتجعات',
     'Customer'                     => 'العميل',
     'Generate'                     => 'توليد',
+    'discount_exceeds_limit'       => 'الخصم يتجاوز الحد الأقصى المسموح به وهو :max%.',
+    'cash_received_insufficient'   => 'المبلغ المستلم (:received) أقل من الإجمالي (:total).',
 ];

@@ -56,7 +56,7 @@
             </div>
 
             <!-- Summary Stats -->
-            <div class="row g-3 mb-4" id="salesStats" style="display:none!important">
+            <div class="row g-3 mb-4" id="salesStats" style="display:none">
                 <div class="col-md-3">
                     <div class="stat-card blue">
                         <p class="mb-1 opacity-75 small">{{ __('pos.total') }}</p>
@@ -329,8 +329,9 @@
             document.getElementById('statCard').textContent = formatCurrency(res.by_payment?.card?.total || 0);
 
             // Invoices
-            document.getElementById('salesInvoicesBody').innerHTML = (res.invoices || []).length ?
-                res.invoices.map(inv => `
+            const invoiceList = res.invoices?.data || [];
+            document.getElementById('salesInvoicesBody').innerHTML = invoiceList.length ?
+                invoiceList.map(inv => `
             <tr>
                 <td><span class="badge bg-primary">${inv.invoice_number}</span></td>
                 <td>${formatCurrency(inv.total)}</td>
@@ -370,8 +371,9 @@
                 .total_returned / res.total_count : 0);
 
             // Returns table
-            document.getElementById('returnsBody').innerHTML = (res.returns || []).length ?
-                res.returns.map(ret => `
+            const returnList = res.returns?.data || [];
+            document.getElementById('returnsBody').innerHTML = returnList.length ?
+                returnList.map(ret => `
             <tr>
                 <td><span class="badge bg-danger">${ret.return_number}</span></td>
                 <td>${ret.invoice_number || '-'}</td>
@@ -382,6 +384,7 @@
                 <td class="text-muted small">${formatDate(ret.return_date)}</td>
             </tr>`).join('') :
                 '<tr><td colspan="7" class="text-center text-muted py-3">{{ __('pos.no_data') }}</td></tr>';
+
 
             // Top returned products
             document.getElementById('returnsTopBody').innerHTML = (res.top_returned_products || []).length ?
@@ -411,6 +414,11 @@
                 q)));
         }
 
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        }
+
         function renderStock(products) {
             document.getElementById('stockBody').innerHTML = products.length ?
                 products.map(p => `
@@ -429,5 +437,6 @@
             </tr>`).join('') :
                 '<tr><td colspan="7" class="text-center text-muted py-4">{{ __('pos.no_data') }}</td></tr>';
         }
+        loadSalesReport();
     </script>
 @endpush

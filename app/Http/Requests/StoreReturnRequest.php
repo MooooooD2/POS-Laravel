@@ -19,6 +19,16 @@ class StoreReturnRequest extends FormRequest
             'items.*.quantity'     => 'required|integer|min:1|max:9999',
             'reason'               => 'nullable|string|max:500',
             'customer_name'        => 'nullable|string|max:255',
+            // سيناريو 4: طريقة رد المبلغ
+            'refund_method'        => 'required|in:cash,store_credit,exchange',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'refund_method.required' => 'يجب تحديد طريقة رد المبلغ.',
+            'refund_method.in'       => 'طريقة رد المبلغ غير صالحة.',
         ];
     }
 }

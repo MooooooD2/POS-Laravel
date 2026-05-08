@@ -72,10 +72,10 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
     // Reports
     Route::middleware('permission:view_reports')->group(function () {
-        Route::post('/reports/sales', [ReportController::class, 'salesReport'])->middleware('throttle:10,1')->name('reports.sales');
+        Route::post('/reports/sales', [ReportController::class, 'salesReport'])->middleware('throttle:60,1')->name('reports.sales');
         Route::get('/reports/stock', [ReportController::class, 'stockReport'])->name('reports.stock');
-        Route::post('/reports/returns', [ReportController::class, 'returnsReport'])->middleware('throttle:10,1')->name('reports.returns');
-        Route::post('/reports/income-statement', [ReportController::class, 'incomeStatement'])->middleware('throttle:10,1')->name('reports.income-statement');
+        Route::post('/reports/returns', [ReportController::class, 'returnsReport'])->middleware('throttle:60,1')->name('reports.returns');
+        Route::post('/reports/income-statement', [ReportController::class, 'incomeStatement'])->middleware('throttle:60,1')->name('reports.income-statement');
         Route::get('/reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
         Route::post('/reports/account-statement/{account}', [ReportController::class, 'accountStatement'])->name('reports.account-statement');
     });
@@ -103,4 +103,18 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 Route::middleware(['auth', 'permission:add_stock'])->group(function () {
     Route::post('/stock/reconcile', [\App\Http\Controllers\StockReconciliationController::class, 'reconcile'])->name('stock.reconcile');
     Route::get('/stock/audit-trail/{productId}', [\App\Http\Controllers\StockReconciliationController::class, 'auditTrail'])->name('stock.audit-trail');
+});
+
+// ── تسوية الخزينة ──────────────────────────────────────────────────────────
+Route::middleware(['auth', 'throttle:60,1'])->group(function () {
+    Route::get('/cash-session/current',       [\App\Http\Controllers\CashRegisterController::class, 'currentSession'])->name('cash-session.current');
+    Route::post('/cash-session/open',         [\App\Http\Controllers\CashRegisterController::class, 'open'])->name('cash-session.open');
+    Route::post('/cash-session/{session}/close', [\App\Http\Controllers\CashRegisterController::class, 'close'])->name('cash-session.close');
+    Route::get('/cash-session/history',       [\App\Http\Controllers\CashRegisterController::class, 'history'])->name('cash-session.history');
+
+    // تقارير الربحية
+    Route::middleware('permission:view_reports')->group(function () {
+        Route::post('/reports/profit-by-product', [\App\Http\Controllers\ProfitReportController::class, 'byProduct'])->name('reports.profit-product');
+        Route::post('/reports/profit-daily',      [\App\Http\Controllers\ProfitReportController::class, 'daily'])->name('reports.profit-daily');
+    });
 });

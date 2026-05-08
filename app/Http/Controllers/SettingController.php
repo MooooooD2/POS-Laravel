@@ -8,11 +8,17 @@ use Illuminate\Support\Facades\Cache;
 class SettingController extends Controller
 {
     private const ALLOWED_KEYS = [
+        // General
         'store_name', 'store_address', 'store_phone', 'store_email', 'store_logo',
-        'tax_enabled', 'tax_rate', 'tax_inclusive', 'tax_name_ar', 'tax_name_en',
-        'invoice_footer', 'invoice_header', 'default_payment', 'auto_print',
-        'pos_sound', 'currency_ar', 'currency_en', 'currency_position',
-        'low_stock_alert', 'receipt_copies', 'invoice_notes',
+        'currency', 'currency_symbol', 'currency_ar', 'currency_en', 'currency_position',
+        'default_language',
+        // Tax
+        'tax_enabled', 'tax_rate', 'tax_inclusive', 'tax_name_ar', 'tax_name_en', 'tax_number',
+        // Invoice
+        'invoice_prefix', 'invoice_footer', 'invoice_header', 'invoice_notes',
+        'show_tax_invoice', 'auto_print', 'receipt_copies',
+        // POS
+        'default_payment', 'pos_sound', 'low_stock_alert', 'allow_negative_stock',
     ];
 
     public function index()

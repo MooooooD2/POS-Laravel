@@ -7,16 +7,14 @@ use App\Models\ReturnItem;
 use App\Models\SalesReturn;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReturnService
 {
     public function __construct(private StockService $stockService) {}
 
     /**
-     * #3 الأسعار من DB
-     * #4 Transaction كامل
-     * #5 Lock على المنتجات
-     * #6 التحقق من الكمية القابلة للإرجاع
+     * سيناريو 4: معالجة المرتجع مع تحديد طريقة رد المبلغ
      */
     public function processReturn(array $data): SalesReturn
     {
@@ -29,7 +27,6 @@ class ReturnService
 
             $returnableQtys = $this->getReturnableQuantities($invoice);
 
-            // #6 التحقق من الكميات قبل المعالجة
             foreach ($data['items'] as $item) {
                 $max = $returnableQtys[$item['product_id']] ?? 0;
                 if ($item['quantity'] <= 0 || $item['quantity'] > $max) {
@@ -40,16 +37,28 @@ class ReturnService
                 }
             }
 
-            $returnNumber = SequenceService::next('return');
-
-            // #3 الأسعار من invoice_items في DB — لا من المستخدم
+            $returnNumber      = SequenceService::next('return');
             $invoiceItemPrices = $invoice->items->keyBy('product_id');
 
             $totalAmount = 0;
             foreach ($data['items'] as $item) {
-                $invoiceItem = $invoiceItemPrices->get($item['product_id']);
-                $price       = $invoiceItem ? $invoiceItem->price : 0;
+                $invoiceItem  = $invoiceItemPrices->get($item['product_id']);
+                $price        = $invoiceItem ? $invoiceItem->price : 0;
                 $totalAmount += $price * $item['quantity'];
+            }
+
+            // سيناريو 4: تحديد طريقة رد المبلغ
+            $refundMethod = $data['refund_method'] ?? 'cash';
+            $refundAmount = round($totalAmount, 2);
+
+            // التحقق من صحة طريقة الرد
+            if (!in_array($refundMethod, ['cash', 'store_credit', 'exchange'])) {
+                throw new \Exception('طريقة رد المبلغ غير صالحة.');
+            }
+
+            // لو استبدال، المبلغ المردود صفر
+            if ($refundMethod === 'exchange') {
+                $refundAmount = 0;
             }
 
             $return = SalesReturn::create([
@@ -58,6 +67,8 @@ class ReturnService
                 'invoice_number'    => $invoice->invoice_number,
                 'customer_name'     => $data['customer_name'] ?? null,
                 'total_amount'      => round($totalAmount, 2),
+                'refund_method'     => $refundMethod,
+                'refund_amount'     => $refundAmount,
                 'reason'            => $data['reason'] ?? null,
                 'status'            => 'completed',
                 'return_date'       => now()->toDateString(),
@@ -78,6 +89,7 @@ class ReturnService
                     'subtotal'     => round($price * $item['quantity'], 2),
                 ]);
 
+                // إرجاع المخزون في كل الحالات (نقدي / رصيد / استبدال)
                 $product = Product::find($item['product_id']);
                 if ($product) {
                     $this->stockService->addStock(
@@ -89,6 +101,17 @@ class ReturnService
                     );
                 }
             }
+
+            // تسجيل في الـ audit log مع طريقة الرد
+            Log::channel('audit')->info('return.processed', [
+                'return_number' => $returnNumber,
+                'invoice'       => $invoice->invoice_number,
+                'total'         => $totalAmount,
+                'refund_method' => $refundMethod,
+                'refund_amount' => $refundAmount,
+                'user_id'       => Auth::id(),
+                'timestamp'     => now()->toIso8601String(),
+            ]);
 
             return $return->load('items');
         });

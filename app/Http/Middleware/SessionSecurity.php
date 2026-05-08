@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * #36 تأمين الـ Session — منع Session Fixation + اكتشاف Hijacking
+ * FIX-6: مزامنة مدة انتهاء الجلسة مع SESSION_LIFETIME في .env
  */
 class SessionSecurity
 {
@@ -41,9 +42,12 @@ class SessionSecurity
                     ->with('error', 'انتهت صلاحية الجلسة لأسباب أمنية. يرجى تسجيل الدخول مجدداً.');
             }
 
-            // #36 انتهاء الجلسة بعد 8 ساعات من عدم النشاط
+            // FIX-6: قراءة مدة الجلسة من SESSION_LIFETIME في .env بدلاً من القيمة الثابتة
+            // SESSION_LIFETIME بالدقائق في Laravel — نحوله لثواني للمقارنة
+            $sessionLifetimeSeconds = (int) config('session.lifetime', 480) * 60;
+
             $lastActivity = $session->get('_last_activity', now()->timestamp);
-            if (now()->timestamp - $lastActivity > 8 * 3600) {
+            if (now()->timestamp - $lastActivity > $sessionLifetimeSeconds) {
                 Auth::logout();
                 $session->invalidate();
                 $session->regenerateToken();
