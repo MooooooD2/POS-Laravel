@@ -170,6 +170,8 @@
 let currentSession = null;
 let liveStats      = null;
 
+const CASH_SESSION_BASE_URL = '{{ url("api/cash-session") }}';
+
 const _t = {
     enterOpeningBalance:  '{{ __('pos.enter_opening_balance') }}',
     registerOpened:       '{{ __('pos.register_opened_success') }}',
@@ -263,7 +265,7 @@ async function closeSession() {
     const actual = document.getElementById('actualCash').value;
     if (!actual) { showToast(_t.enterActualCash, 'danger'); return; }
     if (!confirm(_t.confirmClose)) return;
-    const res = await apiCall(`/api/cash-session/${currentSession.id}/close`, 'POST', {
+    const res = await apiCall(`${CASH_SESSION_BASE_URL}/${currentSession.id}/close`, 'POST', {
         actual_cash: actual,
         notes: document.getElementById('closeNotes').value,
     });
