@@ -97,13 +97,13 @@
             </button>
 
             <p class="text-center text-muted mt-3 mb-0 small">
-                Default: admin / admin123
+                Default: admin / Admin@2026!
             </p>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>window.LOGIN_URL = "{{ route('login') }}";</script>
+    <script>window.LOGIN_URL = "{{ route('login.post') }}";</script>
     <script src="{{ asset('js/login.js') }}"></script>
 </body>
 </html>

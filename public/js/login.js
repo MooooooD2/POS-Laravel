@@ -50,6 +50,12 @@ async function handleLogin() {
             setTimeout(() => window.location.reload(), 1500);
             return;
         }
+
+        if (res.status === 429) {
+            alertBox.textContent = "Too many attempts. Please wait a minute and try again.";
+            alertBox.classList.remove("d-none");
+            return;
+        }
         
         if (res.status === 422) {
             const data = await res.json();
