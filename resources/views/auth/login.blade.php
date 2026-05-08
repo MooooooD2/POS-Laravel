@@ -3,7 +3,7 @@
 <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ __('pos.login') }} - {{ __('pos.app_name') }}</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' dominant-baseline='middle' font-size='80'>🏪</text></svg>">
@@ -55,7 +55,18 @@
             transition: opacity 0.2s;
         }
         .btn-login:hover { opacity: 0.9; color: #fff; }
+        .btn-login:active { transform: scale(0.98); }
         .lang-switcher { position: fixed; top: 1rem; {{ app()->getLocale() === 'ar' ? 'left: 1rem;' : 'right: 1rem;' }} }
+        
+        /* Improve touch targets on mobile */
+        @media (max-width: 768px) {
+            .login-card { padding: 1.5rem; margin: 1rem; }
+            .form-control, .btn-login, .input-group-text, .btn-outline-secondary { 
+                font-size: 16px !important; /* Prevents zoom on focus in iOS */
+            }
+            .input-group button { min-height: 44px; }
+            button, .btn { touch-action: manipulation; }
+        }
     </style>
 </head>
 <body>
@@ -94,7 +105,7 @@
                     </div>
                 </div>
 
-                <button class="btn-login btn" type="submit" id="loginBtn" onclick="handleLogin(); return false;">
+                <button class="btn-login btn" type="submit" id="loginBtn">
                     <span id="loginText">{{ __('pos.login') }}</span>
                     <span id="loginSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
                 </button>
