@@ -30,6 +30,15 @@
     @endif
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
 
+    {{-- Apply saved theme before first paint to avoid flash --}}
+    <script @nonce>
+        (function() {
+            var t = localStorage.getItem('theme');
+            if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+
     @stack('styles')
 </head>
 
@@ -171,6 +180,13 @@
                         </div>
                     </div>
                 </div>
+                {{-- Dark Mode Toggle --}}
+                <button id="themeToggleBtn" class="btn btn-sm btn-outline-secondary"
+                    title="{{ app()->getLocale() === 'ar' ? 'تبديل المظهر' : 'Toggle theme' }}">
+                    <i class="fas fa-sun icon-sun"></i>
+                    <i class="fas fa-moon icon-moon"></i>
+                </button>
+
                 {{-- Language Toggle --}}
                 <div class="dropdown">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
@@ -355,6 +371,26 @@ window.addEventListener('resize', function() {
         } else {
             document.body.classList.add('ltr');
         }
+
+        // ── Theme toggle ──────────────────────────────────────────────────────────
+        (function initTheme() {
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            }
+
+            document.getElementById('themeToggleBtn').addEventListener('click', function() {
+                const current = document.documentElement.getAttribute('data-theme') || 'light';
+                applyTheme(current === 'dark' ? 'light' : 'dark');
+            });
+
+            // Sync with OS preference changes (e.g., user switches system theme)
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                if (!localStorage.getItem('theme')) {
+                    applyTheme(e.matches ? 'dark' : 'light');
+                }
+            });
+        })();
 
         // ── CSP-safe global dispatchers (replace all inline onclick/onchange/oninput) ──
         // data-fn="fnName" [data-args='[arg1,arg2]'] → calls window.fnName(arg1, arg2, element)

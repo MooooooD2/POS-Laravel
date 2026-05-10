@@ -109,6 +109,52 @@
             padding: 0.5rem 0.75rem;
         }
 
+        [data-theme="dark"] .tax-row           { background: #1e2d1a !important; }
+        [data-theme="dark"] .search-results    { color: var(--body-color); }
+        [data-theme="dark"] .search-item .barcode-badge { background: #334155; color: #94a3b8; }
+        [data-theme="dark"] .pos-right .card   { border: 1px solid var(--card-border); }
+
+        /* ── Cart table dark mode ────────────────────────────────────────── */
+        /* table-light thead — Bootstrap hardcodes #f8f9fa bg */
+        [data-theme="dark"] thead.table-light th,
+        [data-theme="dark"] .table-light {
+            --bs-table-bg:           #0f172a !important;
+            --bs-table-color:        #e2e8f0 !important;
+            --bs-table-border-color: #334155 !important;
+            background-color: #0f172a !important;
+            color: #e2e8f0 !important;
+            border-color: #334155 !important;
+        }
+
+        /* Cart tbody rows */
+        [data-theme="dark"] #cartTable tbody tr {
+            background-color: var(--card-bg) !important;
+            color: var(--body-color) !important;
+        }
+
+        [data-theme="dark"] #cartTable tbody tr:hover {
+            background-color: #273548 !important;
+        }
+
+        /* Cart qty/price inputs */
+        [data-theme="dark"] #cartTable input.form-control {
+            background-color: #0f172a !important;
+            color: #e2e8f0 !important;
+            border-color: #475569 !important;
+        }
+
+        /* Payment buttons inactive state */
+        [data-theme="dark"] .payment-btn.btn-outline-secondary {
+            color: #94a3b8 !important;
+            border-color: #475569 !important;
+            background: transparent !important;
+        }
+
+        [data-theme="dark"] .payment-btn.btn-outline-secondary:hover {
+            background: #334155 !important;
+            color: #e2e8f0 !important;
+        }
+
         /* Scanner pulse animation */
         @keyframes scanPulse {
 
@@ -407,6 +453,7 @@
         let cart = [];
         let paymentMethod = POS_SETTINGS.defaultPayment;
         let searchTimeout = null;
+        let searchAbort = null;   // AbortController for in-flight search requests
         let lastKeyTime = Date.now();
         let currentInvoice = null;
         let lastSearchResults = [];
@@ -435,7 +482,7 @@
                 closeSearch();
                 return;
             }
-            searchTimeout = setTimeout(() => showSearchResults(q), 350);
+            searchTimeout = setTimeout(() => showSearchResults(q), 150);
         });
 
         function triggerSearch() {
@@ -445,37 +492,54 @@
 
         async function handleSearch(query, isScanner) {
             closeSearch();
-            const url = `{{ route('products.search') }}?query=${encodeURIComponent(query)}&exact=${isScanner ? 1 : 0}`;
-            const res = await apiCall(url);
-
-            if (!res.success) {
-                showToast(res.message || '{{ __('pos.product_not_found') }}', 'danger');
-                document.getElementById('searchInput').value = '';
-                return;
-            }
-
-            if (res.single) {
-                addToCart(res.product);
-                document.getElementById('searchInput').value = '';
-                if (POS_SETTINGS.posSound) beep();
-            } else {
-                renderSearchDropdown(res.products);
+            if (searchAbort) searchAbort.abort();
+            searchAbort = new AbortController();
+            try {
+                const url = `{{ route('products.search') }}?query=${encodeURIComponent(query)}&exact=${isScanner ? 1 : 0}`;
+                const response = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+                    signal: searchAbort.signal,
+                });
+                const res = await response.json();
+                if (!res.success) {
+                    showToast(res.message || '{{ __('pos.product_not_found') }}', 'danger');
+                    document.getElementById('searchInput').value = '';
+                    return;
+                }
+                if (res.single) {
+                    addToCart(res.product);
+                    document.getElementById('searchInput').value = '';
+                    if (POS_SETTINGS.posSound) beep();
+                } else {
+                    renderSearchDropdown(res.products);
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') showToast('{{ __('pos.product_not_found') }}', 'danger');
             }
         }
 
         async function showSearchResults(query) {
-            const res = await apiCall(`{{ route('products.search') }}?query=${encodeURIComponent(query)}&exact=0`);
-            if (!res.success) {
-                closeSearch();
-                return;
-            }
-            if (res.single) {
-                addToCart(res.product);
-                document.getElementById('searchInput').value = '';
-                closeSearch();
-                if (POS_SETTINGS.posSound) beep();
-            } else if (res.products?.length) {
-                renderSearchDropdown(res.products);
+            if (searchAbort) searchAbort.abort();
+            searchAbort = new AbortController();
+            try {
+                const response = await fetch(`{{ route('products.search') }}?query=${encodeURIComponent(query)}&exact=0`, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+                    signal: searchAbort.signal,
+                });
+                const res = await response.json();
+                if (!res.success) { closeSearch(); return; }
+                if (res.single) {
+                    addToCart(res.product);
+                    document.getElementById('searchInput').value = '';
+                    closeSearch();
+                    if (POS_SETTINGS.posSound) beep();
+                } else if (res.products?.length) {
+                    renderSearchDropdown(res.products);
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') closeSearch();
             }
         }
 
@@ -543,6 +607,33 @@
             renderCart();
         }
 
+        function buildCartRowHTML(item, idx) {
+            return `<tr class="cart-row" data-cart-idx="${idx}" data-product-id="${item.product_id}">
+            <td class="text-muted small">${idx + 1}</td>
+            <td><div class="fw-semibold">${escapeHtml(item.product_name)}</div></td>
+            <td class="text-end">
+                <input type="number" class="form-control form-control-sm text-center p-1"
+                    style="width:80px" value="${item.price}" step="0.01" min="0"
+                    data-action="set-price" data-idx="${idx}">
+            </td>
+            <td class="text-center">
+                <div class="d-flex align-items-center gap-1">
+                    <button class="btn btn-sm btn-outline-secondary qty-btn" data-action="dec-qty" data-idx="${idx}">−</button>
+                    <input type="number" class="form-control form-control-sm text-center p-1"
+                        style="width:55px" value="${item.quantity}" min="1" max="${item.max_qty}"
+                        data-action="set-qty" data-idx="${idx}">
+                    <button class="btn btn-sm btn-outline-secondary qty-btn" data-action="inc-qty" data-idx="${idx}">+</button>
+                </div>
+            </td>
+            <td class="fw-semibold text-success text-end" data-cell="total">${formatCurrency(item.price * item.quantity)}</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-danger qty-btn" data-action="remove" data-idx="${idx}">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        </tr>`;
+        }
+
         function renderCart() {
             const tbody = document.getElementById('cartBody');
 
@@ -558,33 +649,40 @@
                 return;
             }
 
-            tbody.innerHTML = cart.map((item, idx) => `
-        <tr class="cart-row">
-            <td class="text-muted small">${idx + 1}</td>
-            <td>
-                <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-            </td>
-            <td class="text-end">
-                <input type="number" class="form-control form-control-sm text-center p-1"
-                    style="width:80px" value="${item.price}" step="0.01" min="0"
-                    data-action="set-price" data-idx="${idx}">
-            </td>
-            <td class="text-center">
-                <div class="d-flex align-items-center gap-1">
-                    <button class="btn btn-sm btn-outline-secondary qty-btn" data-action="dec-qty" data-idx="${idx}">−</button>
-                    <input type="number" class="form-control form-control-sm text-center p-1"
-                        style="width:55px" value="${item.quantity}" min="1" max="${item.max_qty}"
-                        data-action="set-qty" data-idx="${idx}">
-                    <button class="btn btn-sm btn-outline-secondary qty-btn" data-action="inc-qty" data-idx="${idx}">+</button>
-                </div>
-            </td>
-            <td class="fw-semibold text-success text-end">${formatCurrency(item.price * item.quantity)}</td>
-            <td class="text-center">
-                <button class="btn btn-sm btn-outline-danger qty-btn" data-action="remove" data-idx="${idx}">
-                    <i class="fas fa-times"></i>
-                </button>
-            </td>
-        </tr>`).join('');
+            // Remove empty-state row if present (it has no .cart-row class so querySelector misses it)
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) emptyRow.remove();
+
+            const existingRows = tbody.querySelectorAll('tr.cart-row');
+
+            // Patch existing rows / add new ones / remove extras
+            cart.forEach((item, idx) => {
+                const existing = existingRows[idx];
+                const newHTML = buildCartRowHTML(item, idx);
+                if (!existing) {
+                    tbody.insertAdjacentHTML('beforeend', newHTML);
+                } else {
+                    // Only replace the row if data-cart-idx changed (item reordered/removed)
+                    // or update just the dynamic cells to avoid losing input focus
+                    const idxAttr = parseInt(existing.dataset.cartIdx);
+                    if (idxAttr !== idx || existing.dataset.productId !== String(item.product_id)) {
+                        existing.outerHTML = newHTML;
+                    } else {
+                        // Update only quantity input, price input, and total cell
+                        const qtyInput   = existing.querySelector('[data-action="set-qty"]');
+                        const priceInput = existing.querySelector('[data-action="set-price"]');
+                        const totalCell  = existing.querySelector('[data-cell="total"]');
+                        if (document.activeElement !== qtyInput)   qtyInput.value   = item.quantity;
+                        if (document.activeElement !== priceInput) priceInput.value = item.price;
+                        totalCell.textContent = formatCurrency(item.price * item.quantity);
+                    }
+                }
+            });
+
+            // Remove surplus rows (items were deleted)
+            for (let i = cart.length; i < existingRows.length; i++) {
+                existingRows[i].remove();
+            }
 
             document.getElementById('completeSaleBtn').disabled = false;
             document.getElementById('clearCartBtn').style.display = 'inline-block';
@@ -715,8 +813,21 @@
 
         // ─── INVOICE MODAL ────────────────────────────────────────────────────────────
         function showInvoiceModal(invoice) {
-            const isRTL = document.documentElement.dir === 'rtl' || document.documentElement.lang === 'ar';
+            const isRTL  = document.documentElement.dir === 'rtl' || document.documentElement.lang === 'ar';
             const alignment = isRTL ? 'right' : 'left';
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const C = {
+                theadBg:      isDark ? '#0f172a'  : '#f8f9fa',
+                theadColor:   isDark ? '#e2e8f0'  : '#212529',
+                border:       isDark ? '#334155'  : '#dee2e6',
+                mutedColor:   isDark ? '#94a3b8'  : '#6c757d',
+                sectionBg:    isDark ? '#1e293b'  : '#f8f9fa',
+                sectionColor: isDark ? '#e2e8f0'  : '#212529',
+                taxBg:        isDark ? '#1e2d1a'  : '#fef9ee',
+                taxColor:     isDark ? '#6ee7b7'  : '#856404',
+                changeBg:     isDark ? '#451a03'  : '#fff3cd',
+                changeColor:  isDark ? '#fcd34d'  : '#856404',
+            };
 
             const itemsHtml = invoice.items.map(i => `
         <tr>
@@ -730,11 +841,11 @@
             const taxRate = invoice.tax_rate || POS_SETTINGS.taxRate;
 
             const taxRow = (POS_SETTINGS.taxEnabled && taxAmount > 0) ?
-                `<tr style="background-color: #fef9ee;">
-            <td colspan="3" style="padding: 8px; text-align: right; color: #856404;">
+                `<tr style="background-color:${C.taxBg};">
+            <td colspan="3" style="padding:8px;text-align:right;color:${C.taxColor};">
                 ${getTaxName()} (${taxRate}%)
             </td>
-            <td style="padding: 8px; text-align: right; color: #856404;">+${formatCurrency(taxAmount)}</td>
+            <td style="padding:8px;text-align:right;color:${C.taxColor};">+${formatCurrency(taxAmount)}</td>
         </tr>` :
                 '';
 
@@ -760,42 +871,42 @@
                 <span>${new Date().toLocaleString()}</span>
             </div>
         </div>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
-            <thead style="background-color: #f8f9fa;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:15px;color:${C.sectionColor};">
+            <thead style="background-color:${C.theadBg};color:${C.theadColor};">
                 <tr>
-                    <th style="padding: 8px; text-align: ${alignment}; border-bottom: 2px solid #dee2e6;">{{ __('pos.product_name') }}</th>
-                    <th style="padding: 8px; text-align: center; border-bottom: 2px solid #dee2e6;">{{ __('pos.quantity') }}</th>
-                    <th style="padding: 8px; text-align: right; border-bottom: 2px solid #dee2e6;">{{ __('pos.unit_price') }}</th>
-                    <th style="padding: 8px; text-align: right; border-bottom: 2px solid #dee2e6;">{{ __('pos.subtotal') }}</th>
+                    <th style="padding:8px;text-align:${alignment};border-bottom:2px solid ${C.border};color:${C.theadColor};">{{ __('pos.product_name') }}</th>
+                    <th style="padding:8px;text-align:center;border-bottom:2px solid ${C.border};color:${C.theadColor};">{{ __('pos.quantity') }}</th>
+                    <th style="padding:8px;text-align:right;border-bottom:2px solid ${C.border};color:${C.theadColor};">{{ __('pos.unit_price') }}</th>
+                    <th style="padding:8px;text-align:right;border-bottom:2px solid ${C.border};color:${C.theadColor};">{{ __('pos.subtotal') }}</th>
                 </tr>
             </thead>
             <tbody>${itemsHtml}</tbody>
             <tfoot>
-                <tr style="border-top: 1px solid #dee2e6;">
-                    <td colspan="3" style="padding: 8px; text-align: right;">{{ __('pos.subtotal') }}</td>
-                    <td style="padding: 8px; text-align: right;">${formatCurrency(invoice.subtotal || invoice.total)}</td>
+                <tr style="border-top:1px solid ${C.border};color:${C.sectionColor};">
+                    <td colspan="3" style="padding:8px;text-align:right;">{{ __('pos.subtotal') }}</td>
+                    <td style="padding:8px;text-align:right;">${formatCurrency(invoice.subtotal || invoice.total)}</td>
                 </tr>
                 ${discRow}
                 ${taxRow}
-                <tr style="background-color: #1e293b; color: white; font-weight: bold;">
-                    <td colspan="3" style="padding: 10px; text-align: right;">{{ __('pos.total') }}</td>
-                    <td style="padding: 10px; text-align: right;">${formatCurrency(invoice.final_total)}</td>
+                <tr style="background-color:#1e293b;color:#fff;font-weight:bold;">
+                    <td colspan="3" style="padding:10px;text-align:right;">{{ __('pos.total') }}</td>
+                    <td style="padding:10px;text-align:right;">${formatCurrency(invoice.final_total)}</td>
                 </tr>
             </tfoot>
         </table>
-        <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; font-size: 13px;">
-            <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
-                <span style="color:#6c757d;">{{ app()->getLocale() === 'ar' ? 'طريقة الدفع' : 'Payment Method' }}</span>
-                <span style="font-weight:600;">${getPaymentMethodText(invoice.payment_method)}</span>
+        <div style="margin-top:15px;padding:12px;background:${C.sectionBg};border-radius:8px;font-size:13px;color:${C.sectionColor};">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span style="color:${C.mutedColor};">{{ app()->getLocale() === 'ar' ? 'طريقة الدفع' : 'Payment Method' }}</span>
+                <span style="font-weight:600;color:${C.sectionColor};">${getPaymentMethodText(invoice.payment_method)}</span>
             </div>
             ${invoice.payment_method === 'cash' && invoice.cash_received != null ? `
-            <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#198754;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;color:#198754;">
                 <span style="font-weight:600;">{{ app()->getLocale() === 'ar' ? '💵 المبلغ المدفوع' : '💵 Cash Received' }}</span>
-                <span style="font-weight:700; font-size:15px;">${formatCurrency(invoice.cash_received)}</span>
+                <span style="font-weight:700;font-size:15px;">${formatCurrency(invoice.cash_received)}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; padding:8px; background:#fff3cd; border-radius:6px; font-weight:700;">
-                <span style="color:#856404;">{{ app()->getLocale() === 'ar' ? '🔄 الباقي للزبون' : '🔄 Change Due' }}</span>
-                <span style="color:#856404; font-size:16px;">${formatCurrency(invoice.change_amount ?? 0)}</span>
+            <div style="display:flex;justify-content:space-between;padding:8px;background:${C.changeBg};border-radius:6px;font-weight:700;">
+                <span style="color:${C.changeColor};">{{ app()->getLocale() === 'ar' ? '🔄 الباقي للزبون' : '🔄 Change Due' }}</span>
+                <span style="color:${C.changeColor};font-size:16px;">${formatCurrency(invoice.change_amount ?? 0)}</span>
             </div>
             ` : ''}
         </div>
