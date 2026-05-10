@@ -62,12 +62,10 @@ class SessionSecurity
 
     private function fingerprint(Request $request): string
     {
-        // HMAC with the app key makes fingerprints application-specific and
-        // prevents an attacker who controls user-agent/IP from forging a match.
+        // IP prefix only — User-Agent excluded because the same user legitimately
+        // switches between phone and desktop, which would trigger false positives.
         return hash_hmac(
             'sha256',
-            $request->userAgent() . '|' .
-            // First 3 octets only — tolerates small DHCP changes within same network
             \implode('.', \array_slice(\explode('.', $request->ip()), 0, 3)),
             config('app.key')
         );
