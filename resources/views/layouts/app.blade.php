@@ -28,7 +28,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap"
             rel="stylesheet">
     @endif
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v={{ filemtime(public_path('css/styles.css')) }}">
 
     {{-- Apply saved theme before first paint to avoid flash --}}
     <script @nonce>
