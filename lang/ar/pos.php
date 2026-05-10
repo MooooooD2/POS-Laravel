@@ -220,6 +220,8 @@ return [
     'filter'                       => 'تصفية',
     'print'                        => 'طباعة',
     'export'                       => 'تصدير',
+    'export_csv'                   => 'تصدير CSV',
+    'export_pdf'                   => 'تصدير PDF',
     'loading'                      => 'جاري التحميل...',
     'confirm_delete'               => 'هل أنت متأكد من الحذف؟',
     'success'                      => 'تمت العملية بنجاح',

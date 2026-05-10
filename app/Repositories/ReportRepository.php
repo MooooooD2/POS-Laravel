@@ -6,7 +6,7 @@ use App\Models\Account;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\SalesReturn;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -40,6 +40,14 @@ class ReportRepository extends BaseRepository implements ReportRepositoryInterfa
         return compact('invoices', 'totals', 'byPayment', 'topProducts');
     }
 
+    public function salesReportAll(string $start, string $end, array $filters): Collection
+    {
+        $base = Invoice::where('status', 'completed')->whereBetween('created_at', [$start, $end]);
+        if (!empty($filters['payment_method'])) $base->where('payment_method', $filters['payment_method']);
+        if (!empty($filters['cashier_id']))      $base->where('cashier_id', $filters['cashier_id']);
+        return (clone $base)->orderByDesc('created_at')->get();
+    }
+
     public function returnsReport(string $start, string $end, ?string $status): array
     {
         $query = SalesReturn::whereBetween('return_date', [$start, $end]);
@@ -63,6 +71,13 @@ class ReportRepository extends BaseRepository implements ReportRepositoryInterfa
         $returns = (clone $query)->with(['items'])->orderByDesc('return_date')->paginate(50);
 
         return compact('returns', 'totals', 'topReturnedProducts');
+    }
+
+    public function returnsReportAll(string $start, string $end, ?string $status): Collection
+    {
+        $query = SalesReturn::whereBetween('return_date', [$start, $end]);
+        if ($status) $query->where('status', $status);
+        return (clone $query)->orderByDesc('return_date')->get();
     }
 
     public function stockReport(): array
@@ -178,7 +193,7 @@ class ReportRepository extends BaseRepository implements ReportRepositoryInterfa
         ];
     }
 
-    private function topProducts(string $start, string $end, int $limit): \Illuminate\Support\Collection
+    private function topProducts(string $start, string $end, int $limit): Collection
     {
         return DB::table('invoice_items')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')

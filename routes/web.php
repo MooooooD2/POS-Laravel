@@ -3,6 +3,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
 // ── Auth ──────────────────────────────────────────────────────────────────
@@ -35,7 +36,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/financial-reports', fn() => view('financial-reports.index'))->name('financial-reports');
         Route::get('/settings', fn() => view('settings.index'))->name('settings');
     });
-    Route::middleware(['permission:view_reports'])->get('/reports', fn() => view('reports.index'))->name('reports');
+    Route::middleware(['permission:view_reports'])->group(function () {
+        Route::get('/reports', fn() => view('reports.index'))->name('reports');
+        Route::get('/reports/export/sales',   [ReportController::class, 'exportSales'])->name('reports.export.sales');
+        Route::get('/reports/export/returns', [ReportController::class, 'exportReturns'])->name('reports.export.returns');
+        Route::get('/reports/export/stock',   [ReportController::class, 'exportStock'])->name('reports.export.stock');
+    });
     Route::middleware(['permission:manage_roles'])->get('/roles', fn() => view('roles.index'))->name('roles');
 });
 

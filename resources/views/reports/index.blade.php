@@ -47,9 +47,17 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <button class="btn btn-primary w-100" data-fn="loadSalesReport">
+                            <button class="btn btn-primary w-100 mb-2" data-fn="loadSalesReport">
                                 <i class="fas fa-search me-1"></i>{{ __('pos.filter') }}
                             </button>
+                            <div class="btn-group w-100">
+                                <button class="btn btn-sm btn-outline-success flex-fill" data-export-type="sales" data-export-format="csv">
+                                    <i class="fas fa-file-csv me-1"></i>{{ __('pos.export_csv') }}
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger flex-fill" data-export-type="sales" data-export-format="pdf">
+                                    <i class="fas fa-file-pdf me-1"></i>{{ __('pos.export_pdf') }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -99,11 +107,12 @@
                                             <th>{{ __('pos.final') }}</th>
                                             <th>{{ __('pos.payment_method') }}</th>
                                             <th>{{ __('pos.date') }}</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody id="salesInvoicesBody">
                                         <tr>
-                                            <td colspan="6" class="text-center text-muted py-4">{{ __('pos.filter') }}
+                                            <td colspan="7" class="text-center text-muted py-4">{{ __('pos.filter') }}
                                                 to load</td>
                                         </tr>
                                     </tbody>
@@ -162,9 +171,17 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <button class="btn btn-primary w-100" data-fn="loadReturnsReport">
+                            <button class="btn btn-primary w-100 mb-2" data-fn="loadReturnsReport">
                                 <i class="fas fa-search me-1"></i>{{ __('pos.filter') }}
                             </button>
+                            <div class="btn-group w-100">
+                                <button class="btn btn-sm btn-outline-success flex-fill" data-export-type="returns" data-export-format="csv">
+                                    <i class="fas fa-file-csv me-1"></i>{{ __('pos.export_csv') }}
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger flex-fill" data-export-type="returns" data-export-format="pdf">
+                                    <i class="fas fa-file-pdf me-1"></i>{{ __('pos.export_pdf') }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -209,11 +226,12 @@
                                             <th>{{ __('pos.reason') }}</th>
                                             <th>{{ __('pos.status') }}</th>
                                             <th>{{ __('pos.return_date') }}</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody id="returnsBody">
                                         <tr>
-                                            <td colspan="7" class="text-center text-muted py-4">
+                                            <td colspan="8" class="text-center text-muted py-4">
                                                 {{ __('pos.select_date_range') }}</td>
                                         </tr>
                                     </tbody>
@@ -274,10 +292,20 @@
             </div>
 
             <div class="card">
-                <div class="card-header d-flex justify-content-between">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <span>{{ __('pos.stock_report') }}</span>
-                    <input type="text" class="form-control form-control-sm" style="width:200px" id="stockSearch"
-                        placeholder="{{ __('pos.search') }}..." data-on-input="filterStock">
+                    <div class="d-flex gap-2">
+                        <input type="text" class="form-control form-control-sm" style="width:180px" id="stockSearch"
+                            placeholder="{{ __('pos.search') }}..." data-on-input="filterStock">
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-success" data-export-type="stock" data-export-format="csv">
+                                <i class="fas fa-file-csv me-1"></i>{{ __('pos.export_csv') }}
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" data-export-type="stock" data-export-format="pdf">
+                                <i class="fas fa-file-pdf me-1"></i>{{ __('pos.export_pdf') }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -309,6 +337,8 @@
 @push('scripts')
     <script @nonce>
         let stockData = [];
+        let salesInvoiceMap = {};
+        let returnsMap = {};
 
         async function loadSalesReport() {
             const start = document.getElementById('salesStart').value;
@@ -323,13 +353,15 @@
 
             // Show stats
             document.getElementById('salesStats').style.removeProperty('display');
-            document.getElementById('statTotal').textContent = formatCurrency(res.total_revenue);
-            document.getElementById('statCount').textContent = res.total_count;
-            document.getElementById('statCash').textContent = formatCurrency(res.by_payment?.cash?.total || 0);
-            document.getElementById('statCard').textContent = formatCurrency(res.by_payment?.card?.total || 0);
+            document.getElementById('statTotal').textContent = formatCurrency(res.totals?.total_revenue);
+            document.getElementById('statCount').textContent = res.totals?.total_count ?? 0;
+            document.getElementById('statCash').textContent = formatCurrency(res.byPayment?.cash?.total || 0);
+            document.getElementById('statCard').textContent = formatCurrency(res.byPayment?.card?.total || 0);
 
             // Invoices
             const invoiceList = res.invoices?.data || [];
+            salesInvoiceMap = {};
+            invoiceList.forEach(inv => salesInvoiceMap[inv.id] = inv);
             document.getElementById('salesInvoicesBody').innerHTML = invoiceList.length ?
                 invoiceList.map(inv => `
             <tr>
@@ -339,12 +371,13 @@
                 <td class="fw-semibold">${formatCurrency(inv.final_total)}</td>
                 <td><span class="badge bg-secondary">${inv.payment_method}</span></td>
                 <td class="text-muted small">${formatDate(inv.created_at)}</td>
+                <td><button class="btn btn-xs btn-outline-secondary py-0 px-1" data-print-type="invoice" data-print-id="${inv.id}" title="{{ __('pos.print') }}"><i class="fas fa-print"></i></button></td>
             </tr>`).join('') :
-                '<tr><td colspan="6" class="text-center text-muted py-3">{{ __('pos.no_data') }}</td></tr>';
+                '<tr><td colspan="7" class="text-center text-muted py-3">{{ __('pos.no_data') }}</td></tr>';
 
             // Top products
-            document.getElementById('salesTopBody').innerHTML = (res.top_products || []).length ?
-                res.top_products.map((p, i) => `
+            document.getElementById('salesTopBody').innerHTML = (res.topProducts || []).length ?
+                res.topProducts.map((p, i) => `
             <tr>
                 <td><span class="badge bg-secondary me-1">${i+1}</span>${p.product_name}</td>
                 <td>${p.total_qty}</td>
@@ -365,13 +398,16 @@
             });
 
             // Update stats
-            document.getElementById('returnsTotal').textContent = formatCurrency(res.total_returned);
-            document.getElementById('returnsCount').textContent = res.total_count;
-            document.getElementById('returnsAvg').textContent = formatCurrency(res.total_count > 0 ? res
-                .total_returned / res.total_count : 0);
+            const retTotal = res.totals?.total_returned ?? 0;
+            const retCount = res.totals?.total_count ?? 0;
+            document.getElementById('returnsTotal').textContent = formatCurrency(retTotal);
+            document.getElementById('returnsCount').textContent = retCount;
+            document.getElementById('returnsAvg').textContent = formatCurrency(retCount > 0 ? retTotal / retCount : 0);
 
             // Returns table
             const returnList = res.returns?.data || [];
+            returnsMap = {};
+            returnList.forEach(ret => returnsMap[ret.id] = ret);
             document.getElementById('returnsBody').innerHTML = returnList.length ?
                 returnList.map(ret => `
             <tr>
@@ -382,13 +418,14 @@
                 <td>${ret.reason || '-'}</td>
                 <td><span class="badge ${ret.status === 'completed' ? 'bg-success' : 'bg-secondary'}">${ret.status}</span></td>
                 <td class="text-muted small">${formatDate(ret.return_date)}</td>
+                <td><button class="btn btn-xs btn-outline-secondary py-0 px-1" data-print-type="return" data-print-id="${ret.id}" title="{{ __('pos.print') }}"><i class="fas fa-print"></i></button></td>
             </tr>`).join('') :
-                '<tr><td colspan="7" class="text-center text-muted py-3">{{ __('pos.no_data') }}</td></tr>';
+                '<tr><td colspan="8" class="text-center text-muted py-3">{{ __('pos.no_data') }}</td></tr>';
 
 
             // Top returned products
-            document.getElementById('returnsTopBody').innerHTML = (res.top_returned_products || []).length ?
-                res.top_returned_products.map((p, i) => `
+            document.getElementById('returnsTopBody').innerHTML = (res.topReturnedProducts || []).length ?
+                res.topReturnedProducts.map((p, i) => `
             <tr>
                 <td><span class="badge bg-secondary me-1">${i+1}</span>${p.product_name}</td>
                 <td class="text-danger">${p.total_qty}</td>
@@ -437,6 +474,176 @@
             </tr>`).join('') :
                 '<tr><td colspan="7" class="text-center text-muted py-4">{{ __('pos.no_data') }}</td></tr>';
         }
+        document.addEventListener('click', function (e) {
+            const exportBtn = e.target.closest('[data-export-type]');
+            if (exportBtn) {
+                const type   = exportBtn.dataset.exportType;
+                const format = exportBtn.dataset.exportFormat;
+                const params = new URLSearchParams({ format });
+                if (type === 'sales') {
+                    params.set('start_date', document.getElementById('salesStart').value);
+                    params.set('end_date',   document.getElementById('salesEnd').value);
+                    const pay = document.getElementById('salesPayment').value;
+                    if (pay) params.set('payment_method', pay);
+                } else if (type === 'returns') {
+                    params.set('start_date', document.getElementById('returnsStart').value);
+                    params.set('end_date',   document.getElementById('returnsEnd').value);
+                    const st = document.getElementById('returnsStatus').value;
+                    if (st) params.set('status', st);
+                }
+                const url = `/reports/export/${type}?${params}`;
+                format === 'pdf' ? window.open(url, '_blank') : (window.location.href = url);
+                return;
+            }
+
+            const printBtn = e.target.closest('[data-print-type]');
+            if (printBtn) {
+                const type = printBtn.dataset.printType;
+                const id   = printBtn.dataset.printId;
+                if (type === 'invoice') {
+                    const inv = salesInvoiceMap[id];
+                    if (inv) openPrintWindow(generateInvoicePrintHtml(inv));
+                } else if (type === 'return') {
+                    const ret = returnsMap[id];
+                    if (ret) openPrintWindow(generateReturnPrintHtml(ret));
+                }
+            }
+        });
+
+        function openPrintWindow(html) {
+            const w = window.open('', '_blank', 'width=420,height=700');
+            w.document.write(html);
+            w.document.close();
+            w.focus();
+            w.print();
+            w.onafterprint = () => w.close();
+        }
+
+        function receiptStyles(dir) {
+            const align = dir === 'rtl' ? 'right' : 'left';
+            return `
+                body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;font-size:13px;line-height:1.4;margin:0;padding:15px;background:#fff;max-width:350px;margin:0 auto}
+                .box{border:1px solid #ddd;padding:12px;border-radius:5px}
+                .hdr{text-align:center;margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed #aaa}
+                .store{font-size:17px;font-weight:bold}
+                .title{font-size:13px;font-weight:bold;margin-top:4px}
+                .row{display:flex;justify-content:space-between;margin:3px 0;font-size:12px}
+                table{width:100%;border-collapse:collapse;margin:10px 0}
+                th{background:#f2f2f2;padding:5px 4px;font-size:11px;border-bottom:1px solid #aaa;text-align:${align}}
+                td{padding:5px 4px;border-bottom:1px solid #eee;font-size:12px}
+                .totals{border-top:1px solid #ccc;margin-top:4px}
+                .grand{font-weight:bold;border-top:2px solid #333}
+                .ftr{text-align:center;margin-top:12px;font-size:11px;color:#555;border-top:1px dashed #aaa;padding-top:8px}
+                @media print{body{padding:0}.box{border:none;padding:0}}`;
+        }
+
+        function generateInvoicePrintHtml(inv) {
+            const isRTL  = document.documentElement.dir === 'rtl';
+            const dir    = isRTL ? 'rtl' : 'ltr';
+            const rAlign = 'right';
+            const lAlign = isRTL ? 'right' : 'left';
+            const date   = inv.created_at ? new Date(inv.created_at).toLocaleString(isRTL ? 'ar-EG' : 'en-EG') : '';
+            const items  = Array.isArray(inv.items) ? inv.items : [];
+
+            const itemRows = items.map(it => `
+                <tr>
+                    <td style="text-align:${lAlign}">${escapeHtml(it.product_name)}</td>
+                    <td style="text-align:center">${it.quantity}</td>
+                    <td style="text-align:${rAlign}">${formatCurrency(it.price)}</td>
+                    <td style="text-align:${rAlign}">${formatCurrency(it.subtotal)}</td>
+                </tr>`).join('');
+
+            const discountRow = inv.discount > 0 ? `
+                <tr><td colspan="3" style="text-align:${rAlign};color:#d9534f">${isRTL?'الخصم':'Discount'}</td>
+                <td style="text-align:${rAlign};color:#d9534f">-${formatCurrency(inv.discount)}</td></tr>` : '';
+
+            const taxRow = inv.tax_amount > 0 ? `
+                <tr><td colspan="3" style="text-align:${rAlign}">${isRTL?'الضريبة':'Tax'}</td>
+                <td style="text-align:${rAlign}">${formatCurrency(inv.tax_amount)}</td></tr>` : '';
+
+            const cashRows = inv.payment_method === 'cash' && inv.cash_received != null ? `
+                <tr><td colspan="3" style="text-align:${rAlign};font-weight:bold">${isRTL?'المدفوع':'Paid'}</td>
+                <td style="text-align:${rAlign};color:#198754;font-weight:bold">${formatCurrency(inv.cash_received)}</td></tr>
+                <tr style="background:#fff3cd"><td colspan="3" style="text-align:${rAlign};font-weight:bold">${isRTL?'الباقي':'Change'}</td>
+                <td style="text-align:${rAlign};font-weight:bold;color:#856404">${formatCurrency(inv.change_amount ?? 0)}</td></tr>` : '';
+
+            return `<!DOCTYPE html><html dir="${dir}"><head><meta charset="utf-8">
+                <title>${inv.invoice_number}</title><style>${receiptStyles(dir)}</style></head><body>
+                <div class="box">
+                    <div class="hdr">
+                        <div class="store">{{ __('pos.sales_report') }}</div>
+                        <div class="title">${isRTL?'رقم الفاتورة':'Invoice No'}: ${escapeHtml(inv.invoice_number)}</div>
+                    </div>
+                    <div class="row"><span>${isRTL?'التاريخ':'Date'}:</span><span>${escapeHtml(date)}</span></div>
+                    <div class="row"><span>${isRTL?'أمين الصندوق':'Cashier'}:</span><span>${escapeHtml(inv.cashier_name||'-')}</span></div>
+                    <table>
+                        <thead><tr>
+                            <th>${isRTL?'المنتج':'Product'}</th>
+                            <th style="text-align:center">${isRTL?'الكمية':'Qty'}</th>
+                            <th style="text-align:${rAlign}">${isRTL?'السعر':'Price'}</th>
+                            <th style="text-align:${rAlign}">${isRTL?'الإجمالي':'Total'}</th>
+                        </tr></thead>
+                        <tbody>${itemRows}</tbody>
+                    </table>
+                    <table class="totals">
+                        <tr><td colspan="3" style="text-align:${rAlign}">${isRTL?'المجموع الفرعي':'Subtotal'}</td>
+                            <td style="text-align:${rAlign}">${formatCurrency(inv.total)}</td></tr>
+                        ${discountRow}${taxRow}
+                        <tr class="grand"><td colspan="3" style="text-align:${rAlign}">${isRTL?'الإجمالي النهائي':'Grand Total'}</td>
+                            <td style="text-align:${rAlign}">${formatCurrency(inv.final_total)}</td></tr>
+                        ${cashRows}
+                    </table>
+                    <div class="row"><span>${isRTL?'طريقة الدفع':'Payment'}:</span><span>${escapeHtml(inv.payment_method||'-')}</span></div>
+                    <div class="ftr"><div style="font-weight:bold">${isRTL?'شكراً لتسوقكم معنا':'Thank you for shopping with us'}</div></div>
+                </div></body></html>`;
+        }
+
+        function generateReturnPrintHtml(ret) {
+            const isRTL  = document.documentElement.dir === 'rtl';
+            const dir    = isRTL ? 'rtl' : 'ltr';
+            const rAlign = 'right';
+            const lAlign = isRTL ? 'right' : 'left';
+            const date   = ret.return_date ? new Date(ret.return_date).toLocaleDateString(isRTL ? 'ar-EG' : 'en-EG') : '';
+            const items  = Array.isArray(ret.items) ? ret.items : [];
+
+            const itemRows = items.map(it => `
+                <tr>
+                    <td style="text-align:${lAlign}">${escapeHtml(it.product_name)}</td>
+                    <td style="text-align:center">${it.quantity}</td>
+                    <td style="text-align:${rAlign}">${formatCurrency(it.price)}</td>
+                    <td style="text-align:${rAlign}">${formatCurrency(it.subtotal)}</td>
+                </tr>`).join('');
+
+            return `<!DOCTYPE html><html dir="${dir}"><head><meta charset="utf-8">
+                <title>${ret.return_number}</title><style>${receiptStyles(dir)}</style></head><body>
+                <div class="box">
+                    <div class="hdr">
+                        <div class="store">{{ __('pos.Returns Report') }}</div>
+                        <div class="title">${isRTL?'رقم المرتجع':'Return No'}: ${escapeHtml(ret.return_number)}</div>
+                    </div>
+                    <div class="row"><span>${isRTL?'الفاتورة الأصلية':'Original Invoice'}:</span><span>${escapeHtml(ret.invoice_number||'-')}</span></div>
+                    <div class="row"><span>${isRTL?'العميل':'Customer'}:</span><span>${escapeHtml(ret.customer_name||'Walk-in')}</span></div>
+                    <div class="row"><span>${isRTL?'التاريخ':'Date'}:</span><span>${escapeHtml(date)}</span></div>
+                    ${ret.reason ? `<div class="row"><span>${isRTL?'السبب':'Reason'}:</span><span>${escapeHtml(ret.reason)}</span></div>` : ''}
+                    <table>
+                        <thead><tr>
+                            <th>${isRTL?'المنتج':'Product'}</th>
+                            <th style="text-align:center">${isRTL?'الكمية':'Qty'}</th>
+                            <th style="text-align:${rAlign}">${isRTL?'السعر':'Price'}</th>
+                            <th style="text-align:${rAlign}">${isRTL?'الإجمالي':'Total'}</th>
+                        </tr></thead>
+                        <tbody>${itemRows || `<tr><td colspan="4" style="text-align:center;color:#999">${isRTL?'لا توجد تفاصيل':'No items'}</td></tr>`}</tbody>
+                    </table>
+                    <table class="totals">
+                        <tr class="grand"><td colspan="3" style="text-align:${rAlign}">${isRTL?'إجمالي المرتجع':'Return Total'}</td>
+                            <td style="text-align:${rAlign}">${formatCurrency(ret.total_amount)}</td></tr>
+                    </table>
+                    ${ret.refund_method ? `<div class="row"><span>${isRTL?'طريقة الاسترداد':'Refund Method'}:</span><span>${escapeHtml(ret.refund_method)}</span></div>` : ''}
+                    <div class="row"><span>${isRTL?'الحالة':'Status'}:</span><span>${escapeHtml(ret.status)}</span></div>
+                    <div class="ftr"><div style="font-weight:bold">${isRTL?'تم استلام المرتجع بنجاح':'Return processed successfully'}</div></div>
+                </div></body></html>`;
+        }
+
         loadSalesReport();
     </script>
 @endpush

@@ -18,9 +18,25 @@ class ReportService
         return $this->reportRepo->salesReport($start, $end, $filters);
     }
 
+    public function salesReportForExport(array $filters): \Illuminate\Support\Collection
+    {
+        $start = $filters['start_date'];
+        $end   = $filters['end_date'] . ' 23:59:59';
+        return $this->reportRepo->salesReportAll($start, $end, $filters);
+    }
+
     public function returnsReport(array $filters): array
     {
         return $this->reportRepo->returnsReport(
+            $filters['start_date'],
+            $filters['end_date'],
+            $filters['status'] ?? null
+        );
+    }
+
+    public function returnsReportForExport(array $filters): \Illuminate\Support\Collection
+    {
+        return $this->reportRepo->returnsReportAll(
             $filters['start_date'],
             $filters['end_date'],
             $filters['status'] ?? null
