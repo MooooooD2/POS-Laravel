@@ -217,7 +217,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>
                         <i class="fas fa-shopping-cart me-2 text-primary"></i>
-                        <span id="cartTitle">{{ __('pos.cart_empty') }}</span>
+                        <span id="cartTitle">{{ __('pos.cart') }}</span>
                     </span>
                     <div class="d-flex gap-2 align-items-center">
                         <span class="badge bg-primary rounded-pill" id="cartCount">0</span>

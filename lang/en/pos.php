@@ -44,6 +44,7 @@ return [
     'search_product' => 'Search Product',
     'add_to_cart' => 'Add to Cart',
     'cart_empty' => 'Cart is empty',
+    'cart'=>'Cart',
     'product_not_found' => 'Product not found',
     'invoice_not_found'       => 'Invoice not found',
     'invoice_creation_failed' => 'An error occurred while creating the invoice.',

@@ -50,6 +50,7 @@ return [
     'search_product'    => 'بحث عن منتج',
     'add_to_cart'       => 'إضافة للسلة',
     'cart_empty'        => 'السلة فارغة',
+    'cart'=>'السلة',
     'product_not_found' => 'المنتج غير موجود',
     'invoice_not_found' => 'الفاتورة غير موجودة',
     'insufficient_stock'=> 'المخزون غير كافٍ للمنتج: :name',
