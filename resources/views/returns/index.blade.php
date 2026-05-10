@@ -28,7 +28,7 @@
                     <div class="input-group">
                         <input type="text" class="form-control" id="returnInvoiceNum"
                             placeholder="INV-20240101-0001">
-                        <button class="btn btn-outline-primary" onclick="findInvoice()">
+                        <button class="btn btn-outline-primary" data-fn="findInvoice">
                             <i class="fas fa-search"></i> {{ __('pos.search') }}
                         </button>
                     </div>
@@ -78,7 +78,7 @@
                             <label class="form-label fw-semibold">طريقة رد المبلغ *</label>
                             <div class="d-flex gap-3 flex-wrap">
                                 <div class="form-check form-check-inline border rounded p-3 flex-fill text-center"
-                                    style="cursor:pointer" onclick="setRefundMethod('cash', this)">
+                                    style="cursor:pointer" data-fn="setRefundMethod" data-args='["cash"]'>
                                     <input class="form-check-input d-none" type="radio" name="refundMethod"
                                         id="refundCash" value="cash" checked>
                                     <label class="form-check-label" for="refundCash" style="cursor:pointer">
@@ -88,7 +88,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check form-check-inline border rounded p-3 flex-fill text-center"
-                                    style="cursor:pointer" onclick="setRefundMethod('store_credit', this)">
+                                    style="cursor:pointer" data-fn="setRefundMethod" data-args='["store_credit"]'>
                                     <input class="form-check-input d-none" type="radio" name="refundMethod"
                                         id="refundCredit" value="store_credit">
                                     <label class="form-check-label" for="refundCredit" style="cursor:pointer">
@@ -98,7 +98,7 @@
                                     </label>
                                 </div>
                                 <div class="form-check form-check-inline border rounded p-3 flex-fill text-center"
-                                    style="cursor:pointer" onclick="setRefundMethod('exchange', this)">
+                                    style="cursor:pointer" data-fn="setRefundMethod" data-args='["exchange"]'>
                                     <input class="form-check-input d-none" type="radio" name="refundMethod"
                                         id="refundExchange" value="exchange">
                                     <label class="form-check-label" for="refundExchange" style="cursor:pointer">
@@ -121,7 +121,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-warning" id="submitReturnBtn" style="display:none" onclick="submitReturn()">
+                <button class="btn btn-warning" id="submitReturnBtn" style="display:none" data-fn="submitReturn">
                     <i class="fas fa-undo me-1"></i>{{ __('pos.process_return') }}
                 </button>
             </div>
@@ -131,14 +131,14 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 let currentInvoice = null;
 let returnableItems = [];
 
 function setRefundMethod(value, el) {
-    // تحديث الـ radio
-    document.getElementById(`refund${value.charAt(0).toUpperCase() + value.slice(1).replace('_', '')}`).checked = true;
-    document.querySelectorAll('[onclick^="setRefundMethod"]').forEach(d => {
+    const radio = document.querySelector(`input[name="refundMethod"][value="${value}"]`);
+    if (radio) radio.checked = true;
+    document.querySelectorAll('[data-fn="setRefundMethod"]').forEach(d => {
         d.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
     });
     el.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
@@ -182,7 +182,7 @@ async function findInvoice() {
             <td class="text-center fw-semibold">${item.returnable_qty}</td>
             <td style="width:100px">
                 <input type="number" class="form-control form-control-sm" id="retQty${i}"
-                    value="0" min="0" max="${item.returnable_qty}" onchange="updateReturnTotal()">
+                    value="0" min="0" max="${item.returnable_qty}" data-on-change="updateReturnTotal">
             </td>
             <td>${formatCurrency(item.price)}</td>
             <td id="retSubtotal${i}">0.00</td>

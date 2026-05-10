@@ -31,10 +31,10 @@
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span><i class="fas fa-money-bill-wave me-2"></i>{{ __('pos.supplier_payments') }}</span>
         <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-success btn-sm" onclick="exportPaymentsExcel()">
+            <button class="btn btn-success btn-sm" data-fn="exportPaymentsExcel">
                 <i class="fas fa-file-excel me-1"></i>تصدير Excel
             </button>
-            <button class="btn btn-danger btn-sm" onclick="printPaymentsList()">
+            <button class="btn btn-danger btn-sm" data-fn="printPaymentsList">
                 <i class="fas fa-print me-1"></i>طباعة
             </button>
             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#paymentModal">
@@ -45,20 +45,20 @@
     <div class="card-body">
         <div class="row mb-3 g-2">
             <div class="col-md-4">
-                <select class="form-select" id="paySupplierFilter" onchange="loadPayments()">
+                <select class="form-select" id="paySupplierFilter" data-on-change="loadPayments">
                     <option value="">كل الموردين</option>
                 </select>
             </div>
             <div class="col-md-3">
-                <input type="date" class="form-control" id="filterFrom" onchange="loadPayments()"
+                <input type="date" class="form-control" id="filterFrom" data-on-change="loadPayments"
                     placeholder="من تاريخ">
             </div>
             <div class="col-md-3">
-                <input type="date" class="form-control" id="filterTo" onchange="loadPayments()"
+                <input type="date" class="form-control" id="filterTo" data-on-change="loadPayments"
                     placeholder="إلى تاريخ">
             </div>
             <div class="col-md-2">
-                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                <button class="btn btn-outline-secondary w-100" data-fn="clearFilters">
                     <i class="fas fa-times me-1"></i>مسح
                 </button>
             </div>
@@ -96,7 +96,7 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label fw-semibold">المورد *</label>
-                    <select class="form-select" id="paySupplier" onchange="onSupplierSelected()" required>
+                    <select class="form-select" id="paySupplier" data-on-change="onSupplierSelected" required>
                         <option value="">-- اختر المورد --</option>
                     </select>
                 </div>
@@ -111,7 +111,7 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold">المبلغ المدفوع *</label>
                     <input type="number" class="form-control" id="payAmount" step="0.01" min="0.01"
-                        placeholder="0.00" oninput="calcRemaining()">
+                        placeholder="0.00" data-on-input="calcRemaining">
                 </div>
                 <div id="remainingAfter" class="alert alert-warning d-none mb-3 p-2">
                     <small>المتبقي بعد الدفع: <strong id="remainingAmount">-</strong></small>
@@ -137,7 +137,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-success" onclick="savePayment()">
+                <button class="btn btn-success" data-fn="savePayment">
                     <i class="fas fa-check me-1"></i>تأكيد الدفع
                 </button>
             </div>
@@ -156,7 +156,7 @@
             <div class="modal-body" id="receiptBody"></div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                <button class="btn btn-primary" onclick="printReceipt()">
+                <button class="btn btn-primary" data-fn="printReceipt">
                     <i class="fas fa-print me-1"></i>طباعة الإيصال
                 </button>
             </div>
@@ -166,10 +166,12 @@
 @endsection
 
 @push('scripts')
-<script>
-let suppliers    = [];
-let allPayments  = [];
-let suppStats    = {};
+<script @nonce>
+let suppliers          = [];
+let allPayments        = [];
+let suppStats          = {};
+let renderedPayments   = [];
+let renderedPaySuppliers = [];
 
 async function init() {
     const res  = await apiCall('{{ route("suppliers.all") }}?all=1');
@@ -231,9 +233,11 @@ async function loadPayments() {
     document.getElementById('lastPaymentDate').textContent     =
         pays.length ? formatDate(pays[0].payment_date) : '-';
 
+    renderedPayments    = pays;
+    renderedPaySuppliers = pays.map(p => suppliers.find(s => s.id == p.supplier_id) || {});
     document.getElementById('paymentsBody').innerHTML = pays.length
-        ? pays.map(p => {
-            const supp = suppliers.find(s => s.id == p.supplier_id) || {};
+        ? pays.map((p, i) => {
+            const supp = renderedPaySuppliers[i];
             return `<tr>
                 <td><span class="badge bg-success">${p.payment_number}</span></td>
                 <td class="fw-semibold">${escapeHtml(p.supplier_name)}</td>
@@ -244,7 +248,7 @@ async function loadPayments() {
                 <td class="text-muted small">${p.notes||'-'}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary" title="طباعة الإيصال"
-                        onclick="showReceipt(${JSON.stringify(p).replace(/"/g,'&quot;')}, ${JSON.stringify(supp).replace(/"/g,'&quot;')})">
+                        data-action="show-receipt" data-pay-idx="${i}">
                         <i class="fas fa-print"></i>
                     </button>
                 </td>
@@ -252,6 +256,13 @@ async function loadPayments() {
         }).join('')
         : '<tr><td colspan="8" class="text-center text-muted py-4">{{ __("pos.no_data") }}</td></tr>';
 }
+
+document.getElementById('paymentsBody').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action="show-receipt"]');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.payIdx);
+    showReceipt(renderedPayments[idx], renderedPaySuppliers[idx]);
+});
 
 function clearFilters() {
     document.getElementById('paySupplierFilter').value = '';

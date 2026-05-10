@@ -36,10 +36,10 @@
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span><i class="fas fa-truck me-2"></i>{{ __('pos.suppliers') }}</span>
         <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-success btn-sm" onclick="exportSuppliersExcel()">
+            <button class="btn btn-success btn-sm" data-fn="exportSuppliersExcel">
                 <i class="fas fa-file-excel me-1"></i>تصدير Excel
             </button>
-            <button class="btn btn-danger btn-sm" onclick="printSuppliersList()">
+            <button class="btn btn-danger btn-sm" data-fn="printSuppliersList">
                 <i class="fas fa-print me-1"></i>طباعة
             </button>
             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#supplierModal">
@@ -51,7 +51,7 @@
         <div class="row mb-3">
             <div class="col-md-4">
                 <input type="text" class="form-control" id="supplierSearch"
-                    placeholder="{{ __('pos.search') }}..." oninput="filterSuppliers()">
+                    placeholder="{{ __('pos.search') }}..." data-on-input="filterSuppliers">
             </div>
         </div>
         <div class="table-responsive">
@@ -104,7 +104,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-primary" onclick="saveSupplier()">{{ __('pos.save') }}</button>
+                <button class="btn btn-primary" data-fn="saveSupplier">{{ __('pos.save') }}</button>
             </div>
         </div>
     </div>
@@ -121,7 +121,7 @@
             <div class="modal-body" id="supplierCardBody"></div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                <button class="btn btn-primary" onclick="printSupplierCard()">
+                <button class="btn btn-primary" data-fn="printSupplierCard">
                     <i class="fas fa-print me-1"></i>طباعة
                 </button>
             </div>
@@ -131,9 +131,10 @@
 @endsection
 
 @push('scripts')
-<script>
-let allSuppliers   = [];
-let suppliersStats = {};
+<script @nonce>
+let allSuppliers      = [];
+let suppliersStats    = {};
+let renderedSuppliers = [];
 
 async function loadSuppliers() {
     const res = await apiCall('{{ route("suppliers.all") }}?all=1');
@@ -168,6 +169,7 @@ function filterSuppliers() {
 }
 
 function renderSuppliers(suppliers) {
+    renderedSuppliers = suppliers;
     document.getElementById('suppliersBody').innerHTML = suppliers.length
         ? suppliers.map((s, i) => {
             const st  = suppliersStats[s.id] || {};
@@ -185,7 +187,7 @@ function renderSuppliers(suppliers) {
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-info" title="بطاقة المورد"
-                            onclick="viewSupplierCard(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+                            data-action="view-card" data-idx="${i}">
                             <i class="fas fa-id-card"></i>
                         </button>
                         <a href="{{ route('supplier-accounts') }}?supplier=${s.id}"
@@ -193,11 +195,11 @@ function renderSuppliers(suppliers) {
                             <i class="fas fa-balance-scale"></i>
                         </a>
                         <button class="btn btn-primary" title="تعديل"
-                            onclick="editSupplier(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+                            data-action="edit" data-idx="${i}">
                             <i class="fas fa-edit"></i>
                         </button>
                         <button class="btn btn-danger" title="حذف"
-                            onclick="deleteSupplier(${s.id})">
+                            data-action="delete" data-id="${s.id}">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -325,6 +327,15 @@ async function deleteSupplier(id) {
     if (res.success) { showToast('{{ __("pos.success") }}'); loadSuppliers(); }
     else showToast(res.message,'danger');
 }
+
+document.getElementById('suppliersBody').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === 'view-card') viewSupplierCard(renderedSuppliers[parseInt(btn.dataset.idx)]);
+    else if (action === 'edit')   editSupplier(renderedSuppliers[parseInt(btn.dataset.idx)]);
+    else if (action === 'delete') deleteSupplier(parseInt(btn.dataset.id));
+});
 
 document.getElementById('supplierModal').addEventListener('show.bs.modal', e => {
     if (!e.relatedTarget) return;

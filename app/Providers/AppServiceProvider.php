@@ -43,6 +43,11 @@ class AppServiceProvider extends AuthServiceProvider
     {
         $this->registerPolicies();
 
+        // Outputs nonce="..." for inline <script> tags to satisfy CSP
+        Blade::directive('nonce', function () {
+            return "<?php echo 'nonce=\"' . (app()->has('csp-nonce') ? app('csp-nonce') : '') . '\"'; ?>";
+        });
+
         // Custom Blade directives for permissions
         Blade::if('permission', function ($permission) {
             return auth()->user() && auth()->user()->can($permission);

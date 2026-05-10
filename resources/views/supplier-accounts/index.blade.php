@@ -13,7 +13,7 @@
             </div>
             <div class="card-body p-2">
                 <input type="text" class="form-control form-control-sm mb-2"
-                    id="suppSearch" placeholder="بحث..." oninput="filterSuppliersList()">
+                    id="suppSearch" placeholder="بحث..." data-on-input="filterSuppliersList">
             </div>
             <div class="list-group list-group-flush" id="suppliersList" style="max-height:70vh;overflow-y:auto;">
                 <div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>
@@ -33,10 +33,10 @@
                             <small class="text-muted" id="acctSupplierPhone">-</small>
                         </div>
                         <div class="col-auto d-flex gap-2">
-                            <button class="btn btn-success btn-sm" onclick="exportAccountExcel()">
+                            <button class="btn btn-success btn-sm" data-fn="exportAccountExcel">
                                 <i class="fas fa-file-excel me-1"></i>Excel
                             </button>
-                            <button class="btn btn-danger btn-sm" onclick="printAccountStatement()">
+                            <button class="btn btn-danger btn-sm" data-fn="printAccountStatement">
                                 <i class="fas fa-print me-1"></i>طباعة كشف الحساب
                             </button>
                         </div>
@@ -72,9 +72,9 @@
                     <span><i class="fas fa-list-alt me-2"></i>كشف الحساب التفصيلي</span>
                     <div class="d-flex gap-2">
                         <input type="date" class="form-control form-control-sm" id="acctFrom"
-                            onchange="filterEntries()" style="width:140px">
+                            data-on-change="filterEntries" style="width:140px">
                         <input type="date" class="form-control form-control-sm" id="acctTo"
-                            onchange="filterEntries()" style="width:140px">
+                            data-on-change="filterEntries" style="width:140px">
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -118,10 +118,11 @@
 @endsection
 
 @push('scripts')
-<script>
-let allSuppliersAcct = [];
-let currentEntries   = [];
-let currentSupplier  = null;
+<script @nonce>
+let allSuppliersAcct     = [];
+let renderedSuppliersAcct = [];
+let currentEntries       = [];
+let currentSupplier      = null;
 
 async function loadSuppliersList() {
     const res        = await apiCall('{{ route("suppliers.all") }}?all=1');
@@ -145,11 +146,12 @@ function filterSuppliersList() {
 }
 
 function renderSuppliersList(suppliers) {
+    renderedSuppliersAcct = suppliers;
     document.getElementById('suppliersList').innerHTML = suppliers.length
-        ? suppliers.map(s => `
+        ? suppliers.map((s, i) => `
             <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
                 id="suppBtn_${s.id}"
-                onclick="loadSupplierAccount(${s.id}, '${escapeHtml(s.name).replace(/'/g,"\\'")}', '${(s.phone||'').replace(/'/g,"\\'")}')">
+                data-action="load-account" data-idx="${i}">
                 <div>
                     <div class="fw-semibold">${escapeHtml(s.name)}</div>
                     <small class="text-muted">${s.phone||'لا يوجد تليفون'}</small>
@@ -179,7 +181,7 @@ async function loadSupplierAccount(id, name, phone) {
     document.getElementById('acctTotalPaid').textContent = formatCurrency(res.total_payment);
     document.getElementById('acctBalance').textContent   = formatCurrency(res.balance);
 
-    currentEntries = res.entries || [];
+    currentEntries = res.entries?.data || res.entries || [];
     filterEntries();
 }
 
@@ -318,6 +320,13 @@ function escapeHtml(str) {
     if (str == null) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 }
+
+document.getElementById('suppliersList').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action="load-account"]');
+    if (!btn) return;
+    const s = renderedSuppliersAcct[parseInt(btn.dataset.idx)];
+    if (s) loadSupplierAccount(s.id, s.name, s.phone||'');
+});
 
 loadSuppliersList();
 </script>

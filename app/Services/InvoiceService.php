@@ -1,32 +1,32 @@
 <?php
 namespace App\Services;
 
+use App\Contracts\Repositories\ProductRepositoryInterface;
+use App\Contracts\Repositories\SettingRepositoryInterface;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
-use App\Models\Product;
-use App\Models\Setting;
+use App\Models\ReturnItem;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
-    public function __construct(private StockService $stockService) {}
+    public function __construct(
+        private StockService               $stockService,
+        private ProductRepositoryInterface $productRepo,
+        private SettingRepositoryInterface $settingRepo,
+    ) {}
 
     public function createInvoice(array $data): Invoice
     {
         return DB::transaction(function () use ($data) {
-            $invoiceNumber = SequenceService::next('invoice', Setting::get('invoice_prefix', 'INV'));
+            $invoiceNumber = SequenceService::next('invoice', $this->settingRepo->get('invoice_prefix', 'INV'));
 
-            // قفل المنتجات لمنع Race Condition
             $productIds = collect($data['items'])->pluck('product_id')->unique()->toArray();
-            $products   = Product::whereIn('id', $productIds)
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
+            $products   = $this->productRepo->lockForUpdate($productIds);
 
-            // التحقق من توفر الكميات
-            $allowNeg = Setting::get('allow_negative_stock', false);
+            $allowNeg = $this->settingRepo->get('allow_negative_stock', false);
             foreach ($data['items'] as $item) {
                 $product = $products->get($item['product_id']);
                 if (!$product) {
@@ -37,14 +37,12 @@ class InvoiceService
                 }
             }
 
-            // حساب الإجمالي من أسعار DB — لا من المستخدم
             $total = 0;
             foreach ($data['items'] as $item) {
                 $total += $products->get($item['product_id'])->price * $item['quantity'];
             }
 
-            // تطبيق حد الخصم الأقصى
-            $maxDiscountPercent = (float) Setting::get('max_discount_percent', env('MAX_DISCOUNT_PERCENT', 20));
+            $maxDiscountPercent = (float) $this->settingRepo->get('max_discount_percent', env('MAX_DISCOUNT_PERCENT', 20));
             $requestedDiscount  = (float) ($data['discount'] ?? 0);
             $maxAllowedDiscount = $total * ($maxDiscountPercent / 100);
 
@@ -64,10 +62,9 @@ class InvoiceService
             $discount      = min($requestedDiscount, $total, $maxAllowedDiscount);
             $afterDiscount = $total - $discount;
 
-            // حساب الضريبة من الإعدادات
-            $taxEnabled   = (bool) Setting::get('tax_enabled', false);
-            $taxRate      = $taxEnabled ? (float) Setting::get('tax_rate', 0) : 0;
-            $taxInclusive = (bool) Setting::get('tax_inclusive', false);
+            $taxEnabled   = (bool) $this->settingRepo->get('tax_enabled', false);
+            $taxRate      = $taxEnabled ? (float) $this->settingRepo->get('tax_rate', 0) : 0;
+            $taxInclusive = (bool) $this->settingRepo->get('tax_inclusive', false);
 
             $taxAmount = 0;
             if ($taxEnabled && $taxRate > 0) {
@@ -78,16 +75,14 @@ class InvoiceService
 
             $finalTotal = $afterDiscount + ($taxInclusive ? 0 : $taxAmount);
 
-            // ── حساب المبلغ المدفوع والباقي ──────────────────────────────────────
             $cashReceived = null;
             $changeAmount = null;
 
             if ($data['payment_method'] === 'cash') {
                 $cashReceived = isset($data['cash_received']) && $data['cash_received'] > 0
                     ? round((float) $data['cash_received'], 2)
-                    : round($finalTotal, 2); // لو ما بعتش cash_received، افترض الزبون دفع بالظبط
+                    : round($finalTotal, 2);
 
-                // التحقق أن المبلغ المستلم كافٍ
                 if ($cashReceived < round($finalTotal, 2)) {
                     throw new \Exception(__('pos.cash_received_insufficient', [
                         'total'    => round($finalTotal, 2),
@@ -97,7 +92,6 @@ class InvoiceService
 
                 $changeAmount = round($cashReceived - $finalTotal, 2);
             }
-            // ────────────────────────────────────────────────────────────────────
 
             $invoice = Invoice::create([
                 'invoice_number' => $invoiceNumber,
@@ -143,19 +137,7 @@ class InvoiceService
 
     public function searchProduct(string $query, bool $exact = false): mixed
     {
-        $query = trim(strip_tags($query));
-        if (!$query) return collect();
-
-        if ($exact) return Product::where('barcode', $query)->where('quantity', '>', 0)->first();
-
-        $exact = Product::where('barcode', $query)->first();
-        if ($exact) return collect([$exact]);
-
-        return Product::where('name', 'like', '%' . $query . '%')
-            ->orWhere('barcode', 'like', '%' . $query . '%')
-            ->orderByDesc('quantity')
-            ->limit(10)
-            ->get();
+        return $this->productRepo->search($query, $exact);
     }
 
     public function getByNumber(string $number): ?Invoice
@@ -165,7 +147,7 @@ class InvoiceService
 
     public function getReturnableItems(Invoice $invoice): array
     {
-        $returned = \App\Models\ReturnItem::whereHas(
+        $returned = ReturnItem::whereHas(
             'salesReturn',
             fn($q) => $q->where('invoice_id', $invoice->id)->where('status', 'completed')
         )->selectRaw('product_id, SUM(quantity) as total_returned')

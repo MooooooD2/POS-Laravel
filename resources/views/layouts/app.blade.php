@@ -7,7 +7,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', __('pos.app_name'))</title>
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
     {{-- Remove default favicon / No icon --}}
     <link rel="icon"
@@ -41,7 +40,7 @@
         <div class="sidebar-brand">
             <i class="fas fa-cash-register me-2"></i>
             {{ __('pos.app_name') }}
-              <button class="btn btn-sm d-md-none ms-auto" onclick="toggleSidebar()" 
+              <button class="btn btn-sm d-md-none ms-auto" data-fn="toggleSidebar"
             style="background:none; border:none; color:inherit; opacity:0.7; padding:0; line-height:1;">
         <i class="fas fa-times fa-lg"></i>
     </button>
@@ -138,7 +137,7 @@
         {{-- Topbar --}}
         <div id="topbar">
             <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-sm btn-outline-secondary d-md-none" onclick="toggleSidebar()">
+                <button class="btn btn-sm btn-outline-secondary d-md-none" data-fn="toggleSidebar">
                     <i class="fas fa-bars"></i>
                 </button>
                 <h6 class="mb-0 fw-semibold">@yield('page-title', __('pos.dashboard'))</h6>
@@ -148,7 +147,7 @@
                 <div class="dropdown" id="stockNotifDropdown">
                     <button class="btn btn-sm btn-outline-secondary position-relative" id="stockBellBtn"
                         data-bs-toggle="dropdown" data-bs-auto-close="outside"
-                        onclick="loadStockAlerts()" title="{{ app()->getLocale() === 'ar' ? 'تنبيهات المخزون' : 'Stock Alerts' }}">
+                        data-fn="loadStockAlerts" title="{{ app()->getLocale() === 'ar' ? 'تنبيهات المخزون' : 'Stock Alerts' }}">
                         <i class="fas fa-bell"></i>
                         <span id="stockBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
                             style="font-size:0.6rem"></span>
@@ -242,7 +241,7 @@
     {{-- Bootstrap JS --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
+    <script @nonce>
         // CSRF token for AJAX - رمز CSRF لطلبات AJAX
         const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const LOCALE = '{{ app()->getLocale() }}';
@@ -356,9 +355,40 @@ window.addEventListener('resize', function() {
         } else {
             document.body.classList.add('ltr');
         }
+
+        // ── CSP-safe global dispatchers (replace all inline onclick/onchange/oninput) ──
+        // data-fn="fnName" [data-args='[arg1,arg2]'] → calls window.fnName(arg1, arg2, element)
+        // data-on-change="fnName" → calls window.fnName(element) on change
+        // data-on-input="fnName"  → calls window.fnName(element) on input
+        document.addEventListener('click', function(e) {
+            const el = e.target.closest('[data-fn]');
+            if (!el) return;
+            const fn = el.dataset.fn;
+            if (typeof window[fn] !== 'function') return;
+            let args = [];
+            if (el.dataset.args !== undefined) {
+                try {
+                    const parsed = JSON.parse(el.dataset.args);
+                    args = Array.isArray(parsed) ? parsed : [parsed];
+                } catch (_) { args = [el.dataset.args]; }
+            }
+            window[fn](...args, el);
+        });
+        document.addEventListener('change', function(e) {
+            const el = e.target.closest('[data-on-change]');
+            if (!el) return;
+            const fn = el.dataset.onChange;
+            if (typeof window[fn] === 'function') window[fn](el);
+        });
+        document.addEventListener('input', function(e) {
+            const el = e.target.closest('[data-on-input]');
+            if (!el) return;
+            const fn = el.dataset.onInput;
+            if (typeof window[fn] === 'function') window[fn](el);
+        });
     </script>
 
-    <script>
+    <script @nonce>
     // ── Stock Alert Notification Bell ──────────────────────────────────
     (function initStockBell() {
         const isAr = LOCALE === 'ar';

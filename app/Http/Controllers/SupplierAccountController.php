@@ -1,11 +1,13 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\SupplierAccountRepositoryInterface;
 use App\Models\Supplier;
-use App\Models\SupplierAccount;
 
 class SupplierAccountController extends Controller
 {
+    public function __construct(private SupplierAccountRepositoryInterface $supplierAccountRepo) {}
+
     public function index()
     {
         return view('supplier-accounts.index');
@@ -15,20 +17,18 @@ class SupplierAccountController extends Controller
     {
         $this->authorize('view_supplier_payments');
 
-        $entries = SupplierAccount::where('supplier_id', (int) $supplier->id)
-            ->orderBy('created_at')
-            ->get();
+        $totals  = $this->supplierAccountRepo->totalsBySupplier((int) $supplier->id);
+        $entries = $this->supplierAccountRepo->entriesBySupplier((int) $supplier->id);
 
-        $totalDebt    = $entries->sum('debit');
-        $totalPayment = $entries->sum('credit');
-        $balance      = $totalDebt - $totalPayment;
+        $totalDebt    = (float) $totals->total_debt;
+        $totalPayment = (float) $totals->total_payment;
 
         return response()->json([
             'supplier'      => $supplier,
             'entries'       => $entries,
             'total_debt'    => $totalDebt,
             'total_payment' => $totalPayment,
-            'balance'       => $balance,
+            'balance'       => $totalDebt - $totalPayment,
         ]);
     }
 }

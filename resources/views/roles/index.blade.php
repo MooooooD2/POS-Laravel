@@ -25,7 +25,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fas fa-users me-2"></i>{{ __('pos.users') }}</span>
-                <button class="btn btn-primary btn-sm" onclick="openUserModal()">
+                <button class="btn btn-primary btn-sm" data-fn="openUserModal">
                     <i class="fas fa-plus me-1"></i>{{ __('pos.username') }}
                 </button>
             </div>
@@ -61,7 +61,7 @@
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="fas fa-user-shield me-2"></i>{{ __('pos.roles') }}</span>
-                        <button class="btn btn-primary btn-sm" onclick="openRoleModal()">
+                        <button class="btn btn-primary btn-sm" data-fn="openRoleModal">
                             <i class="fas fa-plus me-1"></i>{{ __('pos.create_role') }}
                         </button>
                     </div>
@@ -76,7 +76,7 @@
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span id="permCardTitle"><i class="fas fa-key me-2"></i>{{ __('pos.permissions') }}</span>
-                        <button class="btn btn-success btn-sm d-none" id="savePermBtn" onclick="savePermissions()">
+                        <button class="btn btn-success btn-sm d-none" id="savePermBtn" data-fn="savePermissions">
                             <i class="fas fa-save me-1"></i>{{ __('pos.save') }}
                         </button>
                     </div>
@@ -132,7 +132,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-primary" onclick="saveUser()">{{ __('pos.save') }}</button>
+                <button class="btn btn-primary" data-fn="saveUser">{{ __('pos.save') }}</button>
             </div>
         </div>
     </div>
@@ -153,7 +153,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-primary" onclick="saveRole()">{{ __('pos.save') }}</button>
+                <button class="btn btn-primary" data-fn="saveRole">{{ __('pos.save') }}</button>
             </div>
         </div>
     </div>
@@ -162,7 +162,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 let allRoles = [];
 let allPermissions = [];
 let allUsers = [];
@@ -214,13 +214,13 @@ function renderUsers() {
                 <td class="text-muted small">${u.created_at || ''}</td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-primary" onclick='editUser(${JSON.stringify(u)})' title="{{ __('pos.edit') }}">
+                        <button class="btn btn-primary" data-action="edit-user" data-user-idx="${i}" title="{{ __('pos.edit') }}">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn ${u.is_active ? 'btn-warning' : 'btn-success'}" onclick="toggleUser(${u.id})" title="{{ app()->getLocale() === 'ar' ? 'تفعيل/تعطيل' : 'Toggle Active' }}">
+                        <button class="btn ${u.is_active ? 'btn-warning' : 'btn-success'}" data-action="toggle-user" data-id="${u.id}" title="{{ app()->getLocale() === 'ar' ? 'تفعيل/تعطيل' : 'Toggle Active' }}">
                             <i class="fas fa-${u.is_active ? 'ban' : 'check'}"></i>
                         </button>
-                        <button class="btn btn-danger" onclick="deleteUser(${u.id})" title="{{ __('pos.delete') }}">
+                        <button class="btn btn-danger" data-action="delete-user" data-id="${u.id}" title="{{ __('pos.delete') }}">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -325,7 +325,7 @@ function renderRolesList() {
         ? allRoles.map(r => `
             <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center
                         ${selectedRoleId === r.id ? 'active' : ''}"
-                 style="cursor:pointer" onclick="selectRole(${r.id})">
+                 style="cursor:pointer" data-action="select-role" data-id="${r.id}">
                 <span class="fw-semibold">${escapeHtml(r.name)}</span>
                 <div class="d-flex gap-1 align-items-center">
                     <span class="badge ${selectedRoleId === r.id ? 'bg-light text-dark' : 'bg-primary'}">
@@ -333,12 +333,12 @@ function renderRolesList() {
                     </span>
                     ${r.name !== 'admin' ? `
                     <button class="btn btn-sm btn-outline-${selectedRoleId === r.id ? 'light' : 'warning'} py-0 px-1"
-                            onclick="event.stopPropagation(); openRoleModal(${r.id},'${escapeHtml(r.name)}')"
+                            data-action="edit-role" data-id="${r.id}" data-name="${escapeHtml(r.name)}"
                             title="{{ __('pos.edit') }}">
                         <i class="fas fa-edit fa-xs"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-${selectedRoleId === r.id ? 'light' : 'danger'} py-0 px-1"
-                            onclick="event.stopPropagation(); deleteRole(${r.id})"
+                            data-action="delete-role" data-id="${r.id}"
                             title="{{ __('pos.delete') }}">
                         <i class="fas fa-trash fa-xs"></i>
                     </button>` : ''}
@@ -439,6 +439,30 @@ async function deleteRole(id) {
         showToast(res.message, 'danger');
     }
 }
+
+document.getElementById('usersBody').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === 'edit-user')    editUser(allUsers[parseInt(btn.dataset.userIdx)]);
+    else if (action === 'toggle-user') toggleUser(parseInt(btn.dataset.id));
+    else if (action === 'delete-user') deleteUser(parseInt(btn.dataset.id));
+});
+
+document.getElementById('rolesList').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === 'select-role') {
+        selectRole(parseInt(btn.dataset.id));
+    } else if (action === 'edit-role') {
+        e.stopPropagation();
+        openRoleModal(parseInt(btn.dataset.id), btn.dataset.name || '');
+    } else if (action === 'delete-role') {
+        e.stopPropagation();
+        deleteRole(parseInt(btn.dataset.id));
+    }
+});
 
 function escapeHtml(str) {
     if (!str) return '';

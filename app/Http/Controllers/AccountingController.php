@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\AccountRepositoryInterface;
+use App\Contracts\Repositories\JournalEntryRepositoryInterface;
 use App\Http\Requests\StoreAccountRequest;
 use App\Http\Requests\StoreJournalEntryRequest;
 use App\Models\Account;
@@ -14,19 +16,23 @@ class AccountingController extends Controller
 {
     use ApiResponse, AuditLog;
 
-    public function __construct(private AccountingService $accountingService) {}
+    public function __construct(
+        private AccountingService              $accountingService,
+        private AccountRepositoryInterface     $accountRepo,
+        private JournalEntryRepositoryInterface $journalRepo,
+    ) {}
 
     public function index() { return view('accounting.index'); }
 
     public function allAccounts()
     {
-        return $this->success(['accounts' => Account::with('children', 'parent')->orderBy('account_code')->get()]);
+        return $this->success(['accounts' => $this->accountRepo->allWithTree()]);
     }
 
     public function storeAccount(StoreAccountRequest $request)
     {
         $this->authorize('create', Account::class);
-        $account = Account::create($request->validated());
+        $account = $this->accountRepo->create($request->validated());
         $this->audit('account.created', Account::class, (int) $account->id);
         return $this->success(['account' => $account], '', 201);
     }
@@ -34,22 +40,22 @@ class AccountingController extends Controller
     public function updateAccount(Request $request, Account $account)
     {
         $this->authorize('update', $account);
-        $data = $request->validate([
+        $data    = $request->validate([
             'account_name' => 'required|string|max:255',
             'description'  => 'nullable|string|max:500',
         ]);
-        $account->update($data);
-        $this->audit('account.updated', Account::class, (int) $account->id);
-        return $this->success(['account' => $account]);
+        $updated = $this->accountRepo->update($account, $data);
+        $this->audit('account.updated', Account::class, (int) $updated->id);
+        return $this->success(['account' => $updated]);
     }
 
     public function destroyAccount(Account $account)
     {
         $this->authorize('delete', $account);
-        if ($account->children()->exists() || $account->lines()->exists()) {
+        if ($this->accountRepo->hasChildren($account) || $this->accountRepo->hasLines($account)) {
             return $this->error(__('pos.account_has_dependencies'), 422);
         }
-        $account->delete();
+        $this->accountRepo->delete($account);
         $this->audit('account.deleted', Account::class, (int) $account->id);
         return $this->success();
     }
@@ -60,10 +66,8 @@ class AccountingController extends Controller
             'start_date' => 'nullable|date',
             'end_date'   => 'nullable|date|after_or_equal:start_date',
         ]);
-        $query = JournalEntry::with('lines.account', 'creator')->orderByDesc('entry_date');
-        if ($request->filled('start_date')) $query->where('entry_date', '>=', $request->start_date);
-        if ($request->filled('end_date'))   $query->where('entry_date', '<=', $request->end_date);
-        return $this->success(['entries' => $query->paginate(20)]);
+        $entries = $this->journalRepo->paginate($request->only(['start_date', 'end_date']));
+        return $this->success(['entries' => $entries]);
     }
 
     public function storeJournalEntry(StoreJournalEntryRequest $request)

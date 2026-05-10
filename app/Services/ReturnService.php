@@ -1,8 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Models\Invoice;
-use App\Models\Product;
 use App\Models\ReturnItem;
 use App\Models\SalesReturn;
 use Illuminate\Support\Facades\Auth;
@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Log;
 
 class ReturnService
 {
-    public function __construct(private StockService $stockService) {}
+    public function __construct(
+        private StockService               $stockService,
+        private ProductRepositoryInterface $productRepo,
+    ) {}
 
-    /**
-     * سيناريو 4: معالجة المرتجع مع تحديد طريقة رد المبلغ
-     */
     public function processReturn(array $data): SalesReturn
     {
         return DB::transaction(function () use ($data) {
@@ -47,16 +47,13 @@ class ReturnService
                 $totalAmount += $price * $item['quantity'];
             }
 
-            // سيناريو 4: تحديد طريقة رد المبلغ
             $refundMethod = $data['refund_method'] ?? 'cash';
             $refundAmount = round($totalAmount, 2);
 
-            // التحقق من صحة طريقة الرد
             if (!in_array($refundMethod, ['cash', 'store_credit', 'exchange'])) {
                 throw new \Exception('طريقة رد المبلغ غير صالحة.');
             }
 
-            // لو استبدال، المبلغ المردود صفر
             if ($refundMethod === 'exchange') {
                 $refundAmount = 0;
             }
@@ -89,8 +86,7 @@ class ReturnService
                     'subtotal'     => round($price * $item['quantity'], 2),
                 ]);
 
-                // إرجاع المخزون في كل الحالات (نقدي / رصيد / استبدال)
-                $product = Product::find($item['product_id']);
+                $product = $this->productRepo->findById($item['product_id']);
                 if ($product) {
                     $this->stockService->addStock(
                         $product,
@@ -102,7 +98,6 @@ class ReturnService
                 }
             }
 
-            // تسجيل في الـ audit log مع طريقة الرد
             Log::channel('audit')->info('return.processed', [
                 'return_number' => $returnNumber,
                 'invoice'       => $invoice->invoice_number,

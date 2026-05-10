@@ -27,15 +27,15 @@ DESCRIPTION: Product management with search, CRUD, stock management
         <div class="row mb-3">
             <div class="col-md-4">
                 <input type="text" class="form-control" id="productSearch"
-                    placeholder="{{ __('pos.search') }}..." oninput="filterProducts()">
+                    placeholder="{{ __('pos.search') }}..." data-on-input="filterProducts">
             </div>
             <div class="col-md-3">
-                <select class="form-select" id="categoryFilter" onchange="filterProducts()">
+                <select class="form-select" id="categoryFilter" data-on-change="filterProducts">
                     <option value="">{{ __('pos.category') }} - {{ __('pos.filter') }}</option>
                 </select>
             </div>
             <div class="col-md-3">
-                <select class="form-select" id="stockFilter" onchange="filterProducts()">
+                <select class="form-select" id="stockFilter" data-on-change="filterProducts">
                     <option value="">{{ __('pos.status') }} - {{ __('pos.filter') }}</option>
                     <option value="low">{{ __('pos.low_stock') }}</option>
                     <option value="out">{{ __('pos.out_of_stock') }}</option>
@@ -112,7 +112,7 @@ DESCRIPTION: Product management with search, CRUD, stock management
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-primary" onclick="saveProduct()">{{ __('pos.save') }}</button>
+                <button class="btn btn-primary" data-fn="saveProduct">{{ __('pos.save') }}</button>
             </div>
         </div>
     </div>
@@ -140,7 +140,7 @@ DESCRIPTION: Product management with search, CRUD, stock management
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-success" onclick="submitAddStock()">{{ __('pos.add_stock') }}</button>
+                <button class="btn btn-success" data-fn="submitAddStock">{{ __('pos.add_stock') }}</button>
             </div>
         </div>
     </div>
@@ -163,16 +163,16 @@ DESCRIPTION: Product management with search, CRUD, stock management
                 <p id="barcodeValue" class="text-muted small font-monospace mb-3"></p>
                 <div id="barcodeGenerateSection" class="d-none">
                     <p class="text-warning small">{{ app()->getLocale() === 'ar' ? 'لا يوجد باركود، قم بتوليد واحد:' : 'No barcode. Generate one:' }}</p>
-                    <button class="btn btn-sm btn-outline-primary" onclick="generateBarcode()">
+                    <button class="btn btn-sm btn-outline-primary" data-fn="generateBarcode">
                         <i class="fas fa-magic me-1"></i>{{ app()->getLocale() === 'ar' ? 'توليد باركود' : 'Generate Barcode' }}
                     </button>
                 </div>
             </div>
             <div class="modal-footer justify-content-center">
-                <button class="btn btn-success" onclick="printBarcode()">
+                <button class="btn btn-success" data-fn="printBarcode">
                     <i class="fas fa-print me-1"></i>{{ app()->getLocale() === 'ar' ? 'طباعة' : 'Print' }}
                 </button>
-                <button class="btn btn-outline-secondary" onclick="downloadBarcode()">
+                <button class="btn btn-outline-secondary" data-fn="downloadBarcode">
                     <i class="fas fa-download me-1"></i>{{ app()->getLocale() === 'ar' ? 'تحميل' : 'Download' }}
                 </button>
             </div>
@@ -183,8 +183,9 @@ DESCRIPTION: Product management with search, CRUD, stock management
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 let allProducts = [];
+let renderedProducts = [];
 
 async function loadProducts() {
     const res = await apiCall('{{ route("products.all") }}');
@@ -215,6 +216,7 @@ function filterProducts() {
 }
 
 function renderProducts(products) {
+    renderedProducts = products;
     document.getElementById('productsBody').innerHTML = products.length
         ? products.map((p, i) => `
             <tr>
@@ -234,10 +236,10 @@ function renderProducts(products) {
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-warning text-white" title="باركود" onclick="showBarcode(${p.id},${JSON.stringify(p.name||'').replace(/"/g,'&quot;')},${JSON.stringify(p.barcode||'').replace(/"/g,'&quot;')},${p.price})"><i class="fas fa-barcode"></i></button>
-                        <button class="btn btn-success" onclick="showAddStock(${p.id},${JSON.stringify(p.name||'').replace(/"/g,'&quot;')})"><i class="fas fa-plus"></i></button>
-                        <button class="btn btn-primary" onclick="editProduct(${JSON.stringify(p).replace(/"/g,'&quot;')})"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-danger" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-warning text-white" title="باركود" data-action="barcode" data-idx="${i}"><i class="fas fa-barcode"></i></button>
+                        <button class="btn btn-success" data-action="add-stock" data-idx="${i}"><i class="fas fa-plus"></i></button>
+                        <button class="btn btn-primary" data-action="edit" data-idx="${i}"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger" data-action="delete" data-idx="${i}"><i class="fas fa-trash"></i></button>
                     </div>
                 </td>
             </tr>`).join('')
@@ -326,6 +328,17 @@ document.getElementById('addProductModal').addEventListener('show.bs.modal', fun
 });
 
 loadProducts();
+
+document.getElementById('productsBody').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const p = renderedProducts[parseInt(btn.dataset.idx)];
+    if (!p) return;
+    if (btn.dataset.action === 'barcode')    showBarcode(p.id, p.name||'', p.barcode||'', p.price);
+    else if (btn.dataset.action === 'add-stock') showAddStock(p.id, p.name||'');
+    else if (btn.dataset.action === 'edit')   editProduct(p);
+    else if (btn.dataset.action === 'delete') deleteProduct(p.id);
+});
 
 // ─── BARCODE GENERATOR ────────────────────────────────────────────────────────
 let _barcodeProductId = null;

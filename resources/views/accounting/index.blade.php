@@ -67,7 +67,7 @@
                         <input type="date" class="form-control" id="jeEndDate">
                     </div>
                     <div class="col-md-2">
-                        <button class="btn btn-outline-primary w-100" onclick="loadJournalEntries()">
+                        <button class="btn btn-outline-primary w-100" data-fn="loadJournalEntries">
                             <i class="fas fa-search"></i> {{ __('pos.filter') }}
                         </button>
                     </div>
@@ -133,7 +133,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-primary" onclick="saveAccount()">{{ __('pos.save') }}</button>
+                <button class="btn btn-primary" data-fn="saveAccount">{{ __('pos.save') }}</button>
             </div>
         </div>
     </div>
@@ -173,7 +173,7 @@
                         <tfoot>
                             <tr>
                                 <td colspan="4">
-                                    <button class="btn btn-sm btn-outline-primary w-100" onclick="addJELine()">
+                                    <button class="btn btn-sm btn-outline-primary w-100" data-fn="addJELine">
                                         <i class="fas fa-plus me-1"></i> Add Line
                                     </button>
                                 </td>
@@ -190,7 +190,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-primary" onclick="saveJournalEntry()">{{ __('pos.save') }}</button>
+                <button class="btn btn-primary" data-fn="saveJournalEntry">{{ __('pos.save') }}</button>
             </div>
         </div>
     </div>
@@ -198,7 +198,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 let allAccounts = [];
 let jeLineCount = 0;
 
@@ -236,7 +236,7 @@ async function loadAccounts() {
                 <td class="text-muted small">${a.parent?.account_name || '-'}</td>
                 <td class="fw-semibold">${formatCurrency(a.balance)}</td>
                 <td>
-                    <button class="btn btn-sm btn-danger" onclick="deleteAccount(${a.id})">
+                    <button class="btn btn-sm btn-danger" data-fn="deleteAccount" data-args='[${a.id}]'>
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -300,9 +300,9 @@ function addJELine() {
     tr.id      = `jeLine${idx}`;
     tr.innerHTML = `
         <td><select class="form-select form-select-sm" id="jeAcc${idx}"><option value="">--</option>${opts}</select></td>
-        <td><input type="number" class="form-control form-control-sm" id="jeDr${idx}" value="0" step="0.01" onchange="updateJETotals()"></td>
-        <td><input type="number" class="form-control form-control-sm" id="jeCr${idx}" value="0" step="0.01" onchange="updateJETotals()"></td>
-        <td><button class="btn btn-sm btn-outline-danger" onclick="removeJELine(${idx})"><i class="fas fa-trash"></i></button></td>`;
+        <td><input type="number" class="form-control form-control-sm" id="jeDr${idx}" value="0" step="0.01" data-on-change="updateJETotals"></td>
+        <td><input type="number" class="form-control form-control-sm" id="jeCr${idx}" value="0" step="0.01" data-on-change="updateJETotals"></td>
+        <td><button class="btn btn-sm btn-outline-danger" data-fn="removeJELine" data-args='[${idx}]'><i class="fas fa-trash"></i></button></td>`;
     document.getElementById('jeLines').appendChild(tr);
 }
 

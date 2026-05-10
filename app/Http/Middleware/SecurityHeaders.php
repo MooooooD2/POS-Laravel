@@ -15,6 +15,10 @@ class SecurityHeaders
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Generate nonce BEFORE rendering the view so Blade templates can read it
+        $nonce = base64_encode(random_bytes(16));
+        app()->instance('csp-nonce', $nonce);
+
         $response = $next($request);
 
         // X-Content-Type-Options and HSTS are useful on every response type
@@ -34,20 +38,19 @@ class SecurityHeaders
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
         $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
-
-        // FIX-7: CSP محسّن — unsafe-inline للـ styles فقط (ضرورة عملية حالياً)
-        // script-src بدون unsafe-inline — أكثر أماناً من النسخة السابقة
-        // ملاحظة: لإزالة unsafe-inline من style-src أيضاً، يجب نقل كل الـ inline styles
-        // لملفات CSS منفصلة (تحسين مستقبلي)
-        // $response->headers->set('Content-Security-Policy',
-        //     "default-src 'self'; " .
-        //     "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
-        //     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " .
-        //     "style-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " .
-        //     "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
-        //     "img-src 'self' data:; " .
-        //     "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;"
-        // );
+        $response->headers->set('Content-Security-Policy',
+            "default-src 'self'; " .
+            "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
+            "script-src-elem 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " .
+            "style-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " .
+            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
+            "img-src 'self' data: blob:; " .
+            "connect-src 'self' https://cdn.jsdelivr.net; " .
+            "object-src 'none'; " .
+            "base-uri 'self'; " .
+            "form-action 'self';"
+        );
 
         return $response;
     }

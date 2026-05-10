@@ -14,7 +14,7 @@
     <div class="card-body">
         <div class="row mb-3 g-2">
             <div class="col-md-3">
-                <select class="form-select" id="poStatusFilter" onchange="loadPOs()">
+                <select class="form-select" id="poStatusFilter" data-on-change="loadPOs">
                     <option value="">{{ __('pos.status') }} - {{ __('pos.filter') }}</option>
                     <option value="pending">{{ __('pos.po_status_pending') }}</option>
                     <option value="received">{{ __('pos.po_status_received') }}</option>
@@ -70,7 +70,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">{{ __('pos.discount') }}</label>
-                        <input type="number" class="form-control" id="poDiscount" value="0" min="0" step="0.01" onchange="updatePOTotals()">
+                        <input type="number" class="form-control" id="poDiscount" value="0" min="0" step="0.01" data-on-change="updatePOTotals">
                     </div>
                 </div>
 
@@ -92,7 +92,7 @@
                         <tfoot>
                             <tr>
                                 <td colspan="6">
-                                    <button class="btn btn-sm btn-outline-primary w-100" onclick="addPOItemRow()">
+                                    <button class="btn btn-sm btn-outline-primary w-100" data-fn="addPOItemRow">
                                         <i class="fas fa-plus me-1"></i> {{ __('pos.add_product') }}
                                     </button>
                                 </td>
@@ -113,7 +113,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-primary" onclick="savePO()">
+                <button class="btn btn-primary" data-fn="savePO">
                     <i class="fas fa-save me-1"></i>{{ __('pos.save') }}
                 </button>
             </div>
@@ -157,7 +157,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-success" onclick="submitReceivePO()">
+                <button class="btn btn-success" data-fn="submitReceivePO">
                     <i class="fas fa-check me-1"></i>تأكيد الاستلام
                 </button>
             </div>
@@ -167,9 +167,10 @@
 @endsection
 
 @push('scripts')
-<script>
-let poProducts = [];
-let poItemCount = 0;
+<script @nonce>
+let poProducts   = [];
+let poItemCount  = 0;
+let renderedPOs  = [];
 
 async function loadSuppliers() {
     const res = await apiCall('{{ route("suppliers.all") }}');
@@ -196,8 +197,9 @@ async function loadPOs() {
         cancelled: { label: '{{ __("pos.po_status_cancelled") }}',cls: 'danger' },
     };
 
+    renderedPOs = orders;
     document.getElementById('poBody').innerHTML = orders.length
-        ? orders.map(po => {
+        ? orders.map((po, i) => {
             const st = statusMap[po.status] || { label: po.status, cls: 'secondary' };
             return `<tr>
                 <td><span class="badge bg-primary">${po.po_number}</span></td>
@@ -208,7 +210,7 @@ async function loadPOs() {
                 <td><span class="badge bg-${st.cls}">${st.label}</span></td>
                 <td>
                     ${po.status !== 'received' && po.status !== 'cancelled'
-                        ? `<button class="btn btn-sm btn-success" onclick="showReceivePO(${JSON.stringify(po).replace(/"/g,'&quot;')})">
+                        ? `<button class="btn btn-sm btn-success" data-action="receive-po" data-po-idx="${i}">
                             <i class="fas fa-box-open"></i> {{ __('pos.receive_po') }}
                            </button>`
                         : ''}
@@ -225,18 +227,18 @@ function addPOItemRow() {
     row.id     = `poRow${idx}`;
     row.innerHTML = `
         <td>
-            <select class="form-select form-select-sm" onchange="fillPORowPrices(${idx}, this)">
+            <select class="form-select form-select-sm" data-action="fill-prices" data-idx="${idx}">
                 <option value="">-- {{ __('pos.product_name') }} --</option>
                 ${opts}
             </select>
             <input type="hidden" id="poItemProductId${idx}">
             <input type="text" class="form-control form-control-sm mt-1 d-none" id="poItemCustomName${idx}" placeholder="{{ __('pos.product_name') }}">
         </td>
-        <td><input type="number" class="form-control form-control-sm" id="poItemQty${idx}" value="1" min="1" onchange="updatePORowSubtotal(${idx})"></td>
-        <td><input type="number" class="form-control form-control-sm" id="poItemCost${idx}" value="0" step="0.01" onchange="updatePORowSubtotal(${idx})"></td>
+        <td><input type="number" class="form-control form-control-sm" id="poItemQty${idx}" value="1" min="1" data-action="update-subtotal" data-idx="${idx}"></td>
+        <td><input type="number" class="form-control form-control-sm" id="poItemCost${idx}" value="0" step="0.01" data-action="update-subtotal" data-idx="${idx}"></td>
         <td><input type="number" class="form-control form-control-sm" id="poItemSelling${idx}" value="0" step="0.01"></td>
         <td id="poRowSubtotal${idx}">0.00</td>
-        <td><button class="btn btn-sm btn-outline-danger" onclick="removePORow(${idx})"><i class="fas fa-trash"></i></button></td>`;
+        <td><button class="btn btn-sm btn-outline-danger" data-action="remove-row" data-idx="${idx}"><i class="fas fa-trash"></i></button></td>`;
     document.getElementById('poItemsBody').appendChild(row);
 }
 
@@ -326,7 +328,7 @@ function showReceivePO(po) {
             <td class="text-center fw-bold">${pending}</td>
             <td>
                 <input type="number" class="form-control form-control-sm" id="recv_qty_${item.id}"
-                    value="${pending}" min="0" oninput="calcDiscrepancy(${item.id}, ${pending})">
+                    value="${pending}" min="0" data-item-id="${item.id}" data-pending="${pending}" data-on-input="calcDiscrepancyEl">
             </td>
             <td>
                 <span id="disc_${item.id}" class="badge bg-secondary">-</span>
@@ -416,6 +418,30 @@ async function submitReceivePO() {
         showToast(res.message || '{{ __("pos.error") }}', 'danger');
     }
 }
+
+function calcDiscrepancyEl(el) {
+    calcDiscrepancy(parseInt(el.dataset.itemId), parseInt(el.dataset.pending));
+}
+
+document.getElementById('poBody').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action="receive-po"]');
+    if (!btn) return;
+    const po = renderedPOs[parseInt(btn.dataset.poIdx)];
+    if (po) showReceivePO(po);
+});
+
+document.getElementById('poItemsBody').addEventListener('change', function(e) {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const idx = parseInt(el.dataset.idx);
+    if (el.dataset.action === 'fill-prices')    fillPORowPrices(idx, el);
+    else if (el.dataset.action === 'update-subtotal') updatePORowSubtotal(idx);
+});
+
+document.getElementById('poItemsBody').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action="remove-row"]');
+    if (btn) removePORow(parseInt(btn.dataset.idx));
+});
 
 loadSuppliers();
 loadProductsList();

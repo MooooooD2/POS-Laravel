@@ -63,7 +63,7 @@
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">{{ __('pos.actual_cash_label') }} *</label>
                         <input type="number" class="form-control form-control-lg" id="actualCash"
-                            step="0.01" min="0" placeholder="0.00" oninput="calcDifference()">
+                            step="0.01" min="0" placeholder="0.00" data-on-input="calcDifference">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">{{ __('pos.difference') }}</label>
@@ -77,10 +77,10 @@
                     </div>
                 </div>
                 <div class="mt-3 d-flex gap-2">
-                    <button class="btn btn-warning" onclick="printShiftReport()">
+                    <button class="btn btn-warning" data-fn="printShiftReport">
                         <i class="fas fa-print me-1"></i>{{ __('pos.print_shift_report') }}
                     </button>
-                    <button class="btn btn-danger" onclick="closeSession()">
+                    <button class="btn btn-danger" data-fn="closeSession">
                         <i class="fas fa-lock me-1"></i>{{ __('pos.close_register') }}
                     </button>
                 </div>
@@ -105,7 +105,7 @@
 <div class="card mt-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fas fa-history me-2"></i>{{ __('pos.session_history') }}</span>
-        <button class="btn btn-danger btn-sm" onclick="printHistory()">
+        <button class="btn btn-danger btn-sm" data-fn="printHistory">
             <i class="fas fa-print me-1"></i>{{ __('pos.print') }}
         </button>
     </div>
@@ -156,7 +156,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button class="btn btn-success" onclick="openSession()">
+                <button class="btn btn-success" data-fn="openSession">
                     <i class="fas fa-play me-1"></i>{{ __('pos.start_session') }}
                 </button>
             </div>
@@ -166,9 +166,10 @@
 @endsection
 
 @push('scripts')
-<script>
-let currentSession = null;
-let liveStats      = null;
+<script @nonce>
+let currentSession   = null;
+let liveStats        = null;
+let renderedSessions = [];
 
 const CASH_SESSION_BASE_URL = '{{ url("api/cash-session") }}';
 
@@ -279,8 +280,9 @@ async function closeSession() {
 async function loadHistory() {
     const res      = await apiCall('{{ route("cash-session.history") }}');
     const sessions = res.sessions?.data || [];
+    renderedSessions = sessions;
     document.getElementById('historyBody').innerHTML = sessions.length
-        ? sessions.map(s => {
+        ? sessions.map((s, i) => {
             const diff     = s.difference;
             const diffHtml = diff !== null
                 ? `<span class="fw-bold ${diff > 5 ? 'text-success' : diff < -5 ? 'text-danger' : 'text-warning'}">
@@ -297,7 +299,7 @@ async function loadHistory() {
                 <td>${diffHtml}</td>
                 <td><span class="badge ${s.status==='open' ? 'bg-success' : 'bg-secondary'}">
                     ${s.status==='open' ? _t.sessionOpen : _t.sessionClosed}</span></td>
-                <td><button class="btn btn-sm btn-outline-primary" onclick="printSessionReport(${JSON.stringify(s).replace(/"/g,'&quot;')})">
+                <td><button class="btn btn-sm btn-outline-primary" data-action="print-session" data-session-idx="${i}">
                     <i class="fas fa-print"></i></button></td>
             </tr>`;
         }).join('')
@@ -307,8 +309,18 @@ async function loadHistory() {
 function printShiftReport(session) {
     const s = session || currentSession;
     if (!s) return;
-    const expected = (s.opening_amount||0) + (s.cash_sales||s.expected_cash||0) - (s.cash_returns||s.total_returns||0);
-    const actual   = s.actual_cash ?? parseFloat(document.getElementById('actualCash')?.value || 0);
+
+    // Normalize field names: open session uses cash_sales/card_sales/transfer_sales (merged stats);
+    // closed session from DB uses total_card/total_transfer — derive the rest.
+    const cardSales     = s.card_sales     ?? (s.total_card     || 0);
+    const transferSales = s.transfer_sales ?? (s.total_transfer || 0);
+    const totalSales    = s.total_sales    || 0;
+    const cashSales     = s.cash_sales     ?? (totalSales - cardSales - transferSales);
+    const cashReturns   = s.cash_returns   ?? (s.total_returns  || 0);
+
+    // Use stored expected_cash when available; recalculate only for live open sessions.
+    const expected = s.expected_cash ?? ((s.opening_amount || 0) + cashSales - cashReturns);
+    const actual   = s.actual_cash   ?? parseFloat(document.getElementById('actualCash')?.value || 0);
     const diff     = actual - expected;
     const locale   = '{{ app()->getLocale() }}';
     const w = window.open('','_blank');
@@ -323,9 +335,9 @@ function printShiftReport(session) {
             <tr><th class="bg-light" width="55%">${_t.cashier}</th><td>${s.cashier_name}</td></tr>
             <tr><th class="bg-light">${_t.openTime}</th><td>${formatDate(s.opened_at)}</td></tr>
             <tr><th class="bg-light">${_t.shiftOpenBalance}</th><td class="fw-bold">${formatCurrency(s.opening_amount||0)}</td></tr>
-            <tr class="table-success"><th>${_t.cashSales}</th><td class="fw-bold">${formatCurrency(s.cash_sales||0)}</td></tr>
-            <tr class="table-primary"><th>${_t.cardTransferSales}</th><td class="fw-bold">${formatCurrency((s.card_sales||0)+(s.transfer_sales||0))}</td></tr>
-            <tr class="table-warning"><th>${_t.totalSales}</th><td class="fw-bold fs-6">${formatCurrency(s.total_sales||0)}</td></tr>
+            <tr class="table-success"><th>${_t.cashSales}</th><td class="fw-bold">${formatCurrency(cashSales)}</td></tr>
+            <tr class="table-primary"><th>${_t.cardTransferSales}</th><td class="fw-bold">${formatCurrency(cardSales + transferSales)}</td></tr>
+            <tr class="table-warning"><th>${_t.totalSales}</th><td class="fw-bold fs-6">${formatCurrency(totalSales)}</td></tr>
             <tr class="table-danger"><th>${_t.returns}</th><td>${formatCurrency(s.total_returns||0)}</td></tr>
             <tr><th>${_t.invoicesCount}</th><td>${s.invoices_count||0}</td></tr>
             <tr class="table-info"><th>${_t.expectedInDrawer}</th><td class="fw-bold">${formatCurrency(expected)}</td></tr>
@@ -346,6 +358,13 @@ function printSessionReport(s) { printShiftReport(s); }
 function printHistory() {
     window.print();
 }
+
+document.getElementById('historyBody').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action="print-session"]');
+    if (!btn) return;
+    const s = renderedSessions[parseInt(btn.dataset.sessionIdx)];
+    if (s) printSessionReport(s);
+});
 
 loadCurrentSession();
 setInterval(loadCurrentSession, 60000);

@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Http\Requests\AddStockRequest;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
@@ -15,7 +16,10 @@ class ProductController extends Controller
 {
     use ApiResponse, AuditLog;
 
-    public function __construct(private StockService $stockService) {}
+    public function __construct(
+        private StockService               $stockService,
+        private ProductRepositoryInterface $productRepo,
+    ) {}
 
     public function index() { return view('warehouse.index'); }
 
@@ -28,37 +32,19 @@ class ProductController extends Controller
             'per_page'  => 'nullable|integer|min:10|max:200',
         ]);
 
-        $query = Product::query()->orderByDesc('id');
+        $filters  = $request->only(['search', 'category', 'low_stock', 'per_page']);
+        $fetchAll = $request->boolean('all');
 
-        if ($request->filled('search')) {
-            $s = $request->string('search')->toString();
-            $query->where(fn($q) =>
-                $q->where('name', 'like', "%{$s}%")->orWhere('barcode', 'like', "%{$s}%")
-            );
-        }
-        if ($request->filled('category')) {
-            $query->where('category', $request->string('category')->toString());
-        }
-        if ($request->boolean('low_stock')) {
-            $query->whereRaw('quantity <= min_stock AND quantity > 0');
-        }
-
-        if ($request->boolean('all')) {
-            return $this->success(['products' => ProductResource::collection(
-                $query->select('id', 'name', 'price', 'barcode', 'quantity', 'min_stock', 'category')->get()
-            )]);
-        }
-
-        return $this->success(['products' =>
-            ProductResource::collection($query->paginate($request->integer('per_page', 50)))
-        ]);
+        return $this->success(['products' => ProductResource::collection(
+            $this->productRepo->all($filters, $fetchAll)
+        )]);
     }
 
     public function store(StoreProductRequest $request)
     {
         $this->authorize('create', Product::class);
         $data    = $request->validated();
-        $product = Product::create($data);
+        $product = $this->productRepo->create($data);
 
         $initial = (int) ($data['initial_quantity'] ?? 0);
         if ($initial > 0) {
@@ -72,16 +58,16 @@ class ProductController extends Controller
     public function update(UpdateProductRequest $request, Product $product)
     {
         $this->authorize('update', $product);
-        $old = $product->only(['name', 'price', 'cost_price']);
-        $product->update($request->validated());
-        $this->audit('product.updated', Product::class, (int) $product->id, ['old' => $old, 'new' => $request->validated()]);
-        return $this->success(['product' => new ProductResource($product->fresh())]);
+        $old     = $product->only(['name', 'price', 'cost_price']);
+        $updated = $this->productRepo->update($product, $request->validated());
+        $this->audit('product.updated', Product::class, (int) $updated->id, ['old' => $old, 'new' => $request->validated()]);
+        return $this->success(['product' => new ProductResource($updated->fresh())]);
     }
 
     public function destroy(Product $product)
     {
         $this->authorize('delete', $product);
-        $product->delete();
+        $this->productRepo->delete($product);
         $this->audit('product.deleted', Product::class, (int) $product->id, ['name' => $product->name]);
         return $this->success(message: __('pos.product_deleted'));
     }

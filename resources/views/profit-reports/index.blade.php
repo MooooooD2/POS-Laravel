@@ -25,21 +25,21 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label fw-semibold">{{ __('pos.view') }}</label>
-                <select class="form-select" id="viewType" onchange="loadReport()">
+                <select class="form-select" id="viewType" data-on-change="loadReport">
                     <option value="product">{{ __('pos.by_product') }}</option>
                     <option value="daily">{{ __('pos.daily') }}</option>
                 </select>
             </div>
             <div class="col-md-2">
-                <button class="btn btn-primary w-100" onclick="loadReport()">
+                <button class="btn btn-primary w-100" data-fn="loadReport">
                     <i class="fas fa-search me-1"></i>{{ __('pos.view') }}
                 </button>
             </div>
             <div class="col-md-2 d-flex gap-2">
-                <button class="btn btn-success" onclick="exportExcel()" title="Excel">
+                <button class="btn btn-success" data-fn="exportExcel" title="Excel">
                     <i class="fas fa-file-excel"></i>
                 </button>
-                <button class="btn btn-danger" onclick="printReport()" title="{{ __('pos.print') }}">
+                <button class="btn btn-danger" data-fn="printReport" title="{{ __('pos.print') }}">
                     <i class="fas fa-print"></i>
                 </button>
             </div>
@@ -93,7 +93,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 let reportData   = [];
 let reportType   = 'product';
 let reportTotals = {};

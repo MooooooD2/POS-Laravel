@@ -11,12 +11,12 @@
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#returnsTab" onclick="loadReturnsReport()">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#returnsTab" data-fn="loadReturnsReport">
                 <i class="fas fa-undo-alt me-1"></i>{{ __('pos.Returns Report') }}
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#stockTab" onclick="loadStockReport()">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#stockTab" data-fn="loadStockReport">
                 <i class="fas fa-boxes me-1"></i>{{ __('pos.stock_report') }}
             </button>
         </li>
@@ -47,7 +47,7 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <button class="btn btn-primary w-100" onclick="loadSalesReport()">
+                            <button class="btn btn-primary w-100" data-fn="loadSalesReport">
                                 <i class="fas fa-search me-1"></i>{{ __('pos.filter') }}
                             </button>
                         </div>
@@ -162,7 +162,7 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <button class="btn btn-primary w-100" onclick="loadReturnsReport()">
+                            <button class="btn btn-primary w-100" data-fn="loadReturnsReport">
                                 <i class="fas fa-search me-1"></i>{{ __('pos.filter') }}
                             </button>
                         </div>
@@ -277,7 +277,7 @@
                 <div class="card-header d-flex justify-content-between">
                     <span>{{ __('pos.stock_report') }}</span>
                     <input type="text" class="form-control form-control-sm" style="width:200px" id="stockSearch"
-                        placeholder="{{ __('pos.search') }}..." oninput="filterStock()">
+                        placeholder="{{ __('pos.search') }}..." data-on-input="filterStock">
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -307,7 +307,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @nonce>
         let stockData = [];
 
         async function loadSalesReport() {

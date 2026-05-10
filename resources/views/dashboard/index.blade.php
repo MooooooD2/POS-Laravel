@@ -120,7 +120,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
     async function loadDashboard() {
         try {
             const data = await apiCall('{{ route("dashboard.data") }}');

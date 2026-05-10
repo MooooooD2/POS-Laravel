@@ -100,17 +100,17 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 });
 
 // Stock Reconciliation #21
-Route::middleware(['auth', 'permission:add_stock'])->group(function () {
+Route::middleware(['auth', 'permission:add_stock', 'throttle:30,1'])->group(function () {
     Route::post('/stock/reconcile', [\App\Http\Controllers\StockReconciliationController::class, 'reconcile'])->name('stock.reconcile');
     Route::get('/stock/audit-trail/{productId}', [\App\Http\Controllers\StockReconciliationController::class, 'auditTrail'])->name('stock.audit-trail');
 });
 
 // ── تسوية الخزينة ──────────────────────────────────────────────────────────
-Route::middleware(['auth', 'throttle:60,1'])->group(function () {
-    Route::get('/cash-session/current',       [\App\Http\Controllers\CashRegisterController::class, 'currentSession'])->name('cash-session.current');
-    Route::post('/cash-session/open',         [\App\Http\Controllers\CashRegisterController::class, 'open'])->name('cash-session.open');
+Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->group(function () {
+    Route::get('/cash-session/current',     [\App\Http\Controllers\CashRegisterController::class, 'currentSession'])->name('cash-session.current');
+    Route::post('/cash-session/open',       [\App\Http\Controllers\CashRegisterController::class, 'open'])->name('cash-session.open');
     Route::post('/cash-session/{id}/close', [\App\Http\Controllers\CashRegisterController::class, 'close'])->name('cash-session.close');
-    Route::get('/cash-session/history',       [\App\Http\Controllers\CashRegisterController::class, 'history'])->name('cash-session.history');
+    Route::get('/cash-session/history',     [\App\Http\Controllers\CashRegisterController::class, 'history'])->name('cash-session.history');
 
     // تقارير الربحية
     Route::middleware('permission:view_reports')->group(function () {

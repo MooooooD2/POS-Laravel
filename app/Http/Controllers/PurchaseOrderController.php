@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\PurchaseOrderRepositoryInterface;
 use App\Http\Requests\StorePurchaseOrderRequest;
 use App\Http\Requests\ReceivePurchaseOrderRequest;
 use App\Models\PurchaseOrder;
@@ -13,7 +14,10 @@ class PurchaseOrderController extends Controller
 {
     use ApiResponse, AuditLog;
 
-    public function __construct(private PurchaseOrderService $poService) {}
+    public function __construct(
+        private PurchaseOrderService            $poService,
+        private PurchaseOrderRepositoryInterface $poRepo,
+    ) {}
 
     public function index() { return view('purchase-orders.index'); }
 
@@ -23,10 +27,10 @@ class PurchaseOrderController extends Controller
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'status'      => 'nullable|in:pending,partial,received,cancelled',
         ]);
-        $query = PurchaseOrder::with('supplier')->orderByDesc('id');
-        if ($request->filled('supplier_id')) $query->where('supplier_id', $request->integer('supplier_id'));
-        if ($request->filled('status'))      $query->where('status', $request->string('status')->toString());
-        return $this->success(['purchase_orders' => $query->paginate(20)]);
+
+        return $this->success(['purchase_orders' => $this->poRepo->paginate(
+            $request->only(['supplier_id', 'status'])
+        )]);
     }
 
     public function store(StorePurchaseOrderRequest $request)

@@ -2,25 +2,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\RoleService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class RolePermissionController extends Controller
 {
     use ApiResponse;
 
-    private const PROTECTED_ROLES = ['admin'];
+    public function __construct(private RoleService $roleService) {}
 
     public function getRoles()
     {
-        return $this->success(['roles' => Role::with('permissions')->get()]);
+        return $this->success(['roles' => $this->roleService->allWithPermissions()]);
     }
 
     public function getPermissions()
     {
-        return $this->success(['permissions' => Permission::all()]);
+        return $this->success(['permissions' => $this->roleService->allPermissions()]);
     }
 
     public function storeRole(Request $request)
@@ -29,56 +29,43 @@ class RolePermissionController extends Controller
             'name'       => 'required|string|max:100|unique:roles,name',
             'guard_name' => 'nullable|string|in:web,api',
         ]);
-
-        $role = Role::create([
-            'name'       => $request->string('name')->toString(),
-            'guard_name' => $request->string('guard_name')->toString() ?: 'web',
-        ]);
-
+        $role = $this->roleService->create($request->only(['name', 'guard_name']));
         return $this->success(['role' => $role, 'message' => __('pos.role_created')], '', 201);
     }
 
     public function updateRole(Request $request, Role $role)
     {
-        if (\in_array($role->name, self::PROTECTED_ROLES, true)) {
-            return $this->error(__('pos.role_protected'), 403);
+        $request->validate(['name' => "required|string|max:100|unique:roles,name,{$role->id}"]);
+        try {
+            $updated = $this->roleService->update($role, $request->only('name'));
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 403);
         }
-
-        $request->validate([
-            'name' => "required|string|max:100|unique:roles,name,{$role->id}",
-        ]);
-
-        $role->update(['name' => $request->string('name')->toString()]);
         return $this->success(message: __('pos.role_updated'));
     }
 
     public function destroyRole(Role $role)
     {
-        if (\in_array($role->name, self::PROTECTED_ROLES, true)) {
-            return $this->error(__('pos.cannot_delete_protected_role'), 403);
+        try {
+            $this->roleService->delete($role);
+        } catch (\Exception $e) {
+            $code = str_contains($e->getMessage(), 'protected') ? 403 : 422;
+            return $this->error($e->getMessage(), $code);
         }
-
-        $usersCount = $role->users()->count();
-        if ($usersCount > 0) {
-            return $this->error(__('pos.role_has_users', ['count' => $usersCount]), 422);
-        }
-
-        $role->delete();
         return $this->success(message: __('pos.role_deleted'));
     }
 
     public function syncPermissions(Request $request, Role $role)
     {
-        if (\in_array($role->name, self::PROTECTED_ROLES, true)) {
-            return $this->error(__('pos.role_protected'), 403);
-        }
-
         $request->validate([
             'permissions'   => 'array',
             'permissions.*' => 'string|exists:permissions,name',
         ]);
-
-        $role->syncPermissions($request->input('permissions', []));
+        try {
+            $this->roleService->syncPermissions($role, $request->input('permissions', []));
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 403);
+        }
         return $this->success(message: __('pos.permissions_updated'));
     }
 
@@ -86,7 +73,7 @@ class RolePermissionController extends Controller
     {
         return $this->success([
             'roles'     => $user->getRoleNames(),
-            'all_roles' => Role::all(),
+            'all_roles' => $this->roleService->allWithPermissions(),
         ]);
     }
 

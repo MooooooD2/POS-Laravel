@@ -11,7 +11,7 @@
         </button>
     </li>
     <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#balanceTab" onclick="loadBalanceSheet()">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#balanceTab" data-fn="loadBalanceSheet">
             <i class="fas fa-balance-scale me-1"></i>{{ __('pos.balance_sheet') }}
         </button>
     </li>
@@ -38,7 +38,7 @@
                         <input type="date" class="form-control" id="isEnd" value="{{ date('Y-m-d') }}">
                     </div>
                     <div class="col-md-3">
-                        <button class="btn btn-primary w-100" onclick="loadIncomeStatement()">
+                        <button class="btn btn-primary w-100" data-fn="loadIncomeStatement">
                             <i class="fas fa-search me-1"></i> {{ __('pos.Generate') }}
                         </button>
                     </div>
@@ -153,7 +153,7 @@
                         <input type="date" class="form-control" id="stmtEnd" value="{{ date('Y-m-d') }}">
                     </div>
                     <div class="col-md-2">
-                        <button class="btn btn-primary w-100" onclick="loadAccountStatement()">
+                        <button class="btn btn-primary w-100" data-fn="loadAccountStatement">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
@@ -194,7 +194,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 async function loadIncomeStatement() {
     const res = await apiCall('{{ route("reports.income-statement") }}', 'POST', {
         start_date: document.getElementById('isStart').value,

@@ -98,19 +98,19 @@
             <div class="card">
                 <div class="card-body p-2">
                     <nav class="settings-nav nav flex-column">
-                        <button class="nav-link active text-start" data-tab="general" onclick="showTab('general', this)">
+                        <button class="nav-link active text-start" data-tab="general" data-fn="showTab" data-args='["general"]'>
                             <i class="fas fa-store me-2"></i>{{ __('pos.general_settings') }}
                         </button>
-                        <button class="nav-link text-start" data-tab="tax" onclick="showTab('tax', this)">
+                        <button class="nav-link text-start" data-tab="tax" data-fn="showTab" data-args='["tax"]'>
                             <i class="fas fa-percent me-2"></i>{{ __('pos.tax_settings') }}
                         </button>
-                        <button class="nav-link text-start" data-tab="invoice" onclick="showTab('invoice', this)">
+                        <button class="nav-link text-start" data-tab="invoice" data-fn="showTab" data-args='["invoice"]'>
                             <i class="fas fa-file-invoice me-2"></i>{{ __('pos.invoice_settings') }}
                         </button>
-                        <button class="nav-link text-start" data-tab="pos" onclick="showTab('pos', this)">
+                        <button class="nav-link text-start" data-tab="pos" data-fn="showTab" data-args='["pos"]'>
                             <i class="fas fa-cash-register me-2"></i>{{ __('pos.pos_settings') }}
                         </button>
-                        <button class="nav-link text-start" data-tab="roles" onclick="showTab('roles', this)">
+                        <button class="nav-link text-start" data-tab="roles" data-fn="showTab" data-args='["roles"]'>
                             <i class="fas fa-shield-alt me-2"></i>{{ __('pos.roles_permissions') }}
                         </button>
                     </nav>
@@ -219,7 +219,7 @@
                         <div class="setting-control">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" data-key="tax_enabled"
-                                    id="s_tax_enabled" onchange="toggleTaxFields()">
+                                    id="s_tax_enabled" data-on-change="toggleTaxFields">
                             </div>
                         </div>
                     </div>
@@ -295,7 +295,7 @@
                             <div class="col-md-4">
                                 <label class="form-label text-muted small">سعر المنتج / Product Price</label>
                                 <input type="number" class="form-control" id="previewPrice" value="100"
-                                    oninput="updateTaxPreview()">
+                                    data-on-input="updateTaxPreview">
                             </div>
                             <div class="col-md-8">
                                 <div class="bg-light rounded p-3 mt-3" id="taxPreviewResult">
@@ -443,7 +443,7 @@
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <span><i class="fas fa-users me-2"></i>{{ __('pos.roles') }}</span>
-                                <button class="btn btn-sm btn-primary" onclick="showCreateRoleModal()">
+                                <button class="btn btn-sm btn-primary" data-fn="showCreateRoleModal">
                                     <i class="fas fa-plus me-1"></i>{{ __('pos.create_role') }}
                                 </button>
                             </div>
@@ -489,7 +489,7 @@
                                         <option value="">{{ __('pos.select_role') }}</option>
                                     </select>
                                 </div>
-                                <button class="btn btn-primary w-100" onclick="assignRoleToUser()">
+                                <button class="btn btn-primary w-100" data-fn="assignRoleToUser">
                                     <i class="fas fa-save me-2"></i>{{ __('pos.assign_role') }}
                                 </button>
                             </div>
@@ -519,7 +519,7 @@
                                 <div class="col-12 text-center text-muted py-3">{{ __('pos.select_role') }}</div>
                             </div>
                         </div>
-                        <button class="btn btn-success" onclick="savePermissions()" id="savePermBtn"
+                        <button class="btn btn-success" data-fn="savePermissions" id="savePermBtn"
                             style="display: none;">
                             <i class="fas fa-save me-2"></i>{{ __('pos.save') }}
                         </button>
@@ -554,7 +554,7 @@
                             <button type="button" class="btn btn-secondary"
                                 data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
                             <button type="button" class="btn btn-primary"
-                                onclick="saveRole()">{{ __('pos.save') }}</button>
+                                data-fn="saveRole">{{ __('pos.save') }}</button>
                         </div>
                     </div>
                 </div>
@@ -563,10 +563,10 @@
             {{-- Save Button --}}
             <div class="save-btn-wrapper">
                 <div class="d-flex gap-2 justify-content-end">
-                    <button class="btn btn-secondary" onclick="loadSettings()">
+                    <button class="btn btn-secondary" data-fn="loadSettings">
                         <i class="fas fa-undo me-1"></i>{{ __('pos.cancel') }}
                     </button>
-                    <button class="btn btn-primary btn-lg px-4" onclick="saveSettings()" id="saveBtn">
+                    <button class="btn btn-primary btn-lg px-4" data-fn="saveSettings" id="saveBtn">
                         <i class="fas fa-save me-2"></i>{{ __('pos.save') }}
                         <span id="saveSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
                     </button>
@@ -578,7 +578,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @nonce>
         let allSettings = {};
         let roles = [];
         let permissions = [];
@@ -638,13 +638,13 @@
             <td><span class="badge bg-secondary">${role.guard_name}</span></td>
             <td><span class="badge bg-info">${role.permissions?.length || 0}</span></td>
             <td>
-                <button class="btn btn-sm btn-outline-warning" onclick="editRole('${role.id}')">
+                <button class="btn btn-sm btn-outline-warning" data-fn="editRole" data-args='["${role.id}"]'>
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteRole('${role.id}')">
+                <button class="btn btn-sm btn-outline-danger" data-fn="deleteRole" data-args='["${role.id}"]'>
                     <i class="fas fa-trash"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-primary" onclick="selectRole('${role.id}')">
+                <button class="btn btn-sm btn-outline-primary" data-fn="selectRole" data-args='["${role.id}"]'>
                     <i class="fas fa-key"></i>
                 </button>
             </td>
@@ -685,8 +685,8 @@
                     html += `
                 <div class="col-md-4 mb-2">
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="${perm.name}" id="perm_${perm.id}" 
-                            ${isChecked ? 'checked' : ''} onchange="togglePermission('${perm.name}', this.checked)">
+                        <input class="form-check-input" type="checkbox" value="${perm.name}" id="perm_${perm.id}"
+                            ${isChecked ? 'checked' : ''} data-on-change="togglePermission">
                         <label class="form-check-label" for="perm_${perm.id}">
                             ${perm.name.replace(/_/g, ' ')}
                         </label>
@@ -700,7 +700,9 @@
 
         let changedPermissions = [];
 
-        function togglePermission(permName, checked) {
+        function togglePermission(el) {
+            const permName = el.value;
+            const checked  = el.checked;
             if (checked) {
                 if (!changedPermissions.includes(permName)) changedPermissions.push(permName);
             } else {

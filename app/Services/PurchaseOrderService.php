@@ -1,17 +1,22 @@
 <?php
 namespace App\Services;
 
+use App\Contracts\Repositories\PurchaseOrderRepositoryInterface;
+use App\Contracts\Repositories\SupplierAccountRepositoryInterface;
+use App\Contracts\Repositories\SupplierRepositoryInterface;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderItem;
-use App\Models\Supplier;
-use App\Models\SupplierAccount;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PurchaseOrderService
 {
-    public function __construct(private StockService $stockService) {}
+    public function __construct(
+        private StockService                    $stockService,
+        private PurchaseOrderRepositoryInterface $poRepo,
+        private SupplierRepositoryInterface     $supplierRepo,
+        private SupplierAccountRepositoryInterface $supplierAccountRepo,
+    ) {}
 
     public function createPurchaseOrder(array $data): PurchaseOrder
     {
@@ -20,9 +25,9 @@ class PurchaseOrderService
             $totalAmount = collect($data['items'])->sum(fn($i) => $i['cost_price'] * $i['quantity']);
             $discount    = $data['discount'] ?? 0;
             $finalAmount = $totalAmount - $discount;
-            $supplier    = Supplier::find($data['supplier_id']);
+            $supplier    = $this->supplierRepo->findOrFail($data['supplier_id']);
 
-            $po = PurchaseOrder::create([
+            $po = $this->poRepo->create([
                 'po_number'       => $poNumber,
                 'supplier_id'     => $data['supplier_id'],
                 'supplier_name'   => $supplier->name,
@@ -38,14 +43,14 @@ class PurchaseOrderService
             ]);
 
             foreach ($data['items'] as $item) {
-                PurchaseOrderItem::create([
-                    'po_id'          => $po->id,
-                    'product_id'     => $item['product_id'],
-                    'product_name'   => $item['product_name'],
-                    'quantity'       => $item['quantity'],
-                    'cost_price'     => $item['cost_price'],
-                    'selling_price'  => $item['selling_price'] ?? null,
-                    'subtotal'       => $item['cost_price'] * $item['quantity'],
+                $this->poRepo->createItem([
+                    'po_id'         => $po->id,
+                    'product_id'    => $item['product_id'],
+                    'product_name'  => $item['product_name'],
+                    'quantity'      => $item['quantity'],
+                    'cost_price'    => $item['cost_price'],
+                    'selling_price' => $item['selling_price'] ?? null,
+                    'subtotal'      => $item['cost_price'] * $item['quantity'],
                 ]);
             }
 
@@ -54,46 +59,37 @@ class PurchaseOrderService
         });
     }
 
-    /**
-     * سيناريو 2: استلام البضاعة مع تسجيل الفرق بين المطلوب والمستلم فعلاً
-     */
     public function receivePurchaseOrder(PurchaseOrder $po, array $receivedItems): PurchaseOrder
     {
         return DB::transaction(function () use ($po, $receivedItems) {
-            $hasDiscrepancy = false;
-
             foreach ($receivedItems as $item) {
-                $poItem = PurchaseOrderItem::find($item['item_id']);
+                $poItem = $this->poRepo->findItem($item['item_id']);
                 if (!$poItem) continue;
 
                 $requestedQty  = $poItem->quantity;
                 $alreadyRcvd   = $poItem->received_quantity;
                 $maxReceivable = $requestedQty - $alreadyRcvd;
                 $receivedQty   = (int) $item['received_quantity'];
-
-                // السماح باستلام أقل أو أكثر من المطلوب — مع تسجيل الفرق
-                $actualQty   = max(0, $receivedQty);
-                $discrepancy = $actualQty - $maxReceivable; // سالب = ناقص، موجب = زيادة
+                $actualQty     = max(0, $receivedQty);
+                $discrepancy   = $actualQty - $maxReceivable;
 
                 if ($actualQty <= 0) continue;
 
-                $poItem->update([
-                    'received_quantity'  => $alreadyRcvd + $actualQty,
-                    'discrepancy'        => $discrepancy,
-                    'discrepancy_notes'  => $item['discrepancy_notes'] ?? null,
+                $this->poRepo->updateItem($poItem, [
+                    'received_quantity' => $alreadyRcvd + $actualQty,
+                    'discrepancy'       => $discrepancy,
+                    'discrepancy_notes' => $item['discrepancy_notes'] ?? null,
                 ]);
 
-                // تسجيل تحذير لو في فرق
                 if ($discrepancy !== 0) {
-                    $hasDiscrepancy = true;
                     Log::channel('audit')->warning('purchase_order.discrepancy', [
-                        'po_number'     => $po->po_number,
-                        'product'       => $poItem->product_name,
-                        'requested'     => $requestedQty,
-                        'received'      => $actualQty,
-                        'discrepancy'   => $discrepancy,
-                        'user_id'       => Auth::id(),
-                        'timestamp'     => now()->toIso8601String(),
+                        'po_number'   => $po->po_number,
+                        'product'     => $poItem->product_name,
+                        'requested'   => $requestedQty,
+                        'received'    => $actualQty,
+                        'discrepancy' => $discrepancy,
+                        'user_id'     => Auth::id(),
+                        'timestamp'   => now()->toIso8601String(),
                     ]);
                 }
 
@@ -111,12 +107,11 @@ class PurchaseOrderService
                 }
             }
 
-            // تحديث حالة الأمر
             $po->refresh();
             $allReceived = $po->items->every(fn($i) => $i->received_quantity >= $i->quantity);
             $anyReceived = $po->items->some(fn($i)  => $i->received_quantity > 0);
 
-            $po->update([
+            $this->poRepo->update($po, [
                 'status'        => $allReceived ? 'received' : ($anyReceived ? 'partial' : 'pending'),
                 'received_date' => $allReceived ? now() : null,
             ]);
@@ -127,10 +122,10 @@ class PurchaseOrderService
 
     private function recordSupplierDebt(int $supplierId, int $poId, string $poNumber, float $amount): void
     {
-        $lastEntry   = SupplierAccount::where('supplier_id', $supplierId)->lockForUpdate()->latest()->first();
+        $lastEntry   = $this->supplierAccountRepo->latestEntry($supplierId);
         $lastBalance = $lastEntry ? $lastEntry->balance : 0;
 
-        SupplierAccount::create([
+        $this->supplierAccountRepo->create([
             'supplier_id'      => $supplierId,
             'transaction_type' => 'purchase_order',
             'reference_id'     => $poId,

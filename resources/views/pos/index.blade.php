@@ -154,10 +154,10 @@
                             <input type="text" class="form-control form-control-lg" id="searchInput"
                                 placeholder="{{ __('pos.scan_barcode') }} / {{ __('pos.search_product') }}"
                                 autocomplete="off" autofocus>
-                            <button class="btn btn-outline-secondary" title="Camera scan" onclick="openCameraModal()">
+                            <button class="btn btn-outline-secondary" id="cameraScanBtn" title="Camera scan">
                                 <i class="fas fa-camera"></i>
                             </button>
-                            <button class="btn btn-primary" onclick="triggerSearch()">
+                            <button class="btn btn-primary" id="searchTriggerBtn">
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
@@ -175,7 +175,7 @@
                     </span>
                     <div class="d-flex gap-2 align-items-center">
                         <span class="badge bg-primary rounded-pill" id="cartCount">0</span>
-                        <button class="btn btn-sm btn-outline-danger" onclick="clearCart()" id="clearCartBtn"
+                        <button class="btn btn-sm btn-outline-danger" id="clearCartBtn"
                             style="display:none">
                             <i class="fas fa-trash me-1"></i>{{ __('pos.cancel') }}
                         </button>
@@ -221,7 +221,7 @@
                         <span class="text-muted">{{ __('pos.discount') }}</span>
                         <div class="input-group input-group-sm" style="width:140px;">
                             <input type="number" class="form-control text-end" id="discountInput" value="0"
-                                min="0" step="0.01" onchange="updateTotals()">
+                                min="0" step="0.01">
                             <span class="input-group-text">{{ $settings['currency_symbol'] ?? 'ج.م' }}</span>
                         </div>
                     </div>
@@ -255,14 +255,13 @@
                 <div class="card-body pb-2">
                     <label class="form-label fw-semibold mb-2">{{ __('pos.payment_method') }}</label>
                     <div class="d-flex gap-2 flex-wrap">
-                        <button class="payment-btn btn" id="btnCash" onclick="setPayment('cash')">
+                        <button class="payment-btn btn" id="btnCash">
                             <i class="fas fa-money-bill-wave d-block mb-1"></i>{{ __('pos.cash') }}
                         </button>
-                        <button class="payment-btn btn btn-outline-secondary" id="btnCard" onclick="setPayment('card')">
+                        <button class="payment-btn btn btn-outline-secondary" id="btnCard">
                             <i class="fas fa-credit-card d-block mb-1"></i>{{ __('pos.card') }}
                         </button>
-                        <button class="payment-btn btn btn-outline-secondary" id="btnTransfer"
-                            onclick="setPayment('transfer')">
+                        <button class="payment-btn btn btn-outline-secondary" id="btnTransfer">
                             <i class="fas fa-exchange-alt d-block mb-1"></i>{{ __('pos.transfer') }}
                         </button>
                     </div>
@@ -273,8 +272,7 @@
             <div class="card" id="cashPanel">
                 <div class="card-body py-2">
                     <label class="form-label fw-semibold small">{{ __('pos.cash') }} {{ __('pos.amount') }}</label>
-                    <input type="number" class="form-control" id="cashReceived" placeholder="0.00"
-                        oninput="calcChange()">
+                    <input type="number" class="form-control" id="cashReceived" placeholder="0.00">
                     <div class="d-flex justify-content-between mt-2">
                         <span class="text-muted small">{{ app()->getLocale() === 'ar' ? 'الباقي' : 'Change' }}</span>
                         <span class="fw-bold text-success" id="changeAmount">0.00</span>
@@ -283,7 +281,7 @@
             </div>
 
             {{-- Complete Sale --}}
-            <button class="btn btn-success btn-lg py-3 fw-bold" id="completeSaleBtn" onclick="completeSale()" disabled>
+            <button class="btn btn-success btn-lg py-3 fw-bold" id="completeSaleBtn" disabled>
                 <i class="fas fa-check-circle me-2"></i>{{ __('pos.complete_sale') }}
             </button>
         </div>
@@ -301,10 +299,10 @@
                 <div class="modal-body" id="invoiceBody"></div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                    <button class="btn btn-outline-primary" onclick="printInvoice()">
+                    <button class="btn btn-outline-primary" id="printInvoiceBtn">
                         <i class="fas fa-print me-2"></i>{{ __('pos.print') }}
                     </button>
-                    <button class="btn btn-success" onclick="newSale()">
+                    <button class="btn btn-success" id="newSaleBtn">
                         <i class="fas fa-plus me-2"></i>{{ app()->getLocale() === 'ar' ? 'بيعة جديدة' : 'New Sale' }}
                     </button>
                 </div>
@@ -388,7 +386,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @nonce>
         // Settings passed from controller
         const POS_SETTINGS = {
             taxEnabled: {{ $settings['tax_enabled'] ? 'true' : 'false' }},
@@ -411,6 +409,7 @@
         let searchTimeout = null;
         let lastKeyTime = Date.now();
         let currentInvoice = null;
+        let lastSearchResults = [];
 
         // ─── BARCODE SCANNER SUPPORT ──────────────────────────────────────────────────
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
@@ -481,9 +480,10 @@
         }
 
         function renderSearchDropdown(products) {
+            lastSearchResults = products;
             const container = document.getElementById('searchResults');
-            container.innerHTML = products.map(p => `
-        <div class="search-item" onclick='selectProduct(${JSON.stringify(p)})'>
+            container.innerHTML = products.map((p, i) => `
+        <div class="search-item" data-product-idx="${i}">
             <div>
                 <div class="fw-semibold">${escapeHtml(p.name)}</div>
                 <small class="text-muted">${p.category || ''}</small>
@@ -567,20 +567,20 @@
             <td class="text-end">
                 <input type="number" class="form-control form-control-sm text-center p-1"
                     style="width:80px" value="${item.price}" step="0.01" min="0"
-                    onchange="setPrice(${idx}, this.value)">
+                    data-action="set-price" data-idx="${idx}">
             </td>
             <td class="text-center">
                 <div class="d-flex align-items-center gap-1">
-                    <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(${idx},-1)">−</button>
+                    <button class="btn btn-sm btn-outline-secondary qty-btn" data-action="dec-qty" data-idx="${idx}">−</button>
                     <input type="number" class="form-control form-control-sm text-center p-1"
                         style="width:55px" value="${item.quantity}" min="1" max="${item.max_qty}"
-                        onchange="setQty(${idx}, this.value)">
-                    <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(${idx},1)">+</button>
+                        data-action="set-qty" data-idx="${idx}">
+                    <button class="btn btn-sm btn-outline-secondary qty-btn" data-action="inc-qty" data-idx="${idx}">+</button>
                 </div>
             </td>
             <td class="fw-semibold text-success text-end">${formatCurrency(item.price * item.quantity)}</td>
             <td class="text-center">
-                <button class="btn btn-sm btn-outline-danger qty-btn" onclick="removeItem(${idx})">
+                <button class="btn btn-sm btn-outline-danger qty-btn" data-action="remove" data-idx="${idx}">
                     <i class="fas fa-times"></i>
                 </button>
             </td>
@@ -1327,7 +1327,47 @@
             });
         }
 
-        // Init
+        // ─── EVENT DELEGATION: cart table ────────────────────────────────────────
+        document.getElementById('cartBody').addEventListener('click', function(e) {
+            const el = e.target.closest('[data-action]');
+            if (!el) return;
+            const idx = parseInt(el.dataset.idx);
+            const action = el.dataset.action;
+            if (action === 'dec-qty') changeQty(idx, -1);
+            else if (action === 'inc-qty') changeQty(idx, 1);
+            else if (action === 'remove') removeItem(idx);
+        });
+
+        document.getElementById('cartBody').addEventListener('change', function(e) {
+            const el = e.target.closest('[data-action]');
+            if (!el) return;
+            const idx = parseInt(el.dataset.idx);
+            const action = el.dataset.action;
+            if (action === 'set-price') setPrice(idx, el.value);
+            else if (action === 'set-qty') setQty(idx, el.value);
+        });
+
+        // ─── EVENT DELEGATION: search dropdown ───────────────────────────────────
+        document.getElementById('searchResults').addEventListener('click', function(e) {
+            const item = e.target.closest('[data-product-idx]');
+            if (!item) return;
+            selectProduct(lastSearchResults[parseInt(item.dataset.productIdx)]);
+        });
+
+        // ─── STATIC BUTTON LISTENERS ─────────────────────────────────────────────
+        document.getElementById('cameraScanBtn').addEventListener('click', openCameraModal);
+        document.getElementById('searchTriggerBtn').addEventListener('click', triggerSearch);
+        document.getElementById('clearCartBtn').addEventListener('click', clearCart);
+        document.getElementById('discountInput').addEventListener('change', updateTotals);
+        document.getElementById('btnCash').addEventListener('click', () => setPayment('cash'));
+        document.getElementById('btnCard').addEventListener('click', () => setPayment('card'));
+        document.getElementById('btnTransfer').addEventListener('click', () => setPayment('transfer'));
+        document.getElementById('cashReceived').addEventListener('input', calcChange);
+        document.getElementById('completeSaleBtn').addEventListener('click', completeSale);
+        document.getElementById('printInvoiceBtn').addEventListener('click', printInvoice);
+        document.getElementById('newSaleBtn').addEventListener('click', newSale);
+
+        // ─── INIT ─────────────────────────────────────────────────────────────────
         setPayment(POS_SETTINGS.defaultPayment);
         document.addEventListener('click', e => {
             if (!e.target.closest('.product-search')) closeSearch();
