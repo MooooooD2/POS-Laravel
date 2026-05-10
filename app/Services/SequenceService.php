@@ -26,42 +26,28 @@ class SequenceService
      */
     public static function next(string $name, ?string $prefix = null): string
     {
-        // Atomic increment using MySQL LAST_INSERT_ID trick
-        // هذا الأسلوب آمن تماماً في حال وجود طلبات متزامنة
-        DB::statement(
-            'UPDATE sequences SET value = LAST_INSERT_ID(value + 1) WHERE name = ?',
-            [$name]
-        );
+        ['id' => $id, 'prefix' => $resolvedPrefix] = DB::transaction(function () use ($name, $prefix) {
+            $row = DB::table('sequences')->where('name', $name)->lockForUpdate()->first();
 
-        $id = DB::select('SELECT LAST_INSERT_ID() as id')[0]->id;
+            if (!$row) {
+                Log::warning('sequence.not_found_creating', [
+                    'name'      => $name,
+                    'timestamp' => now()->toIso8601String(),
+                ]);
+                DB::table('sequences')->insert([
+                    'name'   => $name,
+                    'value'  => 1,
+                    'prefix' => strtoupper($name),
+                ]);
+                return ['id' => 1, 'prefix' => $prefix ?? strtoupper($name)];
+            }
 
-        if (!$id) {
-            // FIX-5: تسجيل التحذير بدلاً من الفشل الصامت
-            Log::warning('sequence.not_found_creating', [
-                'name'      => $name,
-                'timestamp' => now()->toIso8601String(),
-            ]);
+            $newValue = $row->value + 1;
+            DB::table('sequences')->where('name', $name)->update(['value' => $newValue]);
 
-            // Fallback: insert if sequence doesn't exist
-            DB::table('sequences')->insertOrIgnore([
-                'name'   => $name,
-                'value'  => 1,
-                'prefix' => strtoupper($name),
-            ]);
+            return ['id' => $newValue, 'prefix' => $prefix ?? $row->prefix ?? strtoupper($name)];
+        });
 
-            // إعادة القراءة بعد الإنشاء للتأكد من الرقم الصحيح
-            $row = DB::table('sequences')->where('name', $name)->first();
-            $id  = $row?->value ?? 1;
-        }
-
-        // Get prefix from DB if not overridden
-        if (!$prefix) {
-            $row    = DB::table('sequences')->where('name', $name)->first();
-            $prefix = $row?->prefix ?? strtoupper($name);
-        }
-
-        $date = now()->format('Ymd');
-
-        return "{$prefix}-{$date}-" . str_pad($id, 6, '0', STR_PAD_LEFT);
+        return "{$resolvedPrefix}-" . now()->format('Ymd') . '-' . str_pad($id, 6, '0', STR_PAD_LEFT);
     }
 }

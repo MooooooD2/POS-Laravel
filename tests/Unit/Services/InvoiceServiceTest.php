@@ -21,13 +21,12 @@ class InvoiceServiceTest extends TestCase
     {
         parent::setUp();
 
-        // Setup sequence table
-        DB::table('sequences')->insert(['name' => 'invoice', 'prefix' => 'INV', 'value' => 0]);
+        DB::table('sequences')->where('name', 'invoice')->update(['value' => 0]);
 
         $user = User::factory()->create(['role' => 'cashier', 'language' => 'ar']);
         $this->actingAs($user);
 
-        $this->service = new InvoiceService(new StockService());
+        $this->service = app(InvoiceService::class);
     }
 
     public function test_creates_invoice_successfully(): void

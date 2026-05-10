@@ -42,11 +42,11 @@ class LanguageController extends Controller
             return response()->json([], 400);
         }
 
-        // بناء المسار بعد التحقق
-        $translationFile = resource_path('lang/' . $locale . '/pos.php');
+        // بناء المسار بعد التحقق — Laravel 11 uses lang/ at project root, not resources/lang/
+        $translationFile = base_path('lang/' . $locale . '/pos.php');
 
         // تأكيد أن الملف داخل مجلد lang فعلاً (منع ../)
-        $realBase = realpath(resource_path('lang'));
+        $realBase = realpath(base_path('lang'));
         $realFile = realpath($translationFile);
 
         if ($realFile === false || !str_starts_with($realFile, $realBase)) {

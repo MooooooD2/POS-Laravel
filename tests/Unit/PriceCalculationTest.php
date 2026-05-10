@@ -45,14 +45,14 @@ class PriceCalculationTest extends TestCase
     {
         $product = Product::factory()->create(['price' => 100.00, 'quantity' => 5]);
 
-        $invoice = $this->service->createInvoice([
+        // Discount of 999 exceeds the total (100) — service throws, not silently caps
+        $this->expectException(\Exception::class);
+
+        $this->service->createInvoice([
             'items'          => [['product_id' => $product->id, 'quantity' => 1]],
-            'discount'       => 999,  // أكبر من الإجمالي 100
+            'discount'       => 999,
             'payment_method' => 'cash',
         ]);
-
-        $this->assertLessThanOrEqual($invoice->total, $invoice->discount);
-        $this->assertGreaterThanOrEqual(0, $invoice->final_total);
     }
 
     /** @test */

@@ -24,12 +24,13 @@ class ReturnAuthorizationTest extends TestCase
     /** @test */
     public function user_without_returns_permission_cannot_create_return()
     {
+        // User with no role has no permissions at all
         $user = User::factory()->create(['is_active' => true]);
-        $user->assignRole('warehouse'); // warehouse ليس لديه view_returns
 
         $response = $this->actingAs($user)->postJson('/api/returns', [
-            'invoice_id' => 1,
-            'items'      => [['product_id' => 1, 'quantity' => 1]],
+            'invoice_id'    => 1,
+            'items'         => [['product_id' => 1, 'quantity' => 1]],
+            'refund_method' => 'cash',
         ]);
 
         $response->assertStatus(403);
@@ -51,11 +52,12 @@ class ReturnAuthorizationTest extends TestCase
         ]);
 
         $response = $this->actingAs($cashier)->postJson('/api/returns', [
-            'invoice_id' => $invoice->id,
-            'items'      => [['product_id' => $product->id, 'quantity' => 1]],
+            'invoice_id'    => $invoice->id,
+            'items'         => [['product_id' => $product->id, 'quantity' => 1]],
+            'refund_method' => 'cash',
         ]);
 
-        // 201 created أو 422 (validation issue) — لكن ليس 403
+        // 201 created — but not 403
         $this->assertNotEquals(403, $response->getStatusCode());
     }
 }

@@ -47,9 +47,10 @@ class ReturnTest extends TestCase
     {
         $this->actingAs($this->cashier)
             ->postJson('/api/returns', [
-                'invoice_id' => $this->invoice->id,
-                'items'      => [['product_id' => $this->product->id, 'quantity' => 1]],
-                'reason'     => 'منتج تالف',
+                'invoice_id'    => $this->invoice->id,
+                'items'         => [['product_id' => $this->product->id, 'quantity' => 1]],
+                'reason'        => 'منتج تالف',
+                'refund_method' => 'cash',
             ])->assertStatus(201);
     }
 
@@ -59,8 +60,9 @@ class ReturnTest extends TestCase
         $initialQty = $this->product->quantity;
 
         $this->actingAs($this->cashier)->postJson('/api/returns', [
-            'invoice_id' => $this->invoice->id,
-            'items'      => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'invoice_id'    => $this->invoice->id,
+            'items'         => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'refund_method' => 'cash',
         ]);
 
         $this->assertEquals($initialQty + 1, $this->product->fresh()->quantity);
@@ -80,8 +82,9 @@ class ReturnTest extends TestCase
     public function return_price_comes_from_original_invoice_not_user()
     {
         $this->actingAs($this->cashier)->postJson('/api/returns', [
-            'invoice_id' => $this->invoice->id,
-            'items'      => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'invoice_id'    => $this->invoice->id,
+            'items'         => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'refund_method' => 'cash',
         ]);
 
         // التحقق أن السعر في المرتجع = السعر في الفاتورة الأصلية (100)

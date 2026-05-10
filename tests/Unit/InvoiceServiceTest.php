@@ -20,14 +20,13 @@ class InvoiceServiceTest extends TestCase
         $service  = app(InvoiceService::class);
         $this->actingAs(\App\Models\User::factory()->create());
 
-        // خصم أكبر من الإجمالي — يجب أن يُقيَّد عند الإجمالي
-        $invoice = $service->createInvoice([
+        // خصم أكبر من الإجمالي — يجب أن يرفضه النظام
+        $this->expectException(\Exception::class);
+
+        $service->createInvoice([
             'items'          => [['product_id' => $product->id, 'quantity' => 1]],
-            'discount'       => 999, // أكبر من 100
+            'discount'       => 999, // أكبر من الحد المسموح
             'payment_method' => 'cash',
         ]);
-
-        // الخصم لا يتجاوز الإجمالي
-        $this->assertLessThanOrEqual($invoice->total, $invoice->discount);
     }
 }

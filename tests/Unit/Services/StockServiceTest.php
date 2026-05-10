@@ -19,7 +19,7 @@ class StockServiceTest extends TestCase
         parent::setUp();
         $user = User::factory()->create(['role' => 'admin', 'language' => 'ar']);
         $this->actingAs($user);
-        $this->service = new StockService();
+        $this->service = app(StockService::class);
     }
 
     public function test_adds_stock_and_logs_movement(): void
@@ -30,9 +30,9 @@ class StockServiceTest extends TestCase
 
         $this->assertEquals(15, $product->fresh()->quantity);
         $this->assertDatabaseHas('stock_movements', [
-            'product_id' => $product->id,
-            'type'       => 'in',
-            'quantity'   => 5,
+            'product_id'    => $product->id,
+            'movement_type' => 'add',
+            'quantity'      => 5,
         ]);
     }
 
@@ -44,9 +44,9 @@ class StockServiceTest extends TestCase
 
         $this->assertEquals(6, $product->fresh()->quantity);
         $this->assertDatabaseHas('stock_movements', [
-            'product_id' => $product->id,
-            'type'       => 'out',
-            'quantity'   => 4,
+            'product_id'    => $product->id,
+            'movement_type' => 'sale',
+            'quantity'      => 4,
         ]);
     }
 

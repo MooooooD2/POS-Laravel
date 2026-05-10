@@ -23,15 +23,12 @@ class ReturnServiceTest extends TestCase
     {
         parent::setUp();
 
-        DB::table('sequences')->insert([
-            ['name' => 'return',  'prefix' => 'RET', 'value' => 0],
-            ['name' => 'invoice', 'prefix' => 'INV', 'value' => 0],
-        ]);
+        DB::table('sequences')->whereIn('name', ['return', 'invoice'])->update(['value' => 0]);
 
         $user = User::factory()->create(['role' => 'cashier', 'language' => 'ar']);
         $this->actingAs($user);
 
-        $this->service = new ReturnService(new StockService());
+        $this->service = app(ReturnService::class);
     }
 
     private function createInvoiceWithItem(int $qty = 5, float $price = 100.0): array

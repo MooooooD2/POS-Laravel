@@ -54,7 +54,9 @@ class StockService
             $fresh      = $this->productRepo->lockForUpdate([$product->id])->firstOrFail();
             $difference = $newQuantity - $fresh->quantity;
 
-            $fresh->update(['quantity' => $newQuantity]);
+            // quantity is not in fillable — use direct assignment + save
+            $fresh->quantity = $newQuantity;
+            $fresh->save();
 
             $type = $difference >= 0 ? 'adjustment_add' : 'adjustment_remove';
             $this->logMovement($fresh, abs($difference), $type, $reason, null, 'adjustment');

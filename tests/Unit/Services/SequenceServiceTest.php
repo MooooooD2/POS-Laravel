@@ -14,11 +14,8 @@ class SequenceServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        DB::table('sequences')->insert([
-            ['name' => 'invoice',  'prefix' => 'INV', 'value' => 0],
-            ['name' => 'purchase', 'prefix' => 'PO',  'value' => 0],
-            ['name' => 'return',   'prefix' => 'RET', 'value' => 0],
-        ]);
+        // The migration already seeds these rows — just reset values to 0 before each test.
+        DB::table('sequences')->whereIn('name', ['invoice', 'purchase', 'return'])->update(['value' => 0]);
     }
 
     public function test_generates_invoice_number_with_correct_format(): void

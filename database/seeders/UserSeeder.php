@@ -53,9 +53,9 @@ class UserSeeder extends Seeder
      * FIX-2: التحقق من أن كلمات المرور غير فارغة قبل الـ seed
      * يمنع إنشاء حسابات بكلمات مرور فارغة عن طريق الخطأ
      */
-    private function validatePasswords(): void
+    private function validatePasswords(?array $passwords = null): void
     {
-        $required = [
+        $required = $passwords ?? [
             'ADMIN_PASSWORD'     => env('ADMIN_PASSWORD'),
             'CASHIER_PASSWORD'   => env('CASHIER_PASSWORD'),
             'WAREHOUSE_PASSWORD' => env('WAREHOUSE_PASSWORD'),
@@ -69,11 +69,13 @@ class UserSeeder extends Seeder
         }
 
         if (!empty($missing)) {
-            $this->command->error('❌ الـ Seeder توقف — كلمات المرور التالية فارغة في .env:');
-            foreach ($missing as $key) {
-                $this->command->error("   - {$key}");
+            if ($this->command) {
+                $this->command->error('❌ الـ Seeder توقف — كلمات المرور التالية فارغة في .env:');
+                foreach ($missing as $key) {
+                    $this->command->error("   - {$key}");
+                }
+                $this->command->error('   أضف كلمات مرور قوية في ملف .env ثم أعد تشغيل الـ seed.');
             }
-            $this->command->error('   أضف كلمات مرور قوية في ملف .env ثم أعد تشغيل الـ seed.');
             throw new \RuntimeException('Seed aborted: missing required passwords in .env');
         }
 

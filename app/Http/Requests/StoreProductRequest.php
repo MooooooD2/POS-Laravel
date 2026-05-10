@@ -7,6 +7,13 @@ class StoreProductRequest extends FormRequest
 {
     public function authorize(): bool { return auth()->user()?->can('add_product'); }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('name')) {
+            $this->merge(['name' => strip_tags($this->name)]);
+        }
+    }
+
     public function rules(): array
     {
         return [

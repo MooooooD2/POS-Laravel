@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->foreignId('product_id')->nullable()->constrained()->nullOnDelete();
             $table->string('product_name');
             $table->integer('quantity');
-            $table->enum('movement_type', ['add', 'remove', 'sale', 'return', 'purchase', 'adjustment']);
+            $table->enum('movement_type', ['add', 'remove', 'sale', 'return', 'purchase', 'adjustment', 'adjustment_add', 'adjustment_remove']);
             $table->string('reason')->nullable();
             $table->unsignedBigInteger('reference_id')->nullable();
             $table->foreignId('employee_id')->nullable()->constrained('users')->nullOnDelete();

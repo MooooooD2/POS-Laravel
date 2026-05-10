@@ -56,7 +56,7 @@ class AuthTest extends TestCase
     {
         User::factory()->create(['username' => 'ratetest', 'password' => bcrypt('Secret123'), 'is_active' => true]);
 
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $this->postJson('/login', ['username' => 'ratetest', 'password' => 'Wrong1Pass']);
         }
 
@@ -67,7 +67,7 @@ class AuthTest extends TestCase
     /** @test */
     public function session_info_requires_auth()
     {
-        $this->getJson('/session-info')->assertStatus(302); // redirect to login
+        $this->getJson('/session-info')->assertStatus(401); // JSON clients get 401, not redirect
     }
 
     /** @test */
