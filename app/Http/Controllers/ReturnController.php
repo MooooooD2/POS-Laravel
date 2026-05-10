@@ -6,6 +6,8 @@ use App\Models\SalesReturn;
 use App\Services\ReturnService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ReturnController extends Controller
 {
@@ -29,8 +31,14 @@ class ReturnController extends Controller
                 'invoice_number' => $return->invoice_number,
             ]);
             return $this->success(['return' => $return], '', 201);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('return.create_db_error', [
+                'error'   => $e->getMessage(),
+                'user_id' => Auth::id(),
+            ]);
+            return $this->error(__('pos.return_creation_failed'), 500);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage());
+            return $this->error($e->getMessage(), 422);
         }
     }
 }
