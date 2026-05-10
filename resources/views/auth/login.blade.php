@@ -111,9 +111,6 @@
                 </button>
             </form>
 
-            <p class="text-center text-muted mt-3 mb-0 small">
-                Default: admin / Admin@2026!
-            </p>
         </div>
     </div>
 
