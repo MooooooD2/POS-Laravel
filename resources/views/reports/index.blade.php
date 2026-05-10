@@ -336,6 +336,12 @@
 
 @push('scripts')
     <script @nonce>
+        const EXPORT_URLS = {
+            sales:   '{{ route('reports.export.sales') }}',
+            returns: '{{ route('reports.export.returns') }}',
+            stock:   '{{ route('reports.export.stock') }}',
+        };
+
         let stockData = [];
         let salesInvoiceMap = {};
         let returnsMap = {};
@@ -491,7 +497,7 @@
                     const st = document.getElementById('returnsStatus').value;
                     if (st) params.set('status', st);
                 }
-                const url = `/reports/export/${type}?${params}`;
+                const url = EXPORT_URLS[type] + '?' + params;
                 format === 'pdf' ? window.open(url, '_blank') : (window.location.href = url);
                 return;
             }
