@@ -3,25 +3,26 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Stancl\Tenancy\Contracts\TenantDatabaseManager;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 
 /**
  * Tenant database manager for cPanel shared hosting.
  *
- * Instead of auto-creating databases (which requires privileges not available
- * on shared hosting), this manager expects the database to already exist.
- * The admin creates it manually in cPanel → MySQL Databases before registration.
+ * Creation strategy (tried in order):
+ *   1. Shell: `uapi Mysql create_database` — works when PHP runs as the cPanel user (PHP-FPM).
+ *      No credentials needed; available via SSH / exec on most cPanel hosts.
+ *   2. HTTP UAPI with API token  (CPANEL_TOKEN in .env)
+ *   3. HTTP UAPI with cPanel password (CPANEL_PASSWORD in .env)
  *
- * Database naming:
- *   Tenant code "mood_shop" → internal name "tenant_mood_shop"
- *   cPanel-resolved name   → "ffhzczwexx_tenant_mood_shop"
+ * Required .env:
+ *   CPANEL_USERNAME  – cPanel account name   (e.g. ffhzczwexx)
+ *   CPANEL_HOST      – server hostname        (e.g. server50.shared.spaceship.host)
  *
- * Steps for each new tenant:
- *   1. Note the store code (e.g. mood_shop) from the registration form.
- *   2. In cPanel → MySQL Databases, create: ffhzczwexx_tenant_mood_shop
- *   3. Under "Add User to Database", add ffhzczwexx_nuqtah_pos with ALL PRIVILEGES.
- *   4. Submit the registration form — migrations run automatically.
+ * Optional:
+ *   CPANEL_TOKEN     – API token  (if shell exec is disabled)
+ *   CPANEL_PASSWORD  – cPanel password (fallback when no token)
  */
 class CpanelTenantDatabaseManager implements TenantDatabaseManager
 {
@@ -32,38 +33,104 @@ class CpanelTenantDatabaseManager implements TenantDatabaseManager
         $this->connection = $connection;
     }
 
-    /**
-     * Convert the internal tenancy database name to the cPanel-prefixed MySQL name.
-     *
-     * Internal:  tenant_mood_shop
-     * cPanel:    ffhzczwexx_tenant_mood_shop
-     */
+    /** Internal name → cPanel-prefixed MySQL name (tenant_x → ffhzczwexx_tenant_x) */
     public function resolveDbName(string $name): string
     {
-        $cpanelUser = config('tenancy.cpanel.username');
-        return $cpanelUser ? "{$cpanelUser}_{$name}" : $name;
+        $user = config('tenancy.cpanel.username');
+        return $user ? "{$user}_{$name}" : $name;
     }
+
+    // ── Creation strategies ───────────────────────────────────────────────────
+
+    /** Strategy 1: shell `uapi` — needs no credentials, works when PHP runs as cPanel user. */
+    protected function createViaShell(string $dbName, string $appUser): bool
+    {
+        if (!\function_exists('shell_exec')) {
+            return false;
+        }
+
+        $db  = escapeshellarg($dbName);
+        $usr = escapeshellarg($appUser);
+
+        $out = shell_exec("uapi Mysql create_database name={$db} 2>&1");
+
+        if (!$out || str_contains($out, 'status: 0')) {
+            return false;
+        }
+
+        shell_exec("uapi Mysql set_privileges_on_database user={$usr} database={$db} privileges='ALL PRIVILEGES' 2>&1");
+
+        return $this->databaseExists(str_replace(config('tenancy.cpanel.username') . '_', '', $dbName));
+    }
+
+    /** Strategy 2 & 3: HTTP cPanel UAPI with token or password. */
+    protected function createViaHttp(string $dbName, string $appUser): bool
+    {
+        $user     = config('tenancy.cpanel.username');
+        $token    = config('tenancy.cpanel.token');
+        $password = config('tenancy.cpanel.password');
+        $host     = config('tenancy.cpanel.host');
+        $port     = config('tenancy.cpanel.port', 2083);
+
+        if (!$host || !$token && !$password) {
+            return false;
+        }
+
+        $http = Http::withoutVerifying();
+        $http = $token
+            ? $http->withHeaders(['Authorization' => "cpanel {$user}:{$token}"])
+            : $http->withBasicAuth($user, $password);
+
+        $base = "https://{$host}:{$port}/execute/Mysql";
+
+        $result = $http->get("{$base}/create_database", ['name' => $dbName])->json() ?? [];
+
+        if (($result['status'] ?? 0) !== 1) {
+            return false;
+        }
+
+        $http->get("{$base}/set_privileges_on_database", [
+            'user'       => $appUser,
+            'database'   => $dbName,
+            'privileges' => 'ALL PRIVILEGES',
+        ]);
+
+        return true;
+    }
+
+    // ── TenantDatabaseManager interface ──────────────────────────────────────
 
     public function createDatabase(TenantWithDatabase $tenant): bool
     {
         $dbName  = $this->resolveDbName($tenant->database()->getName());
         $appUser = config('database.connections.' . ($this->connection ?? 'mysql') . '.username');
 
-        if (!$this->databaseExists($tenant->database()->getName())) {
-            throw new \RuntimeException(
-                "Database [{$dbName}] does not exist. " .
-                "Please create it in cPanel → MySQL Databases, " .
-                "then grant ALL PRIVILEGES to [{$appUser}]."
-            );
+        if ($this->createViaShell($dbName, $appUser)) {
+            return true;
         }
 
-        return true;
+        if ($this->createViaHttp($dbName, $appUser)) {
+            return true;
+        }
+
+        throw new \RuntimeException(
+            "Cannot create database [{$dbName}] automatically. " .
+            "Add CPANEL_TOKEN or CPANEL_PASSWORD to .env, " .
+            "or create the database manually in cPanel and grant ALL PRIVILEGES to [{$appUser}]."
+        );
     }
 
     public function deleteDatabase(TenantWithDatabase $tenant): bool
     {
-        // Databases are deleted manually in cPanel.
-        return true;
+        $dbName = $this->resolveDbName($tenant->database()->getName());
+
+        if (\function_exists('shell_exec')) {
+            shell_exec('uapi Mysql delete_database name=' . escapeshellarg($dbName) . ' 2>&1');
+            return true;
+        }
+
+        $result = $this->cpanelHttpRequest('Mysql', 'delete_database', ['name' => $dbName]);
+        return ($result['status'] ?? 0) === 1;
     }
 
     public function databaseExists(string $name): bool
@@ -81,5 +148,23 @@ class CpanelTenantDatabaseManager implements TenantDatabaseManager
     {
         $baseConfig['database'] = $this->resolveDbName($databaseName);
         return $baseConfig;
+    }
+
+    // ── Helper ────────────────────────────────────────────────────────────────
+
+    protected function cpanelHttpRequest(string $module, string $function, array $params = []): array
+    {
+        $user     = config('tenancy.cpanel.username');
+        $token    = config('tenancy.cpanel.token');
+        $password = config('tenancy.cpanel.password');
+        $host     = config('tenancy.cpanel.host');
+        $port     = config('tenancy.cpanel.port', 2083);
+
+        $http = Http::withoutVerifying();
+        $http = $token
+            ? $http->withHeaders(['Authorization' => "cpanel {$user}:{$token}"])
+            : $http->withBasicAuth($user, $password);
+
+        return $http->get("https://{$host}:{$port}/execute/{$module}/{$function}", $params)->json() ?? [];
     }
 }
