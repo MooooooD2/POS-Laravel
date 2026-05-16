@@ -33,7 +33,7 @@ class TenantSeedCommand extends Command
             tenancy()->initialize($tenant);
 
             try {
-                app($seederClass)->run();
+                app($seederClass)->setCommand($this)->run();
                 $this->info("  ✓ Done");
             } catch (\Throwable $e) {
                 $this->error("  ✗ {$e->getMessage()}");
