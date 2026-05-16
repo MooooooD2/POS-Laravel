@@ -13,24 +13,34 @@ class StoreInvoiceRequest extends FormRequest
 
     public function rules(): array
     {
-        $maxDiscountPercent = (float) Setting::get('max_discount_percent',
-            env('MAX_DISCOUNT_PERCENT', 20)
+        $maxDiscountPercent = (float) Setting::get(
+            'max_discount_percent',
+            config('security.invoice.max_discount_percent', 20)
         );
 
         return [
-            'items'                => 'required|array|min:1|max:200',
-            'items.*.product_id'   => 'required|integer|exists:products,id',
-            'items.*.quantity'     => 'required|integer|min:1|max:9999',
-            'discount'             => [
+            'items'                  => 'required|array|min:1|max:200',
+            'items.*.product_id'     => 'required|integer|exists:products,id',
+            'items.*.quantity'       => 'required|integer|min:1|max:9999',
+            'discount'               => [
                 'nullable', 'numeric', 'min:0',
                 function ($attribute, $value, $fail) {
                     if ($value > 9999999) $fail('قيمة الخصم غير منطقية.');
                 }
             ],
-            'payment_method'       => 'required|in:cash,card,transfer,wallet',
-            'notes'                => 'nullable|string|max:500',
-            // المبلغ المستلم من الزبون (كاش فقط) — اختياري
-            'cash_received'        => 'nullable|numeric|min:0',
+            'customer_id'            => 'nullable|exists:customers,id',
+            // Single payment OR split payments — one must be present
+            'payment_method'         => 'required_without:payments|nullable|in:cash,card,transfer,wallet,credit',
+            'cash_received'          => 'nullable|numeric|min:0',
+            // Split payments array
+            'payments'               => 'required_without:payment_method|nullable|array|min:1|max:10',
+            'payments.*.method'      => 'required|in:cash,card,transfer,wallet,credit,voucher',
+            'payments.*.amount'      => 'required|numeric|min:0.01',
+            'payments.*.reference'   => 'nullable|string|max:100',
+            'notes'                  => 'nullable|string|max:500',
+            'redeem_loyalty_points'  => 'nullable|integer|min:1',
+            'warehouse_id'           => 'nullable|exists:warehouses,id',
+            'branch_id'              => 'nullable|exists:branches,id',
         ];
     }
 

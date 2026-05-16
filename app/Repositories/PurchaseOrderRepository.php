@@ -20,7 +20,7 @@ class PurchaseOrderRepository extends BaseRepository implements PurchaseOrderRep
 
     public function paginate(array $filters): LengthAwarePaginator
     {
-        $query = PurchaseOrder::with('supplier')->orderByDesc('id');
+        $query = PurchaseOrder::with('supplier', 'items')->orderByDesc('id');
 
         if (!empty($filters['supplier_id'])) {
             $query->where('supplier_id', $filters['supplier_id']);

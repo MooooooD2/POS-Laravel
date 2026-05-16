@@ -19,11 +19,14 @@ class InvoiceResource extends JsonResource
             // المبلغ المدفوع والباقي — null لو مش كاش
             'cash_received'  => $this->cash_received,
             'change_amount'  => $this->change_amount,
-            'payment_method' => $this->payment_method,
-            'cashier_name'   => $this->cashier_name,
-            'status'         => $this->status,
-            'created_at'     => $this->created_at->toDateTimeString(),
-            'items'          => InvoiceItemResource::collection($this->whenLoaded('items')),
+            'payment_method'  => $this->payment_method,
+            'cashier_name'    => $this->cashier_name,
+            'status'          => $this->status,
+            'created_at'      => $this->created_at->toDateTimeString(),
+            'customer_id'     => $this->customer_id,
+            'customer_name'   => $this->whenLoaded('customer', fn() => $this->customer?->name),
+            'customer_phone'  => $this->whenLoaded('customer', fn() => $this->customer?->phone),
+            'items'           => InvoiceItemResource::collection($this->whenLoaded('items')),
         ];
     }
 }

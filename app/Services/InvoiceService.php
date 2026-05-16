@@ -3,8 +3,11 @@ namespace App\Services;
 
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Contracts\Repositories\SettingRepositoryInterface;
+use App\Jobs\SubmitInvoiceToETA;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoicePayment;
 use App\Models\ReturnItem;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +19,13 @@ class InvoiceService
         private StockService               $stockService,
         private ProductRepositoryInterface $productRepo,
         private SettingRepositoryInterface $settingRepo,
+        private CustomerService            $customerService,
     ) {}
 
     public function createInvoice(array $data): Invoice
     {
-        return DB::transaction(function () use ($data) {
+        /** @var Invoice $invoice */
+        $invoice = DB::transaction(function () use ($data) {
             $invoiceNumber = SequenceService::next('invoice', $this->settingRepo->get('invoice_prefix', 'INV'));
 
             $productIds = collect($data['items'])->pluck('product_id')->unique()->toArray();
@@ -42,7 +47,10 @@ class InvoiceService
                 $total += $products->get($item['product_id'])->price * $item['quantity'];
             }
 
-            $maxDiscountPercent = (float) $this->settingRepo->get('max_discount_percent', env('MAX_DISCOUNT_PERCENT', 20));
+            $maxDiscountPercent = (float) $this->settingRepo->get(
+                'max_discount_percent',
+                config('security.invoice.max_discount_percent', 20)
+            );
             $requestedDiscount  = (float) ($data['discount'] ?? 0);
             $maxAllowedDiscount = $total * ($maxDiscountPercent / 100);
 
@@ -62,6 +70,20 @@ class InvoiceService
             $discount      = min($requestedDiscount, $total, $maxAllowedDiscount);
             $afterDiscount = $total - $discount;
 
+            // Loyalty point redemption (applied as additional discount)
+            $loyaltyPointsUsed = 0;
+            $loyaltyDiscount   = 0.0;
+            if (!empty($data['redeem_loyalty_points']) && !empty($data['customer_id'])) {
+                $customer = Customer::lockForUpdate()->find($data['customer_id']);
+                if ($customer) {
+                    $pointsToRedeem    = (int) $data['redeem_loyalty_points'];
+                    $loyaltyDiscount   = $this->customerService->redeemLoyaltyPoints($customer, $pointsToRedeem);
+                    $loyaltyDiscount   = min($loyaltyDiscount, $afterDiscount);
+                    $loyaltyPointsUsed = $pointsToRedeem;
+                    $afterDiscount    -= $loyaltyDiscount;
+                }
+            }
+
             $taxEnabled   = (bool) $this->settingRepo->get('tax_enabled', false);
             $taxRate      = $taxEnabled ? (float) $this->settingRepo->get('tax_rate', 0) : 0;
             $taxInclusive = (bool) $this->settingRepo->get('tax_inclusive', false);
@@ -75,10 +97,13 @@ class InvoiceService
 
             $finalTotal = $afterDiscount + ($taxInclusive ? 0 : $taxAmount);
 
+            $isSplit       = !empty($data['payments']);
+            $paymentMethod = $isSplit ? $data['payments'][0]['method'] : $data['payment_method'];
+
             $cashReceived = null;
             $changeAmount = null;
 
-            if ($data['payment_method'] === 'cash') {
+            if (!$isSplit && $paymentMethod === 'cash') {
                 $cashReceived = isset($data['cash_received']) && $data['cash_received'] > 0
                     ? round((float) $data['cash_received'], 2)
                     : round($finalTotal, 2);
@@ -93,46 +118,129 @@ class InvoiceService
                 $changeAmount = round($cashReceived - $finalTotal, 2);
             }
 
+            if ($isSplit) {
+                $paymentsTotal = collect($data['payments'])->sum('amount');
+                if (abs($paymentsTotal - round($finalTotal, 2)) > 0.01) {
+                    throw new \Exception(__('pos.payments_total_mismatch', [
+                        'expected' => round($finalTotal, 2),
+                        'received' => $paymentsTotal,
+                    ]));
+                }
+            }
+
+            $warehouseId = $data['warehouse_id'] ?? \App\Models\Warehouse::where('is_default', true)->value('id');
+
             $invoice = Invoice::create([
-                'invoice_number' => $invoiceNumber,
-                'total'          => round($total, 2),
-                'discount'       => round($discount, 2),
-                'tax_rate'       => $taxRate,
-                'tax_amount'     => round($taxAmount, 2),
-                'final_total'    => round($finalTotal, 2),
-                'cash_received'  => $cashReceived,
-                'change_amount'  => $changeAmount,
-                'payment_method' => $data['payment_method'],
-                'cashier_id'     => Auth::id(),
-                'cashier_name'   => Auth::user()->full_name,
-                'status'         => 'completed',
-                'date'           => now(),
+                'invoice_number'      => $invoiceNumber,
+                'total'               => round($total, 2),
+                'discount'            => round($discount, 2),
+                'loyalty_points_used' => $loyaltyPointsUsed,
+                'loyalty_discount'    => round($loyaltyDiscount, 2),
+                'tax_rate'            => $taxRate,
+                'tax_amount'          => round($taxAmount, 2),
+                'final_total'         => round($finalTotal, 2),
+                'cash_received'       => $cashReceived,
+                'change_amount'       => $changeAmount,
+                'payment_method'      => $paymentMethod,
+                'is_split_payment'    => $isSplit,
+                'customer_id'         => $data['customer_id'] ?? null,
+                'branch_id'           => $data['branch_id'] ?? \App\Models\Branch::where('is_default', true)->value('id'),
+                'warehouse_id'        => $warehouseId,
+                'cashier_id'          => Auth::id(),
+                'cashier_name'        => Auth::user()->full_name,
+                'status'              => 'completed',
+                'date'                => now(),
             ]);
 
             foreach ($data['items'] as $item) {
                 $product = $products->get($item['product_id']);
 
-                InvoiceItem::create([
-                    'invoice_id'   => $invoice->id,
-                    'product_id'   => $product->id,
-                    'product_name' => $product->name,
-                    'quantity'     => $item['quantity'],
-                    'price'        => $product->price,
-                    'subtotal'     => round($product->price * $item['quantity'], 2),
-                ]);
+                if ($product->track_batches) {
+                    $allocations = $this->stockService->deductBatchStock(
+                        $product, $item['quantity'], 'sale',
+                        __('pos.sale_deduction'), $invoice->id, 'invoice', $warehouseId
+                    );
+                    // Create one InvoiceItem per batch allocation
+                    foreach ($allocations as $alloc) {
+                        InvoiceItem::create([
+                            'invoice_id'   => $invoice->id,
+                            'product_id'   => $product->id,
+                            'product_name' => $product->name,
+                            'quantity'     => $alloc['quantity'],
+                            'price'        => $product->price,
+                            'cost_price'   => $product->avg_cost > 0 ? $product->avg_cost : $product->cost_price,
+                            'subtotal'     => round($product->price * $alloc['quantity'], 2),
+                            'warehouse_id' => $warehouseId,
+                            'batch_id'     => $alloc['batch_id'],
+                        ]);
+                    }
+                } else {
+                    InvoiceItem::create([
+                        'invoice_id'   => $invoice->id,
+                        'product_id'   => $product->id,
+                        'product_name' => $product->name,
+                        'quantity'     => $item['quantity'],
+                        'price'        => $product->price,
+                        'cost_price'   => $product->avg_cost > 0 ? $product->avg_cost : $product->cost_price,
+                        'subtotal'     => round($product->price * $item['quantity'], 2),
+                        'warehouse_id' => $warehouseId,
+                    ]);
 
-                $this->stockService->deductStock(
-                    $product,
-                    $item['quantity'],
-                    'sale',
-                    __('pos.sale_deduction'),
-                    $invoice->id,
-                    'invoice'
-                );
+                    $this->stockService->deductLockedStock(
+                        $product, $item['quantity'], 'sale',
+                        __('pos.sale_deduction'), $invoice->id, 'invoice', $warehouseId
+                    );
+                }
             }
 
-            return $invoice->load('items');
+            if ($isSplit) {
+                foreach ($data['payments'] as $payment) {
+                    InvoicePayment::create([
+                        'invoice_id' => $invoice->id,
+                        'method'     => $payment['method'],
+                        'amount'     => round((float) $payment['amount'], 2),
+                        'reference'  => $payment['reference'] ?? null,
+                    ]);
+                }
+
+                $creditAmount = collect($data['payments'])
+                    ->where('method', 'credit')
+                    ->sum('amount');
+
+                if ($creditAmount > 0) {
+                    $this->customerService->createInvoiceCharge($invoice, (float) $creditAmount);
+                }
+            } else {
+                InvoicePayment::create([
+                    'invoice_id' => $invoice->id,
+                    'method'     => $paymentMethod,
+                    'amount'     => round($finalTotal, 2),
+                ]);
+
+                if ($paymentMethod === 'credit') {
+                    $this->customerService->createInvoiceCharge($invoice);
+                }
+            }
+
+            return $invoice->load('items', 'customer');
         });
+
+        // Earn loyalty points on the final paid amount (after all discounts)
+        if (!empty($invoice->customer_id)) {
+            $customer = Customer::find($invoice->customer_id);
+            if ($customer) {
+                $this->customerService->addLoyaltyPoints($customer, $invoice->final_total);
+            }
+        }
+
+        if (config('eta.enabled')) {
+            SubmitInvoiceToETA::dispatch($invoice->id);
+        }
+
+        app(\App\Services\WhatsAppService::class)->sendInvoice($invoice);
+        app(\App\Services\WhatsAppService::class)->sendLargeInvoiceAlert($invoice);
+
+        return $invoice;
     }
 
     public function searchProduct(string $query, bool $exact = false): mixed

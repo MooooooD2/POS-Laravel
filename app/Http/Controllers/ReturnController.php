@@ -6,6 +6,7 @@ use App\Models\SalesReturn;
 use App\Services\ReturnService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -16,6 +17,32 @@ class ReturnController extends Controller
     public function __construct(private ReturnService $returnService) {}
 
     public function index() { return view('returns.index'); }
+
+    public function all(Request $request)
+    {
+        $request->validate([
+            'search'   => 'nullable|string|max:100',
+            'per_page' => 'nullable|integer|min:10|max:200',
+        ]);
+
+        $query = SalesReturn::with('items')
+            ->when($request->search, fn($q, $s) =>
+                $q->where('return_number', 'like', "%$s%")
+                  ->orWhere('invoice_number', 'like', "%$s%")
+                  ->orWhere('customer_name', 'like', "%$s%")
+            )
+            ->latest();
+
+        $perPage = (int) ($request->per_page ?? 20);
+        $returns = $query->paginate($perPage);
+
+        return $this->success([
+            'returns'      => $returns->items(),
+            'total'        => $returns->total(),
+            'current_page' => $returns->currentPage(),
+            'last_page'    => $returns->lastPage(),
+        ]);
+    }
 
     public function store(StoreReturnRequest $request)
     {

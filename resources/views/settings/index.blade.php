@@ -4,7 +4,7 @@
 @section('page-title', __('pos.settings'))
 
 @push('styles')
-    <style>
+    <style @nonce>
         .settings-nav .nav-link {
             color: #64748b;
             border-radius: 0.5rem;
@@ -437,6 +437,35 @@
             </div>
             {{-- Roles & Permissions Settings --}}
             <div id="tab-roles" class="settings-tab d-none">
+
+                {{-- Users Management --}}
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-users me-2"></i>{{ __('pos.users') }}</span>
+                        <button class="btn btn-sm btn-success" data-fn="showUserModal">
+                            <i class="fas fa-plus me-1"></i>{{ __('pos.add_user') }}
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>{{ __('pos.full_name') }}</th>
+                                        <th>{{ __('pos.username') }}</th>
+                                        <th>{{ __('pos.role') }}</th>
+                                        <th>{{ __('pos.status') }}</th>
+                                        <th>{{ __('pos.actions') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody">
+                                    <tr><td colspan="5" class="text-center text-muted py-3">{{ __('pos.loading') }}...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-3">
                     {{-- Roles Management --}}
                     <div class="col-md-6">
@@ -527,6 +556,54 @@
                 </div>
             </div>
 
+                </div>{{-- /row roles+assign --}}
+
+            {{-- Add / Edit User Modal --}}
+            <div class="modal fade" id="userModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="userModalTitle">{{ __('pos.add_user') }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="editUserId">
+                            <div class="mb-3">
+                                <label class="form-label">{{ __('pos.full_name') }} <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="userFullName">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">{{ __('pos.username') }} <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="userUsername" autocomplete="off">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" id="userPasswordLabel">
+                                    {{ __('pos.password') }} <span class="text-danger">*</span>
+                                </label>
+                                <input type="password" class="form-control" id="userPassword" autocomplete="new-password">
+                                <div class="form-text" id="userPasswordHint"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">{{ __('pos.role') }} <span class="text-danger">*</span></label>
+                                <select class="form-select" id="userRole">
+                                    <option value="">{{ __('pos.select_role') }}</option>
+                                </select>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="userIsActive" checked>
+                                <label class="form-check-label" for="userIsActive">{{ __('pos.active') }}</label>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
+                            <button type="button" class="btn btn-primary" data-fn="saveUser">
+                                <i class="fas fa-save me-1"></i>{{ __('pos.save') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Create/Edit Role Modal --}}
             <div class="modal fade" id="roleModal" tabindex="-1">
                 <div class="modal-dialog">
@@ -582,6 +659,7 @@
         let allSettings = {};
         let roles = [];
         let permissions = [];
+        let users = [];
         let currentRole = null;
 
         // Load roles and permissions
@@ -613,12 +691,166 @@
 
         async function loadUsers() {
             const res = await apiCall('{{ route('users.all') }}');
+            users = res.users || [];
+            renderUsersTable();
+
+            // keep the old assign-role select in sync
             const userSelect = document.getElementById('userSelect');
-            if (userSelect && res.users) {
+            if (userSelect) {
                 userSelect.innerHTML = '<option value="">{{ __('pos.select_user') }}</option>';
-                res.users.forEach(user => {
-                    userSelect.innerHTML += `<option value="${user.id}">${user.full_name}</option>`;
+                users.forEach(u => {
+                    userSelect.innerHTML += `<option value="${u.id}">${u.full_name}</option>`;
                 });
+            }
+        }
+
+        const CURRENT_USER_ID = {{ auth()->id() }};
+        @can('manage_roles')
+        const CAN_IMPERSONATE = true;
+        @else
+        const CAN_IMPERSONATE = false;
+        @endcan
+
+        function renderUsersTable() {
+            const tbody = document.getElementById('usersTableBody');
+            if (!tbody) return;
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">{{ __('pos.no_users') }}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = users.map(u => {
+                const impersonateBtn = (CAN_IMPERSONATE && u.id !== CURRENT_USER_ID)
+                    ? `<button class="btn btn-sm btn-outline-info me-1" data-fn="impersonateUser" data-args='["${u.id}"]' title="{{ __('pos.login_as') }}">
+                           <i class="fas fa-user-secret"></i>
+                       </button>`
+                    : '';
+                return `
+                <tr>
+                    <td><strong>${escHtml(u.full_name)}</strong></td>
+                    <td><code>${escHtml(u.username)}</code></td>
+                    <td><span class="badge bg-secondary">${escHtml(u.role || '')}</span></td>
+                    <td>
+                        <span class="badge ${u.is_active ? 'bg-success' : 'bg-danger'}">
+                            ${u.is_active ? '{{ __('pos.active') }}' : '{{ __('pos.inactive') }}'}
+                        </span>
+                    </td>
+                    <td>
+                        ${impersonateBtn}
+                        <button class="btn btn-sm btn-outline-primary me-1" data-fn="showUserModal" data-args='["${u.id}"]' title="{{ __('pos.edit') }}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-${u.is_active ? 'warning' : 'success'} me-1"
+                                data-fn="toggleUser" data-args='["${u.id}"]'
+                                title="${u.is_active ? '{{ __('pos.deactivate') }}' : '{{ __('pos.activate') }}'}">
+                            <i class="fas fa-${u.is_active ? 'ban' : 'check'}"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" data-fn="deleteUser" data-args='["${u.id}"]' title="{{ __('pos.delete') }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function impersonateUser(userId) {
+            if (userId instanceof Element) return;
+            const user = users.find(u => u.id == userId);
+            if (!user) return;
+            const label = '{{ app()->getLocale() === "ar" ? "تسجيل الدخول بوصفك" : "Login as" }}';
+            if (!confirm(`${label} "${user.full_name}"?`)) return;
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `{{ url('impersonate') }}/${userId}`;
+            form.innerHTML = `<input type="hidden" name="_token" value="{{ csrf_token() }}">`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function escHtml(str) {
+            return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function showUserModal(userId) {
+            // dispatcher appends the element when no data-args is set
+            if (userId instanceof Element) userId = null;
+            const isEdit = !!userId;
+            const user   = isEdit ? users.find(u => u.id == userId) : null;
+
+            document.getElementById('editUserId').value       = isEdit ? userId : '';
+            document.getElementById('userModalTitle').textContent = isEdit
+                ? '{{ __('pos.edit_user') }}'
+                : '{{ __('pos.add_user') }}';
+            document.getElementById('userFullName').value     = user?.full_name ?? '';
+            document.getElementById('userUsername').value     = user?.username ?? '';
+            document.getElementById('userUsername').readOnly  = isEdit;
+            document.getElementById('userPassword').value     = '';
+            document.getElementById('userPasswordLabel').innerHTML = isEdit
+                ? '{{ __('pos.password') }} <small class="text-muted">({{ __('pos.leave_blank_to_keep') }})</small>'
+                : '{{ __('pos.password') }} <span class="text-danger">*</span>';
+            document.getElementById('userIsActive').checked   = user ? user.is_active : true;
+
+            // populate role select
+            const sel = document.getElementById('userRole');
+            sel.innerHTML = '<option value="">{{ __('pos.select_role') }}</option>';
+            roles.forEach(r => {
+                sel.innerHTML += `<option value="${r.name}" ${user?.role === r.name ? 'selected' : ''}>${r.name}</option>`;
+            });
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('userModal')).show();
+        }
+
+        async function saveUser() {
+            const userId   = document.getElementById('editUserId').value;
+            const isEdit   = !!userId;
+            const payload  = {
+                full_name: document.getElementById('userFullName').value.trim(),
+                role:      document.getElementById('userRole').value,
+                is_active: document.getElementById('userIsActive').checked,
+            };
+            const pwd = document.getElementById('userPassword').value;
+
+            if (!isEdit) {
+                payload.username = document.getElementById('userUsername').value.trim();
+                payload.password = pwd;
+            } else if (pwd) {
+                payload.password         = pwd;
+                payload.password_confirm = pwd;
+            }
+
+            const url    = isEdit ? `{{ url('api/users') }}/${userId}` : '{{ route('users.store') }}';
+            const method = isEdit ? 'PUT' : 'POST';
+            const res    = await apiCall(url, method, payload);
+
+            if (res.success) {
+                bootstrap.Modal.getInstance(document.getElementById('userModal'))?.hide();
+                showToast(isEdit ? '{{ __('pos.user_updated') }}' : '{{ __('pos.user_created') }}');
+                await loadUsers();
+            } else {
+                const msg = res.errors ? Object.values(res.errors).flat().join(' | ') : (res.message || '{{ __('pos.error') }}');
+                showToast(msg, 'danger');
+            }
+        }
+
+        async function deleteUser(userId) {
+            const user = users.find(u => u.id == userId);
+            if (!confirm(`{{ __('pos.confirm_delete') }} "${user?.full_name}"?`)) return;
+            const res = await apiCall(`{{ url('api/users') }}/${userId}`, 'DELETE');
+            if (res.success) {
+                showToast('{{ __('pos.user_deleted') }}');
+                await loadUsers();
+            } else {
+                showToast(res.message || '{{ __('pos.error') }}', 'danger');
+            }
+        }
+
+        async function toggleUser(userId) {
+            const res = await apiCall(`{{ url('api/users') }}/${userId}/toggle-active`, 'POST');
+            if (res.success) {
+                showToast(res.is_active ? '{{ __('pos.user_activated') }}' : '{{ __('pos.user_deactivated') }}');
+                await loadUsers();
+            } else {
+                showToast(res.message || '{{ __('pos.error') }}', 'danger');
             }
         }
 

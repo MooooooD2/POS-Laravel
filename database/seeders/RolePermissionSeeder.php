@@ -64,6 +64,9 @@ class RolePermissionSeeder extends Seeder
             // User & role management
             'manage_roles',
             'manage_permissions',
+
+            // Tenant management (master-tenant only)
+            'manage_tenants',
         ];
 
         foreach ($permissions as $name) {

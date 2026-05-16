@@ -95,14 +95,18 @@ class PurchaseOrderService
 
                 $product = $poItem->product;
                 if ($product) {
-                    if (isset($item['cost_price']))    $product->update(['cost_price' => $item['cost_price']]);
+                    $unitCost = isset($item['cost_price']) ? (float) $item['cost_price'] : null;
+
+                    if ($unitCost !== null)            $product->update(['cost_price' => $unitCost]);
                     if (isset($item['selling_price'])) $product->update(['price' => $item['selling_price']]);
 
                     $this->stockService->addStock(
                         $product,
                         $actualQty,
                         __('pos.purchase_receipt', ['po' => $po->po_number]),
-                        $po->id
+                        $po->id,
+                        'purchase_order',
+                        $unitCost
                     );
                 }
             }

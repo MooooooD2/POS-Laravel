@@ -92,6 +92,9 @@
         <a href="{{ route('purchase-orders') }}" class="{{ request()->routeIs('purchase-orders') ? 'active' : '' }}">
             <i class="fas fa-file-invoice"></i> {{ __('pos.purchase_orders') }}
         </a>
+        <a href="{{ route('purchase-returns') }}" class="{{ request()->routeIs('purchase-returns') ? 'active' : '' }}">
+            <i class="fas fa-undo-alt"></i> {{ __('pos.purchase_returns') }}
+        </a>
     @endpermission
 
     @permission('view_supplier_payments')
@@ -101,6 +104,21 @@
 
         <a href="{{ route('supplier-accounts') }}" class="{{ request()->routeIs('supplier-accounts') ? 'active' : '' }}">
             <i class="fas fa-balance-scale"></i> {{ __('pos.supplier_accounts') }}
+        </a>
+    @endpermission
+
+    @permission('view_warehouse')
+        <a href="{{ route('warehouses') }}" class="{{ request()->routeIs('warehouses') ? 'active' : '' }}">
+            <i class="fas fa-warehouse"></i> {{ app()->getLocale() === 'ar' ? 'المستودعات' : 'Warehouses' }}
+        </a>
+        <a href="{{ route('customers') }}" class="{{ request()->routeIs('customers') ? 'active' : '' }}">
+            <i class="fas fa-users"></i> {{ __('pos.customers') }}
+        </a>
+    @endpermission
+
+    @permission('view_pos')
+        <a href="{{ route('expenses') }}" class="{{ request()->routeIs('expenses') ? 'active' : '' }}">
+            <i class="fas fa-receipt"></i> {{ __('pos.expenses') }}
         </a>
     @endpermission
 
@@ -132,6 +150,15 @@
         </a>
     @endpermission
 
+    @permission('manage_roles')
+        <a href="{{ route('branches') }}" class="{{ request()->routeIs('branches') ? 'active' : '' }}">
+            <i class="fas fa-code-branch"></i> {{ __('pos.branches') }}
+        </a>
+        <a href="{{ route('whatsapp') }}" class="{{ request()->routeIs('whatsapp') ? 'active' : '' }}">
+            <i class="fab fa-whatsapp"></i> {{ __('pos.whatsapp') }}
+        </a>
+    @endpermission
+
     {{-- Settings - Check permission --}}
     @permission('view_settings')
         <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
@@ -140,6 +167,26 @@
     @endpermission
 </div>
     </nav>
+
+    {{-- Impersonation Banner --}}
+    @if(session('impersonator_id'))
+    <div id="impersonation-banner" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#f59e0b;color:#1c1917;padding:0.4rem 1rem;display:flex;align-items:center;justify-content:space-between;font-size:0.85rem;font-weight:600;">
+        <span>
+            <i class="fas fa-user-secret me-2"></i>
+            {{ app()->getLocale() === 'ar'
+                ? 'أنت تتصفح بوصفك: ' . auth()->user()->full_name
+                : 'Viewing as: ' . auth()->user()->full_name }}
+        </span>
+        <form action="{{ route('impersonate.leave') }}" method="POST" class="d-inline">
+            @csrf
+            <button type="submit" class="btn btn-sm btn-dark py-0 px-2">
+                <i class="fas fa-undo me-1"></i>
+                {{ app()->getLocale() === 'ar' ? 'العودة لحسابي' : 'Return to my account' }}
+            </button>
+        </form>
+    </div>
+    <style @nonce>#sidebar, #main-content { margin-top: 36px; }</style>
+    @endif
 
     {{-- Main Content --}}
     <div id="main-content">
@@ -158,11 +205,9 @@
                         data-bs-toggle="dropdown" data-bs-auto-close="outside"
                         data-fn="loadStockAlerts" title="{{ app()->getLocale() === 'ar' ? 'تنبيهات المخزون' : 'Stock Alerts' }}">
                         <i class="fas fa-bell"></i>
-                        <span id="stockBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
-                            style="font-size:0.6rem"></span>
+                        <span id="stockBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none stock-bell-badge"></span>
                     </button>
-                    <div class="dropdown-menu dropdown-menu-end p-0 shadow"
-                        style="min-width:320px; max-width:380px; max-height:420px; overflow-y:auto; border-radius:10px">
+                    <div class="dropdown-menu dropdown-menu-end p-0 shadow stock-alert-dropdown">
                         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom bg-warning bg-opacity-10">
                             <span class="fw-bold small">
                                 <i class="fas fa-exclamation-triangle text-warning me-1"></i>
@@ -475,12 +520,12 @@ window.addEventListener('resize', function() {
                         <span class="flex-shrink-0 text-danger"><i class="fas fa-times-circle"></i></span>
                         <div class="flex-grow-1 min-width-0">
                             <div class="fw-semibold small text-truncate">${p.name}</div>
-                            <div class="text-muted" style="font-size:0.72rem">
+                            <div class="text-muted stock-alert-meta">
                                 ${isAr ? 'الكمية: ' : 'Qty: '}<strong class="text-danger">0</strong>
                                 ${p.category ? ' &bull; ' + p.category : ''}
                             </div>
                         </div>
-                        <span class="badge bg-danger bg-opacity-15 text-white border border-danger" style="font-size:0.65rem">${isAr ? 'نفذ' : 'Empty'}</span>
+                        <span class="badge bg-danger bg-opacity-15 text-white border border-danger stock-alert-badge">${isAr ? 'نفذ' : 'Empty'}</span>
                     </a>`;
                 });
             }
@@ -494,13 +539,13 @@ window.addEventListener('resize', function() {
                         <span class="flex-shrink-0 text-warning"><i class="fas fa-exclamation-triangle"></i></span>
                         <div class="flex-grow-1 min-width-0">
                             <div class="fw-semibold small text-truncate">${p.name}</div>
-                            <div class="text-muted" style="font-size:0.72rem">
+                            <div class="text-muted stock-alert-meta">
                                 ${isAr ? 'الكمية: ' : 'Qty: '}<strong class="text-warning">${p.quantity}</strong>
                                 ${isAr ? ' / الحد الأدنى: ' : ' / Min: '}<strong>${p.min_stock}</strong>
                                 ${p.category ? ' &bull; ' + p.category : ''}
                             </div>
                         </div>
-                        <span class="badge bg-warning bg-opacity-15 text-white border border-warning" style="font-size:0.65rem">${isAr ? 'منخفض' : 'Low'}</span>
+                        <span class="badge bg-warning bg-opacity-15 text-white border border-warning stock-alert-badge">${isAr ? 'منخفض' : 'Low'}</span>
                     </a>`;
                 });
             }

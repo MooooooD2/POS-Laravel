@@ -62,12 +62,30 @@ class SessionSecurity
 
     private function fingerprint(Request $request): string
     {
-        // IP prefix only — User-Agent excluded because the same user legitimately
-        // switches between phone and desktop, which would trigger false positives.
+        $stableHeaders = implode('|', [
+            $request->header('Accept-Language', ''),
+            $request->header('Accept-Encoding', ''),
+            $this->browserFamily($request->userAgent() ?? ''),
+        ]);
+
         return hash_hmac(
             'sha256',
-            \implode('.', \array_slice(\explode('.', $request->ip()), 0, 3)),
+            implode('::', [
+                implode('.', array_slice(explode('.', $request->ip()), 0, 3)),
+                $stableHeaders,
+            ]),
             config('app.key')
         );
+    }
+
+    private function browserFamily(string $ua): string
+    {
+        return match (true) {
+            str_contains($ua, 'Firefox') => 'firefox',
+            str_contains($ua, 'Chrome')  => 'chrome',
+            str_contains($ua, 'Safari')  => 'safari',
+            str_contains($ua, 'Edge')    => 'edge',
+            default                      => 'other',
+        };
     }
 }

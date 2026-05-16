@@ -16,6 +16,7 @@ class AddStockRequest extends FormRequest
             'quantity'       => 'required|integer|min:1|max:999999',
             'reason'         => 'nullable|string|max:500',
             'reference_type' => 'nullable|in:purchase,adjustment,return,initial',
+            'warehouse_id'   => 'nullable|exists:warehouses,id',
         ];
     }
 }

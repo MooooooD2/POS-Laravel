@@ -12,11 +12,18 @@ class User extends Authenticatable
     use HasFactory, Notifiable, HasRoles, SoftDeletes;
 
     // #7 is_active و role في fillable لكن id و remember_token ليسا
-    protected $fillable  = ['username', 'password', 'full_name', 'role', 'is_active', 'language'];
+    protected $fillable  = [
+        'username', 'password', 'full_name', 'role', 'is_active', 'language',
+        'google2fa_secret', 'google2fa_enabled', 'google2fa_recovery_codes',
+    ];
     // #35 إخفاء البيانات الحساسة
-    protected $hidden    = ['password', 'remember_token', 'deleted_at'];
-    protected $casts     = ['is_active' => 'boolean'];
-
+    protected $hidden    = ['password', 'remember_token', 'deleted_at', 'google2fa_secret', 'google2fa_recovery_codes'];
+    protected $casts     = [
+        'is_active'               => 'boolean',
+        'google2fa_enabled'       => 'boolean',
+        'google2fa_recovery_codes' => 'array',
+    ];
+    protected $connection = 'tenant';
     public function getAuthIdentifierName() { return 'id'; }
     public function invoices()       { return $this->hasMany(Invoice::class, 'cashier_id'); }
     public function stockMovements() { return $this->hasMany(StockMovement::class, 'employee_id'); }

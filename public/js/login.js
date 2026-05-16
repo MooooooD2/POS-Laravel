@@ -9,6 +9,8 @@ function handleLogin(event) {
 
     if (_loginBusy) return;
 
+    var tenantCode = (document.getElementById("tenant_code") || {}).value || "";
+    tenantCode = tenantCode.trim();
     var username = document.getElementById("username").value.trim();
     var password = document.getElementById("password").value;
     var alertBox = document.getElementById("alertBox");
@@ -20,8 +22,8 @@ function handleLogin(event) {
     alertBox.classList.add("d-none");
 
     // Validate inputs
-    if (!username || !password) {
-        alertBox.textContent = "أدخل اسم المستخدم وكلمة المرور";
+    if (!tenantCode || !username || !password) {
+        alertBox.textContent = "أدخل كود المتجر واسم المستخدم وكلمة المرور";
         alertBox.classList.remove("d-none");
         return;
     }
@@ -41,6 +43,7 @@ function handleLogin(event) {
 
     // Prepare login data
     var loginData = {
+        tenant_code: tenantCode,
         username: username,
         password: password,
     };
@@ -154,9 +157,16 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Optional: Handle form submission on Enter key
+    // Enter-key navigation: tenant_code → username → password → submit
+    var tenantInput  = document.getElementById("tenant_code");
     var usernameInput = document.getElementById("username");
     var passwordInput = document.getElementById("password");
+
+    if (tenantInput) {
+        tenantInput.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") { e.preventDefault(); if (usernameInput) usernameInput.focus(); }
+        });
+    }
 
     if (usernameInput) {
         usernameInput.addEventListener("keypress", function (e) {

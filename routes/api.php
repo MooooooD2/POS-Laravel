@@ -1,10 +1,15 @@
 <?php
 // #25 API routes منفصلة عن web
 use App\Http\Controllers\AccountingController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\HeldInvoiceController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\RolePermissionController;
@@ -13,6 +18,8 @@ use App\Http\Controllers\SupplierAccountController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 
 // #12 Rate Limiting: 60 طلب/دقيقة على كل APIs
@@ -20,18 +27,45 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
     Route::get('/dashboard-data', [DashboardController::class, 'data'])->name('api.dashboard.data');
 
+    // Customers (search available to POS users; CRUD to warehouse+)
+    Route::middleware('permission:view_pos')->group(function () {
+        Route::get('/customers/search', [CustomerController::class, 'search'])->name('customers.search');
+    });
+    Route::middleware('permission:view_warehouse')->group(function () {
+        Route::get('/customers',              [CustomerController::class, 'all'])->name('customers.all');
+        Route::post('/customers',             [CustomerController::class, 'store'])->middleware('throttle:30,1')->name('customers.store');
+        Route::get('/customers/{customer}',   [CustomerController::class, 'show'])->name('customers.show');
+        Route::put('/customers/{customer}',   [CustomerController::class, 'update'])->name('customers.update');
+        Route::delete('/customers/{customer}',[CustomerController::class, 'destroy'])->name('customers.destroy');
+    });
+
     // POS
     Route::middleware('permission:view_pos')->group(function () {
         Route::get('/search-product', [InvoiceController::class, 'searchProduct'])->name('products.search');
         Route::post('/invoices', [InvoiceController::class, 'createInvoice'])->name('invoices.create');
         Route::get('/invoices', [InvoiceController::class, 'getByNumber'])->name('invoices.by-number');
         Route::get('/invoices/{invoice}/returnable-items', [InvoiceController::class, 'returnableItems'])->name('invoices.returnable-items');
+
+        // Held Invoices
+        Route::get('/held-invoices', [HeldInvoiceController::class, 'active'])->name('held-invoices.active');
+        Route::post('/held-invoices', [HeldInvoiceController::class, 'store'])->name('held-invoices.store');
+        Route::post('/held-invoices/{heldInvoice}/resume', [HeldInvoiceController::class, 'resume'])->name('held-invoices.resume');
+        Route::delete('/held-invoices/{heldInvoice}', [HeldInvoiceController::class, 'discard'])->name('held-invoices.discard');
+
+        // Expenses
+        Route::get('/expense-categories', [ExpenseController::class, 'categories'])->name('expenses.categories');
+        Route::get('/expenses', [ExpenseController::class, 'all'])->name('expenses.all');
+        Route::post('/expenses/summary', [ExpenseController::class, 'summary'])->name('expenses.summary');
+        Route::post('/expenses', [ExpenseController::class, 'store'])->middleware('throttle:30,1')->name('expenses.store');
+        Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
     });
 
     // Returns
-    Route::middleware('permission:view_returns')
-        ->post('/returns', [ReturnController::class, 'store'])
-        ->name('returns.store');
+    Route::middleware('permission:view_returns')->group(function () {
+        Route::get('/returns',  [ReturnController::class, 'all'])->name('returns.all');
+        Route::post('/returns', [ReturnController::class, 'store'])->name('returns.store');
+    });
 
     // Warehouse
     Route::middleware('permission:view_warehouse')->group(function () {
@@ -50,10 +84,34 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->middleware('throttle:20,1')->name('purchase-orders.store');
         Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
 
+        Route::get('/purchase-returns', [PurchaseReturnController::class, 'all'])->name('purchase-returns.all');
+        Route::post('/purchase-returns', [PurchaseReturnController::class, 'store'])->middleware('throttle:20,1')->name('purchase-returns.store');
+        Route::get('/purchase-orders/{purchaseOrder}/returnable-items', [PurchaseReturnController::class, 'returnableItems'])->name('purchase-orders.returnable-items');
+
         Route::get('/supplier-payments', [SupplierPaymentController::class, 'all'])->name('supplier-payments.all');
         Route::post('/supplier-payments', [SupplierPaymentController::class, 'store'])->middleware('throttle:20,1')->name('supplier-payments.store');
 
         Route::get('/supplier-accounts/{supplier}', [SupplierAccountController::class, 'show'])->name('supplier-accounts.show');
+
+        // Multi-Warehouse
+        Route::get('/warehouses/products-list', [WarehouseController::class, 'allProducts'])->name('warehouses.products-list');
+        Route::get('/warehouses', [WarehouseController::class, 'index'])->name('warehouses.all');
+        Route::post('/warehouses', [WarehouseController::class, 'store'])->name('warehouses.store');
+        Route::put('/warehouses/{warehouse}', [WarehouseController::class, 'update'])->name('warehouses.update');
+        Route::delete('/warehouses/{warehouse}', [WarehouseController::class, 'destroy'])->name('warehouses.destroy');
+        Route::get('/warehouses/{warehouse}/stock', [WarehouseController::class, 'stock'])->name('warehouses.stock');
+        Route::post('/warehouses/{warehouse}/adjust-stock', [WarehouseController::class, 'adjustStock'])->name('warehouses.adjust-stock');
+        Route::post('/warehouses/{warehouse}/sync-stock', [WarehouseController::class, 'syncStock'])->name('warehouses.sync-stock');
+
+        // Warehouse Transfers
+        Route::get('/warehouse-transfers', [WarehouseController::class, 'transfers'])->name('warehouse-transfers.all');
+        Route::post('/warehouse-transfers', [WarehouseController::class, 'createTransfer'])->name('warehouse-transfers.store');
+        Route::post('/warehouse-transfers/{transfer}/receive', [WarehouseController::class, 'receiveTransfer'])->name('warehouse-transfers.receive');
+        Route::post('/warehouse-transfers/{transfer}/cancel', [WarehouseController::class, 'cancelTransfer'])->name('warehouse-transfers.cancel');
+
+        // Product Batches
+        Route::get('/product-batches', [WarehouseController::class, 'batches'])->name('batches.all');
+        Route::post('/product-batches', [WarehouseController::class, 'createBatch'])->name('batches.store');
     });
 
     // Accounting
@@ -76,8 +134,27 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::get('/reports/stock', [ReportController::class, 'stockReport'])->name('reports.stock');
         Route::post('/reports/returns', [ReportController::class, 'returnsReport'])->middleware('throttle:60,1')->name('reports.returns');
         Route::post('/reports/income-statement', [ReportController::class, 'incomeStatement'])->middleware('throttle:60,1')->name('reports.income-statement');
+        Route::post('/reports/cash-flow', [ReportController::class, 'cashFlowReport'])->middleware('throttle:60,1')->name('reports.cash-flow');
         Route::get('/reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
         Route::post('/reports/account-statement/{account}', [ReportController::class, 'accountStatement'])->name('reports.account-statement');
+    });
+
+    // Multi-Branch (admin)
+    Route::middleware('permission:manage_roles')->group(function () {
+        Route::get('/branches', [BranchController::class, 'index'])->name('branches.all');
+        Route::post('/branches', [BranchController::class, 'store'])->name('branches.store');
+        Route::put('/branches/{branch}', [BranchController::class, 'update'])->name('branches.update');
+        Route::delete('/branches/{branch}', [BranchController::class, 'destroy'])->name('branches.destroy');
+    });
+
+    // WhatsApp admin API
+    Route::middleware('permission:manage_roles')->prefix('whatsapp')->name('whatsapp.')->group(function () {
+        Route::get('/logs', [WhatsAppController::class, 'logs'])->name('logs');
+        Route::get('/stats', [WhatsAppController::class, 'stats'])->name('stats');
+        Route::post('/invoices/{invoice}/send', [WhatsAppController::class, 'sendInvoice'])->name('send-invoice');
+        Route::post('/customers/{customer}/reminder', [WhatsAppController::class, 'sendDebtReminder'])->name('send-reminder');
+        Route::post('/customers/bulk-reminders', [WhatsAppController::class, 'sendBulkDebtReminders'])->name('bulk-reminders');
+        Route::post('/promotions', [WhatsAppController::class, 'sendPromotion'])->name('promotions');
     });
 
     // User & Role Management
@@ -97,6 +174,12 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::get('/users/{user}/roles', [RolePermissionController::class, 'getUserRoles'])->name('users.roles');
         Route::post('/users/{user}/roles', [RolePermissionController::class, 'assignUserRole'])->name('users.assign-role');
     });
+});
+
+// WhatsApp Webhook (public — Meta verification + inbound messages)
+Route::prefix('webhook/whatsapp')->name('webhook.whatsapp.')->group(function () {
+    Route::get('/', [WhatsAppController::class, 'verifyWebhook'])->name('verify');
+    Route::post('/', [WhatsAppController::class, 'receiveWebhook'])->name('receive');
 });
 
 // Stock Reconciliation #21

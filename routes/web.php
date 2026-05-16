@@ -1,20 +1,42 @@
 <?php
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\TwoFactorController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\TenantController;
+use App\Http\Controllers\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
 // ── Auth ──────────────────────────────────────────────────────────────────
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.post');
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
+Route::post('/login',   [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.post');
+Route::post('/logout',  [AuthController::class, 'logout'])->name('logout');
+
+// ── Register (new store sign-up) ──────────────────────────────────────────
+Route::get('/register',  [RegisterController::class, 'showRegister'])->name('register');
+Route::post('/register', [RegisterController::class, 'register'])->middleware('throttle:5,60')->name('register.post');
+
+// ── 2FA (FIX-5) ───────────────────────────────────────────────────────────
+Route::middleware(['auth'])->prefix('2fa')->name('2fa.')->group(function () {
+    Route::get('/verify',          [TwoFactorController::class, 'showVerify'])->name('verify');
+    Route::post('/verify',         [TwoFactorController::class, 'verify'])->name('verify.post');
+    Route::get('/setup',           [TwoFactorController::class, 'showSetup'])->name('setup');
+    Route::post('/setup/confirm',  [TwoFactorController::class, 'confirmSetup'])->name('setup.confirm');
+    Route::post('/disable',        [TwoFactorController::class, 'disable'])->name('disable');
+});
 Route::get('/lang/{locale}', [LanguageController::class, 'switch'])->where('locale', 'ar|en')->name('lang.switch');
 Route::get('/lang/{locale}/translations', [LanguageController::class, 'getTranslations'])->where('locale', 'ar|en')->name('lang.translations');
 
 // ── Authenticated web views ───────────────────────────────────────────────
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'tenancy', '2fa'])->group(function () {
     Route::get('/session-info', [AuthController::class, 'sessionInfo'])->name('session.info');
     Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -22,14 +44,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/low-stock', [DashboardController::class, 'lowStock'])->name('dashboard.low-stock');
     Route::middleware(['permission:view_pos'])->group(function () {
         Route::get('/pos', [InvoiceController::class, 'posPage'])->name('pos');
+        Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses');
     });
     Route::middleware(['permission:view_returns'])->get('/returns', fn() => view('returns.index'))->name('returns');
     Route::middleware(['permission:view_warehouse'])->group(function () {
         Route::get('/warehouse', fn() => view('warehouse.index'))->name('warehouse');
+        Route::get('/warehouses', [WarehouseController::class, 'page'])->name('warehouses');
         Route::get('/suppliers', fn() => view('suppliers.index'))->name('suppliers');
         Route::get('/purchase-orders', fn() => view('purchase-orders.index'))->name('purchase-orders');
         Route::get('/supplier-payments', fn() => view('supplier-payments.index'))->name('supplier-payments');
         Route::get('/supplier-accounts', fn() => view('supplier-accounts.index'))->name('supplier-accounts');
+        Route::get('/purchase-returns', [PurchaseReturnController::class, 'index'])->name('purchase-returns');
+        Route::get('/customers', [CustomerController::class, 'index'])->name('customers');
     });
     Route::middleware(['permission:view_accounting'])->group(function () {
         Route::get('/accounting', fn() => view('accounting.index'))->name('accounting');
@@ -43,14 +69,32 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/reports/export/stock',   [ReportController::class, 'exportStock'])->name('reports.export.stock');
     });
     Route::middleware(['permission:manage_roles'])->get('/roles', fn() => view('roles.index'))->name('roles');
+    Route::middleware(['permission:manage_roles'])->get('/branches', [BranchController::class, 'page'])->name('branches');
+    Route::middleware(['permission:manage_roles'])->get('/whatsapp', fn() => view('whatsapp.index'))->name('whatsapp');
+
+    // ── Impersonation ─────────────────────────────────────────────────────
+    // leave must come before {user} so "leave" is not treated as a User ID
+    Route::post('/impersonate/leave', [ImpersonateController::class, 'leave'])->name('impersonate.leave');
+    Route::middleware(['permission:manage_roles'])->group(function () {
+        Route::post('/impersonate/{user}', [ImpersonateController::class, 'start'])->name('impersonate.start');
+    });
+
+    // ── Tenant management (master-tenant admin only) ───────────────────────
+    Route::middleware(['permission:manage_tenants'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/tenants',           [TenantController::class, 'index'])->name('tenants');
+        Route::post('/tenants',          [TenantController::class, 'store'])->name('tenants.store');
+        Route::put('/tenants/{id}',      [TenantController::class, 'update'])->name('tenants.update');
+        Route::patch('/tenants/{id}/toggle', [TenantController::class, 'toggle'])->name('tenants.toggle');
+        Route::delete('/tenants/{id}',   [TenantController::class, 'destroy'])->name('tenants.destroy');
+        Route::post('/tenants/{id}/seed', [TenantController::class, 'seed'])->name('tenants.seed');
+    });
 });
 
 // تسوية الخزينة
-Route::middleware(['auth', 'permission:view_pos'])->group(function () {
+Route::middleware(['auth', '2fa', 'permission:view_pos'])->group(function () {
     Route::get('/cash-register', fn() => view('cash-register.index'))->name('cash-register');
 });
 
-// تقارير الربحية
-Route::middleware(['auth', 'permission:view_reports'])->group(function () {
+Route::middleware(['auth', '2fa', 'permission:view_reports'])->group(function () {
     Route::get('/profit-reports', fn() => view('profit-reports.index'))->name('profit-reports');
 });

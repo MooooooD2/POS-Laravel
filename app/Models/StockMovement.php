@@ -9,9 +9,12 @@ class StockMovement extends Model
     protected $fillable = [
         'product_id', 'product_name', 'quantity', 'balance_after',
         'movement_type', 'reference_type', 'reference_id',
+        'warehouse_id', 'batch_id',
         'reason', 'employee_id', 'employee_name', 'ip_address',
     ];
     // StockMovement لا تُحذف ولا تُعدَّل — للتدقيق فقط
-    public function product()  { return $this->belongsTo(Product::class); }
-    public function employee() { return $this->belongsTo(User::class, 'employee_id'); }
+    public function product()   { return $this->belongsTo(Product::class); }
+    public function employee()  { return $this->belongsTo(User::class, 'employee_id'); }
+    public function warehouse() { return $this->belongsTo(Warehouse::class); }
+    public function batch()     { return $this->belongsTo(ProductBatch::class); }
 }

@@ -749,3 +749,16 @@ body.rtl .toast-container {
         transform: translateX(0) !important;
     }
 } */
+/* Stock alert notification classes (CSP: replaces inline styles) */
+.stock-bell-badge  { font-size: 0.6rem; }
+.stock-alert-meta  { font-size: 0.72rem; }
+.stock-alert-badge { font-size: 0.65rem; }
+
+/* Stock alert dropdown panel */
+.stock-alert-dropdown {
+    min-width: 320px;
+    max-width: 380px;
+    max-height: 420px;
+    overflow-y: auto;
+    border-radius: 10px;
+}

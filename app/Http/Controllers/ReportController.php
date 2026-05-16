@@ -146,4 +146,16 @@ class ReportController extends Controller
             $this->reportService->accountStatement($account, $data['start_date'], $data['end_date'])
         );
     }
+
+    public function cashFlowReport(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+
+        return response()->json(
+            $this->reportService->cashFlowReport($data['start_date'], $data['end_date'])
+        );
+    }
 }

@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'invoice' => [
+        'max_discount_percent' => (float) env('MAX_DISCOUNT_PERCENT', 20),
+    ],
+
     'anomaly' => [
         // Alert when a single invoice exceeds this amount
         'invoice_amount_threshold' => env('ANOMALY_INVOICE_THRESHOLD', 50000),

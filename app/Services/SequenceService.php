@@ -37,7 +37,7 @@ class SequenceService
                 DB::table('sequences')->insert([
                     'name'   => $name,
                     'value'  => 1,
-                    'prefix' => strtoupper($name),
+                    'prefix' => $prefix ?? strtoupper($name),
                 ]);
                 return ['id' => 1, 'prefix' => $prefix ?? strtoupper($name)];
             }

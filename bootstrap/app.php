@@ -1,14 +1,8 @@
 <?php
 
-use App\Http\Middleware\AnomalyDetection;
-use App\Http\Middleware\SecurityHeaders;
-use App\Http\Middleware\SessionSecurity;
-use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Session\Middleware\StartSession;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,33 +11,58 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
+    ->withProviders([
+        App\Providers\TenancyServiceProvider::class,
+    ])
     ->withMiddleware(function (Middleware $middleware) {
-        // #36 #37 #XSS تطبيق على كل طلبات الويب
-        $middleware->web(append: [
-            SetLocale::class,
-            SecurityHeaders::class,    // XSS, CSP, Frame protection
-            SessionSecurity::class,    // #36 Session hijack detection
-            AnomalyDetection::class,   // #37 Anomaly monitoring
+        $middleware->web([
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \App\Http\Middleware\InitializeTenancyBySession::class,
+            \App\Http\Middleware\SetLocale::class,
+            \App\Http\Middleware\SecurityHeaders::class,
+            \App\Http\Middleware\SessionSecurity::class,
+            \App\Http\Middleware\AnomalyDetection::class,
         ]);
 
-        $middleware->api(prepend: [
-            EncryptCookies::class,
-            StartSession::class,
-        ]);
+        // API routes share session-based auth — prepend cookie+session+tenancy
+        // so they run BEFORE the default throttle:api and SubstituteBindings.
+        $middleware->api(
+            prepend: [
+                \Illuminate\Cookie\Middleware\EncryptCookies::class,
+                \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+                \Illuminate\Session\Middleware\StartSession::class,
+                \App\Http\Middleware\InitializeTenancyBySession::class,
+            ]
+        );
 
         $middleware->alias([
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role'       => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'tenancy'            => \App\Http\Middleware\InitializeTenancyBySession::class,
+            '2fa'                => \App\Http\Middleware\EnforceTwoFactor::class,
+            'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+        ]);
+
+        $middleware->priority([
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \App\Http\Middleware\InitializeTenancyBySession::class,
+            \Illuminate\Auth\Middleware\Authenticate::class,
+            \App\Http\Middleware\EnforceTwoFactor::class,
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // #48 ردود JSON موحدة — بدون Stack Trace في الإنتاج
-        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $_, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json(['success' => false, 'message' => 'غير مصرح.'], 401);
             }
         });
-        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $_, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json(['success' => false, 'message' => 'ليس لديك صلاحية لهذه العملية.'], 403);
             }
@@ -53,12 +72,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json(['success' => false, 'message' => 'بيانات غير صالحة.', 'errors' => $e->errors()], 422);
             }
         });
-        $exceptions->render(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e, $request) {
+        $exceptions->render(function (\Illuminate\Database\Eloquent\ModelNotFoundException $_, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json(['success' => false, 'message' => 'العنصر غير موجود.'], 404);
             }
         });
-        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, $request) {
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $_, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json(['success' => false, 'message' => 'طلبات كثيرة جداً. حاول بعد دقيقة.'], 429);
             }

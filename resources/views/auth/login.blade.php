@@ -8,7 +8,7 @@
     <title>{{ __('pos.login') }} - {{ __('pos.app_name') }}</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' dominant-baseline='middle' font-size='80'>🏪</text></svg>">
 
-    @if(app()->getLocale() === 'aar')
+    @if(app()->getLocale() === 'ar')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     @else
@@ -21,7 +21,7 @@
     @endif
         <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
 
-    <style>
+    <style @nonce>
         body {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             min-height: 100vh;
@@ -85,6 +85,16 @@
 
             <form id="loginForm" autocomplete="on" novalidate>
                 <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ __('pos.tenant_code') }}</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-store"></i></span>
+                        <input type="text" class="form-control" id="tenant_code" name="tenant_code"
+                            placeholder="{{ __('pos.tenant_code_placeholder') }}"
+                            autocomplete="organization" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label fw-semibold">{{ __('pos.username') }}</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-user"></i></span>
@@ -111,6 +121,10 @@
                 </button>
             </form>
 
+            <p class="text-center text-muted mt-3 mb-0" style="font-size:.9rem">
+                {{ __('pos.no_account_yet') }}
+                <a href="{{ route('register') }}" class="text-decoration-none fw-semibold">{{ __('pos.create_store') }}</a>
+            </p>
         </div>
     </div>
 

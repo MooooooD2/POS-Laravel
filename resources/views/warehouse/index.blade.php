@@ -108,6 +108,12 @@ DESCRIPTION: Product management with search, CRUD, stock management
                         <label class="form-label">{{ __('pos.suppliers') }}</label>
                         <input type="text" class="form-control" id="productSupplier">
                     </div>
+                    <div class="col-12" id="productWarehouseRow">
+                        <label class="form-label">{{ __('pos.warehouse') }}</label>
+                        <select class="form-select" id="productWarehouseId">
+                            <option value="">{{ app()->getLocale() === 'ar' ? 'المخزن الافتراضي' : 'Default warehouse' }}</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -132,6 +138,12 @@ DESCRIPTION: Product management with search, CRUD, stock management
                 <div class="mb-3">
                     <label class="form-label">{{ __('pos.quantity') }} *</label>
                     <input type="number" class="form-control" id="stockQuantity" min="1" value="1">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">{{ __('pos.warehouse') }}</label>
+                    <select class="form-select" id="stockWarehouseId">
+                        <option value="">{{ app()->getLocale() === 'ar' ? 'المخزن الافتراضي' : 'Default warehouse' }}</option>
+                    </select>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">{{ __('pos.notes') }}</label>
@@ -186,10 +198,27 @@ DESCRIPTION: Product management with search, CRUD, stock management
 <script @nonce>
 let allProducts = [];
 let renderedProducts = [];
+let warehouseOpts = '';
+
+async function loadWarehouses() {
+    const res = await apiCall('{{ url("/api/warehouses") }}');
+    const list = Array.isArray(res) ? res : (res.data ?? []);
+    warehouseOpts = list.map(w =>
+        `<option value="${w.id}"${w.is_default ? ' selected' : ''}>${w.name}</option>`
+    ).join('');
+    ['productWarehouseId', 'stockWarehouseId'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const blank = `<option value="">${LOCALE === 'ar' ? 'المخزن الافتراضي' : 'Default warehouse'}</option>`;
+            el.innerHTML = blank + warehouseOpts;
+        }
+    });
+}
 
 async function loadProducts() {
-    const res = await apiCall('{{ route("products.all") }}');
-    allProducts = res.products || [];
+    const res  = await apiCall('{{ route("products.all") }}');
+    const rawP = res.products ?? [];
+    allProducts = Array.isArray(rawP) ? rawP : (Array.isArray(rawP.data) ? rawP.data : []);
     populateCategoryFilter();
     renderProducts(allProducts);
 }
@@ -247,31 +276,36 @@ function renderProducts(products) {
 }
 
 function editProduct(p) {
-    document.getElementById('productId').value       = p.id;
-    document.getElementById('productName').value     = p.name;
-    document.getElementById('productPrice').value    = p.price;
-    document.getElementById('productCostPrice').value= p.cost_price;
-    document.getElementById('productMinStock').value = p.min_stock;
-    document.getElementById('productBarcode').value  = p.barcode || '';
-    document.getElementById('productCategory').value = p.category || '';
-    document.getElementById('productSupplier').value = p.supplier || '';
-    document.getElementById('productQuantity').disabled = true;
+    document.getElementById('productId').value        = p.id;
+    document.getElementById('productName').value      = p.name;
+    document.getElementById('productPrice').value     = p.price;
+    document.getElementById('productCostPrice').value = p.cost_price;
+    document.getElementById('productMinStock').value  = p.min_stock;
+    document.getElementById('productBarcode').value   = p.barcode || '';
+    document.getElementById('productCategory').value  = p.category || '';
+    document.getElementById('productSupplier').value  = p.supplier || '';
+    const qtyInput = document.getElementById('productQuantity');
+    qtyInput.value    = p.quantity ?? 0;
+    qtyInput.disabled = true;
+    document.getElementById('productWarehouseRow').style.display = 'none';
     document.getElementById('productModalTitle').textContent = '{{ __("pos.edit_product") }}';
     new bootstrap.Modal(document.getElementById('addProductModal')).show();
 }
 
 async function saveProduct() {
-    const id   = document.getElementById('productId').value;
+    const id          = document.getElementById('productId').value;
+    const warehouseId = document.getElementById('productWarehouseId').value;
     const data = {
-        name:       document.getElementById('productName').value,
-        price:      document.getElementById('productPrice').value,
-        cost_price: document.getElementById('productCostPrice').value,
-        quantity:   document.getElementById('productQuantity').value || 0,
-        min_stock:  document.getElementById('productMinStock').value,
-        barcode:    document.getElementById('productBarcode').value,
-        category:   document.getElementById('productCategory').value,
-        supplier:   document.getElementById('productSupplier').value,
+        name:             document.getElementById('productName').value,
+        price:            document.getElementById('productPrice').value,
+        cost_price:       document.getElementById('productCostPrice').value,
+        initial_quantity: document.getElementById('productQuantity').value || 0,
+        min_stock:        document.getElementById('productMinStock').value,
+        barcode:          document.getElementById('productBarcode').value,
+        category:         document.getElementById('productCategory').value,
+        supplier:         document.getElementById('productSupplier').value,
     };
+    if (!id && warehouseId) data.warehouse_id = parseInt(warehouseId);
 
     const url    = id ? `/api/products/${id}` : '{{ route("products.store") }}';
     const method = id ? 'PUT' : 'POST';
@@ -289,19 +323,25 @@ async function saveProduct() {
 }
 
 function showAddStock(id, name) {
-    document.getElementById('stockProductId').value   = id;
+    document.getElementById('stockProductId').value         = id;
     document.getElementById('stockProductName').textContent = name;
-    document.getElementById('stockQuantity').value    = 1;
-    document.getElementById('stockReason').value      = '';
+    document.getElementById('stockQuantity').value          = 1;
+    document.getElementById('stockReason').value            = '';
+    // Pre-select default warehouse
+    const sel = document.getElementById('stockWarehouseId');
+    sel.innerHTML = `<option value="">${LOCALE === 'ar' ? 'المخزن الافتراضي' : 'Default warehouse'}</option>` + warehouseOpts;
     new bootstrap.Modal(document.getElementById('addStockModal')).show();
 }
 
 async function submitAddStock() {
-    const id  = document.getElementById('stockProductId').value;
-    const res = await apiCall(`/api/products/${id}/add-stock`, 'POST', {
+    const id          = document.getElementById('stockProductId').value;
+    const warehouseId = document.getElementById('stockWarehouseId').value;
+    const payload = {
         quantity: document.getElementById('stockQuantity').value,
         reason:   document.getElementById('stockReason').value,
-    });
+    };
+    if (warehouseId) payload.warehouse_id = parseInt(warehouseId);
+    const res = await apiCall(`/api/products/${id}/add-stock`, 'POST', payload);
     if (res.success) {
         showToast('{{ __("pos.stock_added") }}');
         bootstrap.Modal.getInstance(document.getElementById('addStockModal')).hide();
@@ -318,15 +358,17 @@ async function deleteProduct(id) {
     else showToast(res.message, 'danger');
 }
 
-// Reset modal on open
+// Reset modal on open (only when triggered by the Add button, not editProduct())
 document.getElementById('addProductModal').addEventListener('show.bs.modal', function(e) {
     if (!e.relatedTarget) return;
     document.getElementById('productId').value = '';
     document.getElementById('productName').value = '';
     document.getElementById('productQuantity').disabled = false;
+    document.getElementById('productWarehouseRow').style.display = '';
     document.getElementById('productModalTitle').textContent = '{{ __("pos.add_product") }}';
 });
 
+loadWarehouses();
 loadProducts();
 
 document.getElementById('productsBody').addEventListener('click', function(e) {

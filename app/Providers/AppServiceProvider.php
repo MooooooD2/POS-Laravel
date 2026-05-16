@@ -18,8 +18,11 @@ use App\Policies\SupplierPolicy;
 use App\Policies\SupplierPaymentPolicy;
 use App\Policies\PurchaseOrderPolicy;
 use App\Policies\UserPolicy;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AppServiceProvider extends AuthServiceProvider
 {
@@ -42,6 +45,10 @@ class AppServiceProvider extends AuthServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
+
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
 
         // Outputs nonce="..." for inline <script> tags to satisfy CSP
         Blade::directive('nonce', function () {

@@ -24,7 +24,8 @@ class InvoiceController extends Controller
     public function posPage()
     {
         $settings = $this->settingService->getPosSettings();
-        return view('pos.index', compact('settings'));
+        $waEnabled = (bool) (config('whatsapp.enabled') && config('whatsapp.phone_number_id'));
+        return view('pos.index', compact('settings', 'waEnabled'));
     }
 
     public function searchProduct(Request $request)

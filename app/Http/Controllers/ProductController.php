@@ -46,9 +46,13 @@ class ProductController extends Controller
         $data    = $request->validated();
         $product = $this->productRepo->create($data);
 
-        $initial = (int) ($data['initial_quantity'] ?? 0);
+        $initial     = (int) ($data['initial_quantity'] ?? 0);
+        $warehouseId = isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null;
         if ($initial > 0) {
-            $this->stockService->addStock($product, $initial, __('pos.new_product_added'), null, 'initial');
+            $this->stockService->addStock(
+                $product, $initial, __('pos.new_product_added'),
+                null, 'initial', null, $warehouseId
+            );
         }
 
         $this->audit('product.created', Product::class, (int) $product->id, ['name' => $product->name]);
@@ -81,7 +85,9 @@ class ProductController extends Controller
             $data['quantity'],
             $data['reason'] ?? __('pos.manual_stock_add'),
             null,
-            $data['reference_type'] ?? 'adjustment'
+            $data['reference_type'] ?? 'adjustment',
+            null,
+            isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null
         );
         $this->audit('stock.added', Product::class, (int) $product->id, ['qty' => $data['quantity']]);
         return $this->success(['new_quantity' => $product->fresh()->quantity]);

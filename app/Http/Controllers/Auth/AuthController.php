@@ -1,52 +1,58 @@
-<?php namespace App\Http\Controllers\Auth;
+<?php
+
+namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use App\Models\User;
+use Stancl\Tenancy\Facades\Tenancy;  // Add this import
 
 class AuthController extends Controller
 {
     public function showLogin()
     {
-        if (Auth::check()) return redirect()->route('dashboard');
+        if (Auth::check())
+            return redirect()->route('dashboard');
         return view('auth.login');
     }
 
     public function login(Request $request)
     {
         $credentials = $request->validate([
+            'tenant_code' => 'required|string|max:50',
             'username' => 'required|string|max:100',
             'password' => 'required|string|max:200',
         ]);
 
-        if (Auth::attempt([
-            'username'  => $credentials['username'],
-            'password'  => $credentials['password'],
-            'is_active' => true,
-        ])) {
-            $request->session()->regenerate();
+        $tenant = Tenant::where('code', strtolower($credentials['tenant_code']))->first();
+        if (!$tenant) {
+            return response()->json(['success' => false], 401);
+        }
 
-            Log::channel('audit')->info('auth.login_success', [
-                'user_id'    => Auth::id(),
-                'username'   => $credentials['username'],
-                'ip'         => $request->ip(),
-                'user_agent' => $this->sanitizeUserAgent($request->userAgent()),
-                'timestamp'  => now()->toIso8601String(),
-            ]);
+        // Initialize Tenancy using the Facade
+        Tenancy::initialize($tenant);
+
+        if (
+            Auth::guard('web')->attempt([
+                'username' => $credentials['username'],
+                'password' => $credentials['password'],
+            ])
+        ) {
+            $request->session()->put('tenant_id', $tenant->id);
+            $request->session()->regenerate();
 
             return response()->json(['success' => true, 'redirect' => route('dashboard')]);
         }
 
-        // Only reveal "account disabled" when the password is also correct.
-        // This prevents username enumeration via disabled accounts.
         $user = User::where('username', $credentials['username'])->first();
         if ($user && !$user->is_active && Hash::check($credentials['password'], $user->password)) {
             Log::channel('audit')->warning('auth.login_blocked_inactive', [
-                'username'  => $credentials['username'],
-                'ip'        => $request->ip(),
+                'username' => $credentials['username'],
+                'ip' => $request->ip(),
                 'timestamp' => now()->toIso8601String(),
             ]);
             return response()->json([
@@ -56,8 +62,8 @@ class AuthController extends Controller
         }
 
         Log::channel('audit')->warning('auth.login_failed', [
-            'username'  => $credentials['username'],
-            'ip'        => $request->ip(),
+            'username' => $credentials['username'],
+            'ip' => $request->ip(),
             'timestamp' => now()->toIso8601String(),
         ]);
 
@@ -77,6 +83,7 @@ class AuthController extends Controller
         ]);
 
         Auth::logout();
+        $request->session()->forget('tenant_id');
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect()->route('login');

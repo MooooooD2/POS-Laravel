@@ -34,10 +34,17 @@ class SettingsSeeder extends Seeder
             ['key' => 'auto_print',       'value' => '0',                  'type' => 'boolean', 'group' => 'invoice', 'label_ar' => 'طباعة تلقائية',        'label_en' => 'Auto Print'],
 
             // POS - نقطة البيع
-            ['key' => 'pos_sound',        'value' => '1',                  'type' => 'boolean', 'group' => 'pos',     'label_ar' => 'صوت عند المسح',        'label_en' => 'Beep on Scan'],
-            ['key' => 'low_stock_alert',  'value' => '1',                  'type' => 'boolean', 'group' => 'pos',     'label_ar' => 'تنبيه المخزون المنخفض','label_en' => 'Low Stock Alert'],
-            ['key' => 'allow_negative_stock','value' => '0',               'type' => 'boolean', 'group' => 'pos',     'label_ar' => 'السماح بمخزون سالب',   'label_en' => 'Allow Negative Stock'],
-            ['key' => 'default_payment',  'value' => 'cash',               'type' => 'string',  'group' => 'pos',     'label_ar' => 'طريقة الدفع الافتراضية','label_en' => 'Default Payment Method'],
+            ['key' => 'pos_sound',             'value' => '1',    'type' => 'boolean', 'group' => 'pos',     'label_ar' => 'صوت عند المسح',             'label_en' => 'Beep on Scan'],
+            ['key' => 'low_stock_alert',        'value' => '1',    'type' => 'boolean', 'group' => 'pos',     'label_ar' => 'تنبيه المخزون المنخفض',     'label_en' => 'Low Stock Alert'],
+            ['key' => 'allow_negative_stock',   'value' => '0',    'type' => 'boolean', 'group' => 'pos',     'label_ar' => 'السماح بمخزون سالب',        'label_en' => 'Allow Negative Stock'],
+            ['key' => 'default_payment',        'value' => 'cash', 'type' => 'string',  'group' => 'pos',     'label_ar' => 'طريقة الدفع الافتراضية',    'label_en' => 'Default Payment Method'],
+            ['key' => 'max_discount_percent',   'value' => '20',   'type' => 'number',  'group' => 'pos',     'label_ar' => 'الحد الأقصى للخصم (%)',     'label_en' => 'Maximum Discount (%)'],
+
+            // Loyalty Points - نقاط الولاء
+            ['key' => 'loyalty_enabled',    'value' => '0',   'type' => 'boolean', 'group' => 'loyalty', 'label_ar' => 'تفعيل نقاط الولاء',           'label_en' => 'Enable Loyalty Points'],
+            ['key' => 'loyalty_earn_rate',  'value' => '10',  'type' => 'number',  'group' => 'loyalty', 'label_ar' => 'كل كم جنيه = نقطة',           'label_en' => 'Spend per Point (EGP)'],
+            ['key' => 'loyalty_redeem_value','value' => '0.5','type' => 'number',  'group' => 'loyalty', 'label_ar' => 'قيمة النقطة عند الاسترداد',   'label_en' => 'Point Redeem Value (EGP)'],
+            ['key' => 'loyalty_min_redeem', 'value' => '100', 'type' => 'number',  'group' => 'loyalty', 'label_ar' => 'الحد الأدنى للنقاط للاسترداد','label_en' => 'Minimum Points to Redeem'],
         ];
 
         foreach ($settings as $s) {

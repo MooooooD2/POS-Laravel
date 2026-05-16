@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Expense extends Model
+{
+    protected $fillable = [
+        'expense_number', 'category_id', 'title', 'amount',
+        'payment_method', 'reference', 'expense_date', 'notes',
+        'created_by', 'created_by_name',
+    ];
+
+    protected $casts = [
+        'amount'       => 'decimal:2',
+        'expense_date' => 'date',
+    ];
+
+    public function category(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(ExpenseCategory::class);
+    }
+
+    public function creator(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+}

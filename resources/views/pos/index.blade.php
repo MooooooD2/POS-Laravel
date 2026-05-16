@@ -3,7 +3,7 @@
 @section('page-title', __('pos.pos'))
 
 @push('styles')
-    <style>
+    <style @nonce>
         .pos-layout {
             display: grid;
             grid-template-columns: 1fr 400px;
@@ -113,6 +113,7 @@
         [data-theme="dark"] .search-results    { color: var(--body-color); }
         [data-theme="dark"] .search-item .barcode-badge { background: #334155; color: #94a3b8; }
         [data-theme="dark"] .pos-right .card   { border: 1px solid var(--card-border); }
+        [data-theme="dark"] #selectedCustomerDisplay { background: #1e293b !important; color: var(--body-color); }
 
         /* ── Cart table dark mode ────────────────────────────────────────── */
         /* table-light thead — Bootstrap hardcodes #f8f9fa bg */
@@ -256,6 +257,52 @@
         {{-- Right: Order Summary --}}
         <div class="pos-right">
 
+            {{-- Customer Search --}}
+            <div class="card">
+                <div class="card-body py-2">
+                    <label class="form-label fw-semibold small mb-1">
+                        <i class="fas fa-user me-1 text-primary"></i>
+                        {{ app()->getLocale() === 'ar' ? 'العميل (اختياري)' : 'Customer (optional)' }}
+                    </label>
+                    {{-- Selected customer display --}}
+                    <div id="selectedCustomerDisplay" class="align-items-center justify-content-between mb-1 p-2 rounded bg-light d-none">
+                        <div>
+                            <div class="fw-semibold small" id="selectedCustomerName"></div>
+                            <div class="text-muted" style="font-size:0.78rem" id="selectedCustomerPhone"></div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger py-0 px-1" id="clearCustomerBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {{-- Search input --}}
+                    <div id="customerSearchBox" class="position-relative">
+                        <input type="text" class="form-control form-control-sm" id="customerSearchInput"
+                            placeholder="{{ app()->getLocale() === 'ar' ? 'ابحث باسم أو هاتف...' : 'Search by name or phone...' }}"
+                            autocomplete="off">
+                        <div id="customerSearchResults" class="search-results" style="max-height:200px"></div>
+                    </div>
+                    {{-- Quick-add form (hidden by default) --}}
+                    <div id="customerQuickAdd" class="mt-2 p-2 border rounded" style="display:none">
+                        <div class="small fw-semibold mb-2 text-success">
+                            <i class="fas fa-user-plus me-1"></i>
+                            {{ app()->getLocale() === 'ar' ? 'إضافة عميل جديد' : 'Add new customer' }}
+                        </div>
+                        <input type="text" class="form-control form-control-sm mb-1" id="newCustomerName"
+                            placeholder="{{ app()->getLocale() === 'ar' ? 'الاسم' : 'Name' }}">
+                        <input type="tel" class="form-control form-control-sm mb-1" id="newCustomerPhone"
+                            placeholder="{{ app()->getLocale() === 'ar' ? 'رقم الهاتف / واتساب' : 'Phone / WhatsApp' }}">
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-success flex-grow-1" id="saveNewCustomerBtn">
+                                <i class="fas fa-plus me-1"></i>{{ app()->getLocale() === 'ar' ? 'حفظ' : 'Save' }}
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="cancelQuickAddBtn">
+                                {{ app()->getLocale() === 'ar' ? 'إلغاء' : 'Cancel' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Totals --}}
             <div class="card">
                 <div class="card-body">
@@ -348,6 +395,9 @@
                     <button class="btn btn-outline-primary" id="printInvoiceBtn">
                         <i class="fas fa-print me-2"></i>{{ __('pos.print') }}
                     </button>
+                    <button class="btn btn-outline-success d-none" id="waInvoiceBtn">
+                        <i class="fab fa-whatsapp me-2"></i>{{ app()->getLocale() === 'ar' ? 'إرسال واتساب' : 'Send WhatsApp' }}
+                    </button>
                     <button class="btn btn-success" id="newSaleBtn">
                         <i class="fas fa-plus me-2"></i>{{ app()->getLocale() === 'ar' ? 'بيعة جديدة' : 'New Sale' }}
                     </button>
@@ -411,7 +461,7 @@
         </div>
     </div>
 
-    <style>
+    <style @nonce>
         @keyframes scanLine {
             0% {
                 top: 0;
@@ -435,6 +485,7 @@
     <script @nonce>
         // Settings passed from controller
         const POS_SETTINGS = {
+            waEnabled: {{ $waEnabled ? 'true' : 'false' }},
             taxEnabled: {{ $settings['tax_enabled'] ? 'true' : 'false' }},
             taxRate: {{ (float) ($settings['tax_rate'] ?? 0) }},
             taxInclusive: {{ $settings['tax_inclusive'] ? 'true' : 'false' }},
@@ -457,6 +508,11 @@
         let lastKeyTime = Date.now();
         let currentInvoice = null;
         let lastSearchResults = [];
+
+        // ── Customer widget state ──────────────────────────────────────────────────
+        let selectedCustomerId = null;
+        let customerSearchTimeout = null;
+        let _customerResults = [];
 
         // ─── BARCODE SCANNER SUPPORT ──────────────────────────────────────────────────
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
@@ -767,6 +823,119 @@
             document.getElementById('cashPanel').style.display = method === 'cash' ? 'block' : 'none';
         }
 
+        // ─── CUSTOMER WIDGET ─────────────────────────────────────────────────────────
+        document.getElementById('customerSearchInput').addEventListener('input', function() {
+            clearTimeout(customerSearchTimeout);
+            const q = this.value.trim();
+            if (q.length < 1) { closeCustomerSearch(); return; }
+            customerSearchTimeout = setTimeout(() => searchCustomers(q), 250);
+        });
+
+        async function searchCustomers(q) {
+            try {
+                const res = await fetch(`{{ route('customers.search') }}?q=${encodeURIComponent(q)}`, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+                });
+                const data = await res.json();
+                if (!data.success) return;
+                renderCustomerDropdown(data.customers, q);
+            } catch (e) {}
+        }
+
+        function renderCustomerDropdown(customers, q) {
+            _customerResults = customers;
+            const isAr = LOCALE === 'ar';
+            const container = document.getElementById('customerSearchResults');
+            let html = customers.map((c, i) => `
+                <div class="search-item" data-cust-idx="${i}">
+                    <div>
+                        <div class="fw-semibold">${escapeHtml(c.name)}</div>
+                        <small class="text-muted">${c.phone ? escapeHtml(c.phone) : ''}</small>
+                    </div>
+                    <span class="badge bg-primary">${escapeHtml(c.code)}</span>
+                </div>`).join('');
+            html += `<div class="search-item text-success border-top" id="addNewCustomerOption">
+                <i class="fas fa-user-plus me-1"></i>
+                ${isAr ? 'إضافة عميل جديد' : 'Add new customer'}
+            </div>`;
+            container.innerHTML = html;
+            container.classList.add('show');
+        }
+
+        function closeCustomerSearch() {
+            document.getElementById('customerSearchResults').classList.remove('show');
+        }
+
+        function selectCustomer(customer) {
+            selectedCustomerId = customer.id;
+            document.getElementById('selectedCustomerName').textContent = customer.name;
+            document.getElementById('selectedCustomerPhone').textContent = customer.phone || '';
+            document.getElementById('selectedCustomerDisplay').classList.remove('d-none');
+            document.getElementById('selectedCustomerDisplay').classList.add('d-flex');
+            document.getElementById('customerSearchBox').classList.add('d-none');
+            closeCustomerSearch();
+            document.getElementById('customerSearchInput').value = '';
+        }
+
+        function clearCustomer() {
+            selectedCustomerId = null;
+            document.getElementById('selectedCustomerDisplay').classList.add('d-none');
+            document.getElementById('selectedCustomerDisplay').classList.remove('d-flex');
+            document.getElementById('customerSearchBox').classList.remove('d-none');
+            document.getElementById('customerQuickAdd').style.display = 'none';
+            document.getElementById('newCustomerName').value = '';
+            document.getElementById('newCustomerPhone').value = '';
+        }
+
+        document.getElementById('customerSearchResults').addEventListener('click', function(e) {
+            const item = e.target.closest('[data-cust-idx]');
+            if (item) { selectCustomer(_customerResults[parseInt(item.dataset.custIdx)]); return; }
+            if (e.target.closest('#addNewCustomerOption')) {
+                closeCustomerSearch();
+                document.getElementById('customerQuickAdd').style.display = 'block';
+                document.getElementById('newCustomerName').focus();
+            }
+        });
+
+        document.getElementById('clearCustomerBtn').addEventListener('click', clearCustomer);
+        document.getElementById('cancelQuickAddBtn').addEventListener('click', function() {
+            document.getElementById('customerQuickAdd').style.display = 'none';
+        });
+
+        document.getElementById('saveNewCustomerBtn').addEventListener('click', async function() {
+            const name = document.getElementById('newCustomerName').value.trim();
+            const phone = document.getElementById('newCustomerPhone').value.trim();
+            if (!name) { showToast(LOCALE === 'ar' ? 'الاسم مطلوب' : 'Name is required', 'danger'); return; }
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            try {
+                const res = await apiCall('{{ route('customers.store') }}', 'POST', { name, phone });
+                if (res.success) {
+                    selectCustomer(res.customer);
+                    document.getElementById('customerQuickAdd').style.display = 'none';
+                    document.getElementById('newCustomerName').value = '';
+                    document.getElementById('newCustomerPhone').value = '';
+                    showToast(LOCALE === 'ar' ? 'تم إضافة العميل' : 'Customer added');
+                } else {
+                    showToast(res.message || (LOCALE === 'ar' ? 'خطأ' : 'Error'), 'danger');
+                }
+            } catch (e) {
+                showToast(LOCALE === 'ar' ? 'خطأ في الاتصال' : 'Connection error', 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-plus me-1"></i>${LOCALE === 'ar' ? 'حفظ' : 'Save'}`;
+            }
+        });
+
+        // Close customer dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#customerSearchBox') && !e.target.closest('#customerSearchResults')) {
+                closeCustomerSearch();
+            }
+        });
+
         // ─── COMPLETE SALE ────────────────────────────────────────────────────────────
         async function completeSale() {
             if (!cart.length) return;
@@ -792,6 +961,7 @@
                     discount,
                     payment_method: paymentMethod,
                     cash_received: cashReceived,
+                    customer_id: selectedCustomerId || null,
                 });
 
                 if (res.success) {
@@ -917,7 +1087,35 @@
     `;
 
             document.getElementById('invoiceBody').innerHTML = invoiceHtml;
+
+            const waBtn = document.getElementById('waInvoiceBtn');
+            if (waBtn) {
+                waBtn.classList.toggle('d-none', !(POS_SETTINGS.waEnabled && invoice.customer_phone));
+            }
+
             new bootstrap.Modal(document.getElementById('invoiceModal')).show();
+        }
+
+        async function sendInvoiceWhatsApp() {
+            if (!currentInvoice) return;
+            const btn = document.getElementById('waInvoiceBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>{{ app()->getLocale() === 'ar' ? 'جاري الإرسال...' : 'Sending...' }}';
+            try {
+                const res = await apiCall(`/api/whatsapp/invoices/${currentInvoice.id}/send`, 'POST', {});
+                if (res.success) {
+                    showToast('{{ app()->getLocale() === 'ar' ? 'تم إرسال الفاتورة عبر واتساب' : 'Invoice sent via WhatsApp' }}');
+                    btn.classList.add('d-none');
+                } else {
+                    showToast(res.message || '{{ app()->getLocale() === 'ar' ? 'فشل الإرسال' : 'Send failed' }}', 'danger');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fab fa-whatsapp me-2"></i>{{ app()->getLocale() === 'ar' ? 'إرسال واتساب' : 'Send WhatsApp' }}';
+                }
+            } catch {
+                showToast('{{ app()->getLocale() === 'ar' ? 'خطأ في الإرسال' : 'Send error' }}', 'danger');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fab fa-whatsapp me-2"></i>{{ app()->getLocale() === 'ar' ? 'إرسال واتساب' : 'Send WhatsApp' }}';
+            }
         }
 
         function printInvoice() {
@@ -1205,6 +1403,7 @@
         function newSale() {
             cart = [];
             currentInvoice = null;
+            clearCustomer();
             document.getElementById('discountInput').value = 0;
             document.getElementById('cashReceived').value = '';
             renderCart();
@@ -1246,8 +1445,10 @@
         async function apiCall(url, method = 'GET', data = null) {
             const options = {
                 method: method,
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                 },
             };
@@ -1477,6 +1678,8 @@
         document.getElementById('completeSaleBtn').addEventListener('click', completeSale);
         document.getElementById('printInvoiceBtn').addEventListener('click', printInvoice);
         document.getElementById('newSaleBtn').addEventListener('click', newSale);
+        const waInvoiceBtn = document.getElementById('waInvoiceBtn');
+        if (waInvoiceBtn) waInvoiceBtn.addEventListener('click', sendInvoiceWhatsApp);
 
         // ─── INIT ─────────────────────────────────────────────────────────────────
         setPayment(POS_SETTINGS.defaultPayment);
