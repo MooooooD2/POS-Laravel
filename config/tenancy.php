@@ -28,11 +28,20 @@ return [
 
         'managers' => [
             'sqlite'  => \Stancl\Tenancy\TenantDatabaseManagers\SQLiteDatabaseManager::class,
-            'mysql'   => \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
-            'mariadb' => \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
+            'mysql'   => env('DB_ADMIN_USERNAME')
+                ? \App\Services\PrivilegedTenantDatabaseManager::class
+                : \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
+            'mariadb' => env('DB_ADMIN_USERNAME')
+                ? \App\Services\PrivilegedTenantDatabaseManager::class
+                : \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
             'pgsql'   => \Stancl\Tenancy\TenantDatabaseManagers\PostgreSQLDatabaseManager::class,
         ],
     ],
+
+    // cPanel database name prefix.
+    // On cPanel hosts all database names must start with the account username.
+    // Set CPANEL_USERNAME in .env; leave empty on non-cPanel servers.
+    'cpanel_username' => env('CPANEL_USERNAME', ''),
 
     'cache' => [
         'tag_base' => 'tenant',

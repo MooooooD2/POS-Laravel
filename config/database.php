@@ -62,6 +62,24 @@ return [
             ]) : [],
         ],
 
+        // Privileged connection used only for CREATE / DROP DATABASE on shared hosting.
+        // DB_ADMIN_USERNAME must have the global CREATE and DROP privileges.
+        // Leave DB_ADMIN_USERNAME empty in local .env to disable.
+        'tenant_manager' => [
+            'driver'      => 'mysql',
+            'host'        => env('DB_ADMIN_HOST', env('DB_HOST', '127.0.0.1')),
+            'port'        => env('DB_ADMIN_PORT', env('DB_PORT', '3306')),
+            'database'    => 'information_schema',
+            'username'    => env('DB_ADMIN_USERNAME', env('DB_USERNAME', 'root')),
+            'password'    => env('DB_ADMIN_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset'     => 'utf8mb4',
+            'collation'   => 'utf8mb4_unicode_ci',
+            'prefix'      => '',
+            'strict'      => true,
+            'engine'      => null,
+        ],
+
         // Tenant connection – database name is set dynamically by stancl/tenancy
         'tenant' => [
             'driver' => 'mysql',
