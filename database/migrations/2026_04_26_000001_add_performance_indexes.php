@@ -18,6 +18,10 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Only add indexes on non-FK columns or true composite indexes.
+        // Single-column indexes on FK columns are redundant (FK auto-creates one)
+        // and cause MySQL error 1553 on rollback.
+
         Schema::table('invoices', function (Blueprint $table) {
             if (!$this->hasIndex('invoices', 'idx_invoices_status_created')) {
                 $table->index(['status', 'created_at'], 'idx_invoices_status_created');
@@ -25,23 +29,20 @@ return new class extends Migration
             if (!$this->hasIndex('invoices', 'idx_invoices_payment')) {
                 $table->index('payment_method', 'idx_invoices_payment');
             }
-            // cashier_id already has an index from the FK (invoices_cashier_id_foreign).
-            // Adding a second index on the same column causes problems on rollback.
+            // cashier_id, customer_id etc. skipped — FK indexes already cover them.
         });
 
-        Schema::table('invoice_items', function (Blueprint $table) {
-            if (!$this->hasIndex('invoice_items', 'idx_invoice_items_product')) {
-                $table->index('product_id', 'idx_invoice_items_product');
-            }
-        });
+        // invoice_items.product_id skipped — FK index already covers it.
 
         Schema::table('supplier_accounts', function (Blueprint $table) {
+            // Composite index — different from the single-column FK index on supplier_id.
             if (!$this->hasIndex('supplier_accounts', 'idx_supplier_accounts_supplier')) {
                 $table->index(['supplier_id', 'created_at'], 'idx_supplier_accounts_supplier');
             }
         });
 
         Schema::table('stock_movements', function (Blueprint $table) {
+            // Composite index — different from the single-column FK index on product_id.
             if (!$this->hasIndex('stock_movements', 'idx_stock_movements_product')) {
                 $table->index(['product_id', 'created_at'], 'idx_stock_movements_product');
             }
@@ -51,6 +52,7 @@ return new class extends Migration
         });
 
         Schema::table('purchase_orders', function (Blueprint $table) {
+            // Composite index — different from the single-column FK index on supplier_id.
             if (!$this->hasIndex('purchase_orders', 'idx_purchase_orders_supplier_status')) {
                 $table->index(['supplier_id', 'status'], 'idx_purchase_orders_supplier_status');
             }
@@ -73,11 +75,7 @@ return new class extends Migration
                 $table->dropIndex('idx_invoices_payment');
             }
         });
-        Schema::table('invoice_items', function (Blueprint $table) {
-            if ($this->hasIndex('invoice_items', 'idx_invoice_items_product')) {
-                $table->dropIndex('idx_invoice_items_product');
-            }
-        });
+        // idx_invoice_items_product was removed from up() — nothing to drop here.
         Schema::table('supplier_accounts', function (Blueprint $table) {
             if ($this->hasIndex('supplier_accounts', 'idx_supplier_accounts_supplier')) {
                 $table->dropIndex('idx_supplier_accounts_supplier');
