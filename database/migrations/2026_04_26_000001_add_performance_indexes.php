@@ -67,37 +67,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('invoices', function (Blueprint $table) {
-            if ($this->hasIndex('invoices', 'idx_invoices_status_created')) {
-                $table->dropIndex('idx_invoices_status_created');
-            }
-            if ($this->hasIndex('invoices', 'idx_invoices_payment')) {
-                $table->dropIndex('idx_invoices_payment');
-            }
-        });
-        // idx_invoice_items_product was removed from up() — nothing to drop here.
-        Schema::table('supplier_accounts', function (Blueprint $table) {
-            if ($this->hasIndex('supplier_accounts', 'idx_supplier_accounts_supplier')) {
-                $table->dropIndex('idx_supplier_accounts_supplier');
-            }
-        });
-        Schema::table('stock_movements', function (Blueprint $table) {
-            if ($this->hasIndex('stock_movements', 'idx_stock_movements_product')) {
-                $table->dropIndex('idx_stock_movements_product');
-            }
-            if ($this->hasIndex('stock_movements', 'idx_stock_movements_type')) {
-                $table->dropIndex('idx_stock_movements_type');
-            }
-        });
-        Schema::table('purchase_orders', function (Blueprint $table) {
-            if ($this->hasIndex('purchase_orders', 'idx_purchase_orders_supplier_status')) {
-                $table->dropIndex('idx_purchase_orders_supplier_status');
-            }
-        });
-        Schema::table('sales_returns', function (Blueprint $table) {
-            if ($this->hasIndex('sales_returns', 'idx_sales_returns_status_date')) {
-                $table->dropIndex('idx_sales_returns_status_date');
-            }
-        });
+        // Intentionally left empty.
+        // MySQL error 1553 prevents dropping composite indexes that it has chosen
+        // as FK backing indexes. Performance indexes are non-destructive — leaving
+        // them in place on rollback is safe and avoids breaking migrations.
     }
+
 };
