@@ -50,7 +50,7 @@ class WarehouseController extends Controller
             'is_active'   => 'boolean',
         ]);
 
-        return response()->json($this->service->create($data), 201);
+        return response()->json(['success' => true, 'warehouse' => $this->service->create($data)], 201);
     }
 
     public function update(Request $request, Warehouse $warehouse): JsonResponse
@@ -65,13 +65,13 @@ class WarehouseController extends Controller
             'is_active'   => 'boolean',
         ]);
 
-        return response()->json($this->service->update($warehouse, $data));
+        return response()->json(['success' => true, 'warehouse' => $this->service->update($warehouse, $data)]);
     }
 
     public function destroy(Warehouse $warehouse): JsonResponse
     {
         $this->service->delete($warehouse);
-        return response()->json(['message' => __('pos.warehouse_deleted')]);
+        return response()->json(['success' => true, 'message' => __('pos.warehouse_deleted')]);
     }
 
     // ── Stock ────────────────────────────────────────────────────────────────
@@ -162,18 +162,20 @@ class WarehouseController extends Controller
             'items.*.batch_id'      => 'nullable|exists:product_batches,id',
         ]);
 
-        return response()->json($this->service->createTransfer($data), 201);
+        $transfer = $this->service->createTransfer($data);
+        return response()->json(['success' => true, 'transfer' => $transfer], 201);
     }
 
     public function receiveTransfer(WarehouseTransfer $transfer): JsonResponse
     {
-        return response()->json($this->service->receiveTransfer($transfer));
+        $transfer = $this->service->receiveTransfer($transfer);
+        return response()->json(['success' => true, 'transfer' => $transfer]);
     }
 
     public function cancelTransfer(WarehouseTransfer $transfer): JsonResponse
     {
         $this->service->cancelTransfer($transfer);
-        return response()->json(['message' => __('pos.transfer_cancelled')]);
+        return response()->json(['success' => true, 'message' => __('pos.transfer_cancelled')]);
     }
 
     // ── Product Batches ──────────────────────────────────────────────────────
@@ -200,6 +202,6 @@ class WarehouseController extends Controller
             'notes'            => 'nullable|string|max:500',
         ]);
 
-        return response()->json($this->service->createBatch($data), 201);
+        return response()->json(['success' => true, 'batch' => $this->service->createBatch($data)], 201);
     }
 }

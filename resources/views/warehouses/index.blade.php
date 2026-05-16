@@ -542,8 +542,8 @@ function renderTransfers(list) {
     tbody.innerHTML = list.map(t => `
     <tr>
       <td>#${t.id}</td>
-      <td>${esc(t.fromWarehouse?.name ?? '-')}</td>
-      <td>${esc(t.toWarehouse?.name ?? '-')}</td>
+      <td>${esc(t.from_warehouse?.name ?? '-')}</td>
+      <td>${esc(t.to_warehouse?.name ?? '-')}</td>
       <td><span class="badge bg-${badge[t.status] ?? 'secondary'} transfer-badge">${t.status}</span></td>
       <td>${t.created_at ? t.created_at.slice(0,10) : '-'}</td>
       <td class="d-flex gap-1">

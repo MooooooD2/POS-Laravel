@@ -32,7 +32,7 @@ class BranchController extends Controller
             'is_active'  => 'boolean',
         ]);
 
-        return response()->json($this->service->create($data), 201);
+        return response()->json(['success' => true, 'branch' => $this->service->create($data)], 201);
     }
 
     public function update(Request $request, Branch $branch): JsonResponse
@@ -47,12 +47,12 @@ class BranchController extends Controller
             'is_active'  => 'boolean',
         ]);
 
-        return response()->json($this->service->update($branch, $data));
+        return response()->json(['success' => true, 'branch' => $this->service->update($branch, $data)]);
     }
 
     public function destroy(Branch $branch): JsonResponse
     {
         $this->service->delete($branch);
-        return response()->json(['message' => __('pos.branch_deleted')]);
+        return response()->json(['success' => true, 'message' => __('pos.branch_deleted')]);
     }
 }
