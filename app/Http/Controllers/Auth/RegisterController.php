@@ -11,7 +11,6 @@ use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -118,9 +117,7 @@ class RegisterController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => app()->hasDebugModeEnabled()
-                    ? $e->getMessage()
-                    : __('pos.registration_failed'),
+                'message' => $e->getMessage(),
             ], 500);
         }
     }

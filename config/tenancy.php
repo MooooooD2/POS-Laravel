@@ -28,20 +28,21 @@ return [
 
         'managers' => [
             'sqlite'  => \Stancl\Tenancy\TenantDatabaseManagers\SQLiteDatabaseManager::class,
-            'mysql'   => env('DB_ADMIN_USERNAME')
-                ? \App\Services\PrivilegedTenantDatabaseManager::class
-                : \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
-            'mariadb' => env('DB_ADMIN_USERNAME')
-                ? \App\Services\PrivilegedTenantDatabaseManager::class
+            'mysql'   => env('CPANEL_USERNAME')
+                ? \App\Services\CpanelTenantDatabaseManager::class       // shared hosting (cPanel)
+                : \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,  // local / VPS
+            'mariadb' => env('CPANEL_USERNAME')
+                ? \App\Services\CpanelTenantDatabaseManager::class
                 : \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
             'pgsql'   => \Stancl\Tenancy\TenantDatabaseManagers\PostgreSQLDatabaseManager::class,
         ],
     ],
 
-    // cPanel database name prefix.
-    // On cPanel hosts all database names must start with the account username.
-    // Set CPANEL_USERNAME in .env; leave empty on non-cPanel servers.
-    'cpanel_username' => env('CPANEL_USERNAME', ''),
+    // cPanel account username – used to prefix database names (e.g. ffhzczwexx_tenant_mood_shop).
+    // Set CPANEL_USERNAME in server .env; leave empty for local development.
+    'cpanel' => [
+        'username' => env('CPANEL_USERNAME', ''),
+    ],
 
     'cache' => [
         'tag_base' => 'tenant',

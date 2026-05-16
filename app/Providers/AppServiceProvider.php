@@ -23,6 +23,7 @@ use Illuminate\Foundation\Support\Providers\AuthServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
+use Stancl\Tenancy\DatabaseConfig;
 
 class AppServiceProvider extends AuthServiceProvider
 {
@@ -45,6 +46,14 @@ class AppServiceProvider extends AuthServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
+
+        // Use tenant code as the database name so it is predictable and can be
+        // pre-created manually in cPanel before registration (e.g. mood_shop → tenant_mood_shop).
+        DatabaseConfig::generateDatabaseNamesUsing(function ($tenant) {
+            $prefix = config('tenancy.database.prefix', 'tenant_');
+            $suffix = config('tenancy.database.suffix', '');
+            return $prefix . ($tenant->code ?? $tenant->getTenantKey()) . $suffix;
+        });
 
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
