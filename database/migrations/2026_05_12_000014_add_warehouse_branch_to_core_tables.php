@@ -12,50 +12,72 @@ return new class extends Migration {
 
         // users → branch
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('branch_id')->nullable()->after('language')
-                ->constrained('branches')->nullOnDelete();
+            if (!Schema::hasColumn('users', 'branch_id')) {
+                $table->foreignId('branch_id')->nullable()->after('language')
+                    ->constrained('branches')->nullOnDelete();
+            }
         });
 
         // invoices → branch + warehouse
         Schema::table('invoices', function (Blueprint $table) {
-            $table->foreignId('branch_id')->nullable()->after('customer_id')
-                ->constrained('branches')->nullOnDelete();
-            $table->foreignId('warehouse_id')->nullable()->after('branch_id')
-                ->constrained('warehouses')->nullOnDelete();
+            if (!Schema::hasColumn('invoices', 'branch_id')) {
+                $table->foreignId('branch_id')->nullable()->after('customer_id')
+                    ->constrained('branches')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('invoices', 'warehouse_id')) {
+                $table->foreignId('warehouse_id')->nullable()->after('branch_id')
+                    ->constrained('warehouses')->nullOnDelete();
+            }
         });
 
         // expenses → branch
         Schema::table('expenses', function (Blueprint $table) {
-            $table->foreignId('branch_id')->nullable()->after('created_by')
-                ->constrained('branches')->nullOnDelete();
+            if (!Schema::hasColumn('expenses', 'branch_id')) {
+                $table->foreignId('branch_id')->nullable()->after('created_by')
+                    ->constrained('branches')->nullOnDelete();
+            }
         });
 
         // cash_register_sessions → branch
         Schema::table('cash_register_sessions', function (Blueprint $table) {
-            $table->foreignId('branch_id')->nullable()->after('cashier_id')
-                ->constrained('branches')->nullOnDelete();
+            if (!Schema::hasColumn('cash_register_sessions', 'branch_id')) {
+                $table->foreignId('branch_id')->nullable()->after('cashier_id')
+                    ->constrained('branches')->nullOnDelete();
+            }
         });
 
         // purchase_orders → branch + warehouse
         Schema::table('purchase_orders', function (Blueprint $table) {
-            $table->foreignId('branch_id')->nullable()->after('id')
-                ->constrained('branches')->nullOnDelete();
-            $table->foreignId('warehouse_id')->nullable()->after('branch_id')
-                ->constrained('warehouses')->nullOnDelete();
+            if (!Schema::hasColumn('purchase_orders', 'branch_id')) {
+                $table->foreignId('branch_id')->nullable()->after('id')
+                    ->constrained('branches')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('purchase_orders', 'warehouse_id')) {
+                $table->foreignId('warehouse_id')->nullable()->after('branch_id')
+                    ->constrained('warehouses')->nullOnDelete();
+            }
         });
 
         // stock_movements → warehouse + batch
         Schema::table('stock_movements', function (Blueprint $table) {
-            $table->foreignId('warehouse_id')->nullable()->after('reference_id')
-                ->constrained('warehouses')->nullOnDelete();
-            $table->unsignedBigInteger('batch_id')->nullable()->after('warehouse_id');
+            if (!Schema::hasColumn('stock_movements', 'warehouse_id')) {
+                $table->foreignId('warehouse_id')->nullable()->after('reference_id')
+                    ->constrained('warehouses')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('stock_movements', 'batch_id')) {
+                $table->unsignedBigInteger('batch_id')->nullable()->after('warehouse_id');
+            }
         });
 
         // invoice_items → warehouse + batch
         Schema::table('invoice_items', function (Blueprint $table) {
-            $table->foreignId('warehouse_id')->nullable()->after('subtotal')
-                ->constrained('warehouses')->nullOnDelete();
-            $table->unsignedBigInteger('batch_id')->nullable()->after('warehouse_id');
+            if (!Schema::hasColumn('invoice_items', 'warehouse_id')) {
+                $table->foreignId('warehouse_id')->nullable()->after('subtotal')
+                    ->constrained('warehouses')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('invoice_items', 'batch_id')) {
+                $table->unsignedBigInteger('batch_id')->nullable()->after('warehouse_id');
+            }
         });
 
         // Back-fill branch_id + warehouse_id to existing records
@@ -76,32 +98,60 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('invoice_items', function (Blueprint $table) {
-            $table->dropForeign(['warehouse_id']);
-            $table->dropColumn(['warehouse_id', 'batch_id']);
+            if (Schema::hasColumn('invoice_items', 'warehouse_id')) {
+                $table->dropForeign(['warehouse_id']);
+                $table->dropColumn('warehouse_id');
+            }
+            if (Schema::hasColumn('invoice_items', 'batch_id')) {
+                $table->dropColumn('batch_id');
+            }
         });
         Schema::table('stock_movements', function (Blueprint $table) {
-            $table->dropForeign(['warehouse_id']);
-            $table->dropColumn(['warehouse_id', 'batch_id']);
+            if (Schema::hasColumn('stock_movements', 'warehouse_id')) {
+                $table->dropForeign(['warehouse_id']);
+                $table->dropColumn('warehouse_id');
+            }
+            if (Schema::hasColumn('stock_movements', 'batch_id')) {
+                $table->dropColumn('batch_id');
+            }
         });
         Schema::table('purchase_orders', function (Blueprint $table) {
-            $table->dropForeign(['branch_id', 'warehouse_id']);
-            $table->dropColumn(['branch_id', 'warehouse_id']);
+            if (Schema::hasColumn('purchase_orders', 'warehouse_id')) {
+                $table->dropForeign(['warehouse_id']);
+                $table->dropColumn('warehouse_id');
+            }
+            if (Schema::hasColumn('purchase_orders', 'branch_id')) {
+                $table->dropForeign(['branch_id']);
+                $table->dropColumn('branch_id');
+            }
         });
         Schema::table('cash_register_sessions', function (Blueprint $table) {
-            $table->dropForeign(['branch_id']);
-            $table->dropColumn('branch_id');
+            if (Schema::hasColumn('cash_register_sessions', 'branch_id')) {
+                $table->dropForeign(['branch_id']);
+                $table->dropColumn('branch_id');
+            }
         });
         Schema::table('expenses', function (Blueprint $table) {
-            $table->dropForeign(['branch_id']);
-            $table->dropColumn('branch_id');
+            if (Schema::hasColumn('expenses', 'branch_id')) {
+                $table->dropForeign(['branch_id']);
+                $table->dropColumn('branch_id');
+            }
         });
         Schema::table('invoices', function (Blueprint $table) {
-            $table->dropForeign(['branch_id', 'warehouse_id']);
-            $table->dropColumn(['branch_id', 'warehouse_id']);
+            if (Schema::hasColumn('invoices', 'warehouse_id')) {
+                $table->dropForeign(['warehouse_id']);
+                $table->dropColumn('warehouse_id');
+            }
+            if (Schema::hasColumn('invoices', 'branch_id')) {
+                $table->dropForeign(['branch_id']);
+                $table->dropColumn('branch_id');
+            }
         });
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['branch_id']);
-            $table->dropColumn('branch_id');
+            if (Schema::hasColumn('users', 'branch_id')) {
+                $table->dropForeign(['branch_id']);
+                $table->dropColumn('branch_id');
+            }
         });
     }
 };
