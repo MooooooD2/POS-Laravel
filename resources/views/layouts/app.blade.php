@@ -199,9 +199,8 @@
                 <button class="btn btn-sm btn-outline-secondary d-md-none" data-fn="toggleSidebar">
                     <i class="fas fa-bars"></i>
                 </button>
-                <h6 class="mb-0 fw-semibold">@yield('page-title', __('pos.dashboard'))</h6>
-            </div>
-            <div class="d-flex align-items-center gap-3">
+                <h6 class="mb-0 fw-semibold d-none d-md-block">@yield('page-title', __('pos.dashboard'))</h6>
+           
                 {{-- Low Stock Notification Bell --}}
                 <div class="dropdown" id="stockNotifDropdown">
                     <button class="btn btn-sm btn-outline-secondary position-relative" id="stockBellBtn"
@@ -292,6 +291,13 @@
                 </div>
             </div>
         </div>
+
+        {{-- Page Header --}}
+        @hasSection('page-title')
+        <div class="page-header">
+            <h1 class="page-header-title">@yield('page-title')</h1>
+        </div>
+        @endif
 
         {{-- Page Content --}}
         <div class="page-content">
