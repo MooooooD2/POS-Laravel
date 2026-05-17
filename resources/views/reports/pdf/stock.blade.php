@@ -43,6 +43,7 @@
             <tr>
                 <th>Product</th>
                 <th>Category</th>
+                <th>Unit</th>
                 <th>Qty</th>
                 <th>Cost Price</th>
                 <th>Sell Price</th>
@@ -55,6 +56,7 @@
             <tr>
                 <td>{{ $p['name'] }}</td>
                 <td>{{ $p['category'] ?? '-' }}</td>
+                <td>{{ $p['unit_abbreviation'] ?? $p['unit_name'] ?? '-' }}</td>
                 <td class="{{ $p['quantity'] == 0 ? 'out' : ($p['low_stock'] ? 'low' : 'ok') }}">{{ $p['quantity'] }}</td>
                 <td>{{ number_format($p['cost_price'], 2) }}</td>
                 <td>{{ number_format($p['price'], 2) }}</td>
@@ -64,7 +66,7 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:12px">No data</td></tr>
+            <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:12px">No data</td></tr>
             @endforelse
         </tbody>
     </table>

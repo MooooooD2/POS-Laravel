@@ -67,7 +67,7 @@ class WarehouseService
 
     public function stockList(Warehouse $warehouse)
     {
-        return WarehouseStock::with('product:id,name,barcode,category,min_stock')
+        return WarehouseStock::with(['product' => fn($q) => $q->select('id','name','barcode','category','min_stock','unit_id')->with('unit:id,name,abbreviation')])
             ->where('warehouse_id', $warehouse->id)
             ->orderBy('product_id')
             ->get();

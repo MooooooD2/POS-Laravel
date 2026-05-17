@@ -276,7 +276,7 @@ async function loadPOs() {
 function addPOItemRow() {
     const idx  = poItemCount++;
     const opts = poProducts.map(p =>
-        `<option value="${p.id}" data-cost="${p.cost_price}" data-price="${p.price}">${p.name}</option>`
+        `<option value="${p.id}" data-cost="${p.cost_price}" data-price="${p.price}">${p.name}${p.unit_abbreviation ? ' (' + p.unit_abbreviation + ')' : ''}</option>`
     ).join('');
 
     const row  = document.createElement('tr');

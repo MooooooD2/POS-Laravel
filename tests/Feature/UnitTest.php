@@ -6,6 +6,8 @@ use App\Models\Product;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class UnitTest extends TestCase
@@ -18,6 +20,15 @@ class UnitTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Share the default SQLite :memory: PDO instance with the 'tenant' connection
+        // so User (which hardcodes $connection='tenant') sees the same tables.
+        if (config('database.default') === 'sqlite') {
+            Config::set('database.connections.tenant', config('database.connections.sqlite'));
+            DB::purge('tenant');
+            DB::connection('tenant')->setPdo(DB::connection()->getPdo());
+        }
+
         $this->seed(\Database\Seeders\RolePermissionSeeder::class);
 
         $this->admin = User::factory()->create(['is_active' => true]);
@@ -25,6 +36,14 @@ class UnitTest extends TestCase
 
         $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
+    }
+
+    protected function tearDown(): void
+    {
+        if (tenancy()->initialized) {
+            tenancy()->end();
+        }
+        parent::tearDown();
     }
 
     // ── List ─────────────────────────────────────────────────────────────────

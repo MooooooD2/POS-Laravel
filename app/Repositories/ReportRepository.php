@@ -83,8 +83,10 @@ class ReportRepository extends BaseRepository implements ReportRepositoryInterfa
     public function stockReport(): array
     {
         return Cache::remember('stock_report', 120, function () {
-            $products = Product::orderBy('category')->orderBy('name')->get()
+            $products = Product::with('unit:id,name,abbreviation')->orderBy('category')->orderBy('name')->get()
                 ->map(fn($p) => array_merge($p->toArray(), [
+                    'unit_name'         => $p->unit?->name,
+                    'unit_abbreviation' => $p->unit?->abbreviation ?? $p->unit?->name,
                     'stock_value'     => $p->quantity * $p->cost_price,
                     'potential_value' => $p->quantity * $p->price,
                     'low_stock'       => $p->low_stock,

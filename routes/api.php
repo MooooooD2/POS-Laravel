@@ -28,6 +28,9 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
     Route::get('/dashboard-data', [DashboardController::class, 'data'])->name('api.dashboard.data');
 
+    // Units — read is available to all authenticated users (POS needs units for product display)
+    Route::get('/units', [UnitController::class, 'all'])->name('units.all');
+
     // Customers (search available to POS users; CRUD to warehouse+)
     Route::middleware('permission:view_pos')->group(function () {
         Route::get('/customers/search', [CustomerController::class, 'search'])->name('customers.search');
@@ -76,8 +79,7 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
         Route::post('/products/{product}/add-stock', [ProductController::class, 'addStock'])->middleware('throttle:30,1')->name('products.add-stock');
 
-        // Units
-        Route::get('/units', [UnitController::class, 'all'])->name('units.all');
+        // Units — write operations (manage_roles is warehouse-level access)
         Route::post('/units', [UnitController::class, 'store'])->name('units.store');
         Route::put('/units/{unit}', [UnitController::class, 'update'])->name('units.update');
         Route::delete('/units/{unit}', [UnitController::class, 'destroy'])->name('units.destroy');

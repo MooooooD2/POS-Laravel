@@ -272,7 +272,7 @@ window.selectPO = async function(po) {
 function renderReturnItems() {
     document.getElementById('returnItemsTbody').innerHTML = returnItems.map((item, idx) =>
         `<tr>
-            <td>${escHtml(item.product_name)}</td>
+            <td>${escHtml(item.product_name)}${item.unit_abbreviation ? ` <span class="badge bg-secondary ms-1">${escHtml(item.unit_abbreviation)}</span>` : ''}</td>
             <td class="text-end">${item.returnable_quantity}</td>
             <td>
                 <input type="number" class="form-control form-control-sm" min="0" max="${item.returnable_quantity}"
@@ -351,7 +351,7 @@ window.showReturnDetails = function(ret) {
                 </thead>
                 <tbody>
                     ${(ret.items||[]).map(i => `<tr>
-                        <td>${escHtml(i.product_name)}</td>
+                        <td>${escHtml(i.product_name)}${i.unit_abbreviation ? ` <span class="badge bg-secondary ms-1">${escHtml(i.unit_abbreviation)}</span>` : ''}</td>
                         <td class="text-end">${i.quantity}</td>
                         <td class="text-end">${formatCurrency(i.unit_cost)}</td>
                         <td class="text-end">${formatCurrency(i.subtotal)}</td>

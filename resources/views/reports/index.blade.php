@@ -314,6 +314,7 @@
                                 <tr>
                                     <th>{{ __('pos.product_name') }}</th>
                                     <th>{{ __('pos.category') }}</th>
+                                    <th>{{ __('pos.unit') }}</th>
                                     <th>{{ __('pos.current_stock') }}</th>
                                     <th>{{ __('pos.cost_price') }}</th>
                                     <th>{{ __('pos.selling_price') }}</th>
@@ -468,6 +469,7 @@
             <tr>
                 <td class="fw-semibold">${p.name}</td>
                 <td>${p.category || '-'}</td>
+                <td><span class="badge bg-info text-dark">${p.unit_abbreviation || p.unit_name || '-'}</span></td>
                 <td class="fw-bold ${p.quantity === 0 ? 'text-danger' : p.low_stock ? 'text-warning' : 'text-success'}">${p.quantity}</td>
                 <td>${formatCurrency(p.cost_price)}</td>
                 <td>${formatCurrency(p.price)}</td>
@@ -478,7 +480,7 @@
                     ? '<span class="badge badge-low-stock">{{ __('pos.low_stock') }}</span>'
                     : '<span class="badge badge-in-stock">OK</span>'}</td>
             </tr>`).join('') :
-                '<tr><td colspan="7" class="text-center text-muted py-4">{{ __('pos.no_data') }}</td></tr>';
+                '<tr><td colspan="8" class="text-center text-muted py-4">{{ __('pos.no_data') }}</td></tr>';
         }
         document.addEventListener('click', function (e) {
             const exportBtn = e.target.closest('[data-export-type]');

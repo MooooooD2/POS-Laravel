@@ -34,13 +34,14 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         if (!$query) return collect();
 
         if ($exact) {
-            return Product::where('barcode', $query)->where('quantity', '>', 0)->first();
+            return Product::with('unit:id,name,abbreviation')->where('barcode', $query)->where('quantity', '>', 0)->first();
         }
 
-        $exact = Product::where('barcode', $query)->first();
-        if ($exact) return collect([$exact]);
+        $exactMatch = Product::with('unit:id,name,abbreviation')->where('barcode', $query)->first();
+        if ($exactMatch) return collect([$exactMatch]);
 
-        return Product::where('name', 'like', '%' . $query . '%')
+        return Product::with('unit:id,name,abbreviation')
+            ->where('name', 'like', '%' . $query . '%')
             ->orWhere('barcode', 'like', '%' . $query . '%')
             ->orderByDesc('quantity')
             ->limit(10)

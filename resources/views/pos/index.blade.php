@@ -611,7 +611,7 @@
             <div class="text-end">
                 <div class="fw-bold text-success">${formatCurrency(p.price)}</div>
                 ${p.barcode ? `<span class="barcode-badge">${escapeHtml(p.barcode)}</span>` : ''}
-                <small class="text-${p.quantity > 0 ? 'success' : 'danger'} d-block">${p.quantity} {{ app()->getLocale() === 'ar' ? 'قطعة' : 'pcs' }}</small>
+                <small class="text-${p.quantity > 0 ? 'success' : 'danger'} d-block">${p.quantity} ${p.unit_abbreviation || p.unit_name || '{{ app()->getLocale() === 'ar' ? 'قطعة' : 'pcs' }}'}</small>
             </div>
         </div>`).join('');
             container.classList.add('show');
@@ -648,12 +648,13 @@
                     return;
                 }
                 cart.push({
-                    product_id:  product.id,
-                    product_name: product.name,
-                    price:       product.price,
-                    quantity:    1,
-                    max_qty:     product.quantity,
-                    min_stock:   product.min_stock || 5,
+                    product_id:       product.id,
+                    product_name:     product.name,
+                    price:            product.price,
+                    quantity:         1,
+                    max_qty:          product.quantity,
+                    min_stock:        product.min_stock || 5,
+                    unit_abbreviation: product.unit_abbreviation || product.unit_name || null,
                 });
                 // تنبيه لو المنتج أصلاً على وشك النفاذ
                 if (product.quantity <= (product.min_stock || 5)) {
@@ -666,7 +667,7 @@
         function buildCartRowHTML(item, idx) {
             return `<tr class="cart-row" data-cart-idx="${idx}" data-product-id="${item.product_id}">
             <td class="text-muted small">${idx + 1}</td>
-            <td><div class="fw-semibold">${escapeHtml(item.product_name)}</div></td>
+            <td><div class="fw-semibold">${escapeHtml(item.product_name)}${item.unit_abbreviation ? ` <span class="badge bg-secondary ms-1" style="font-size:.7rem">${escapeHtml(item.unit_abbreviation)}</span>` : ''}</div></td>
             <td class="text-end">
                 <input type="number" class="form-control form-control-sm text-center p-1"
                     style="width:80px" value="${item.price}" step="0.01" min="0"
@@ -1002,7 +1003,7 @@
             const itemsHtml = invoice.items.map(i => `
         <tr>
             <td style="padding: 8px; text-align: ${alignment};">${escapeHtml(i.product_name)}</td>
-            <td style="padding: 8px; text-align: center;">${i.quantity}</td>
+            <td style="padding: 8px; text-align: center;">${i.quantity}${i.unit_abbreviation ? ` <small style="color:#6c757d">${escapeHtml(i.unit_abbreviation)}</small>` : ''}</td>
             <td style="padding: 8px; text-align: right;">${formatCurrency(i.price)}</td>
             <td style="padding: 8px; text-align: right;">${formatCurrency(i.subtotal)}</td>
         </tr>`).join('');
@@ -1190,7 +1191,7 @@
             const itemsRows = invoice.items.map(item => `
         <tr>
             <td style="padding:6px 4px; border-bottom:1px solid #ccc; text-align:${textAlignHead};">${escapeHtml(item.product_name)}</td>
-            <td style="padding:6px 4px; border-bottom:1px solid #ccc; text-align:center;">${item.quantity}</td>
+            <td style="padding:6px 4px; border-bottom:1px solid #ccc; text-align:center;">${item.quantity}${item.unit_abbreviation ? ` <small style="color:#666">${escapeHtml(item.unit_abbreviation)}</small>` : ''}</td>
             <td style="padding:6px 4px; border-bottom:1px solid #ccc; text-align:${textAlignPrice};">${formatCurrency(item.price)}</td>
             <td style="padding:6px 4px; border-bottom:1px solid #ccc; text-align:${textAlignPrice};">${formatCurrency(item.subtotal)}</td>
         </tr>

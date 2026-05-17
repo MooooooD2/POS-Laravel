@@ -74,6 +74,7 @@
                     <thead>
                         <tr>
                             <th>{{ app()->getLocale() === 'ar' ? 'المنتج' : 'Product' }}</th>
+                            <th>{{ app()->getLocale() === 'ar' ? 'الوحدة' : 'Unit' }}</th>
                             <th class="text-end">{{ app()->getLocale() === 'ar' ? 'الكمية' : 'Qty' }}</th>
                             <th class="text-end">{{ app()->getLocale() === 'ar' ? 'محجوز' : 'Reserved' }}</th>
                             <th class="text-end">{{ app()->getLocale() === 'ar' ? 'متاح' : 'Available' }}</th>
@@ -82,7 +83,7 @@
                         </tr>
                     </thead>
                     <tbody id="stockTbody">
-                        <tr><td colspan="6" class="text-center py-4 text-muted">
+                        <tr><td colspan="7" class="text-center py-4 text-muted">
                             {{ app()->getLocale() === 'ar' ? 'اختر مستودعاً أولاً' : 'Select a warehouse first' }}
                         </td></tr>
                     </tbody>
@@ -410,11 +411,11 @@ window.loadStock = async function() {
     const whId = document.getElementById('stockWhSelect').value;
     if (!whId) return;
     const tbody = document.getElementById('stockTbody');
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3"><i class="fas fa-spinner fa-spin"></i></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3"><i class="fas fa-spinner fa-spin"></i></td></tr>`;
     const res = await apiCall(`${WH_API}/${whId}/stock`);
     if (res.success === false) {
         showToast(res.message || (isAr ? 'خطأ في تحميل المخزون' : 'Error loading stock'), 'error');
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">${res.message || 'Error'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">${res.message || 'Error'}</td></tr>`;
         return;
     }
     // API returns { success: true, stock: [...] }
@@ -433,7 +434,7 @@ window.filterStock = function() {
 function renderStock(list) {
     const tbody = document.getElementById('stockTbody');
     if (!list.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">${isAr ? 'لا توجد بيانات' : 'No data'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">${isAr ? 'لا توجد بيانات' : 'No data'}</td></tr>`;
         return;
     }
     tbody.innerHTML = list.map(s => {
@@ -441,8 +442,10 @@ function renderStock(list) {
         const low     = (s.min_stock ?? 0) > 0 && avail <= s.min_stock;
         const neg     = (s.quantity ?? 0) < 0;
         const sJson   = escAttr(JSON.stringify(s));
+        const unitAbbr = s.product?.unit?.abbreviation ?? s.product?.unit?.name ?? '';
         return `<tr class="${neg ? 'table-danger' : low ? 'table-warning' : ''}">
           <td>${esc(s.product?.name ?? '-')}${neg ? ' <span class="badge bg-danger ms-1">!</span>' : ''}</td>
+          <td>${unitAbbr ? `<span class="badge bg-info text-dark">${esc(unitAbbr)}</span>` : '<span class="text-muted">-</span>'}</td>
           <td class="text-end ${neg ? 'text-danger fw-bold' : ''}">${s.quantity ?? 0}</td>
           <td class="text-end text-warning">${s.reserved_qty ?? 0}</td>
           <td class="text-end ${neg || low ? 'text-danger fw-bold' : ''}">${avail}</td>

@@ -222,7 +222,7 @@ class InvoiceService
                 }
             }
 
-            return $invoice->load('items', 'customer');
+            return $invoice->load(['items.product.unit', 'customer']);
         });
 
         // Earn loyalty points on the final paid amount (after all discounts)
@@ -250,7 +250,7 @@ class InvoiceService
 
     public function getByNumber(string $number): ?Invoice
     {
-        return Invoice::with('items')->where('invoice_number', $number)->first();
+        return Invoice::with(['items.product.unit'])->where('invoice_number', $number)->first();
     }
 
     public function getReturnableItems(Invoice $invoice): array
@@ -267,12 +267,13 @@ class InvoiceService
         })->map(function ($item) use ($returned) {
             $ret = $returned[$item->product_id] ?? 0;
             return [
-                'product_id'     => $item->product_id,
-                'product_name'   => $item->product_name,
-                'original_qty'   => $item->quantity,
-                'returned_qty'   => $ret,
-                'returnable_qty' => $item->quantity - $ret,
-                'price'          => $item->price,
+                'product_id'        => $item->product_id,
+                'product_name'      => $item->product_name,
+                'original_qty'      => $item->quantity,
+                'returned_qty'      => $ret,
+                'returnable_qty'    => $item->quantity - $ret,
+                'price'             => $item->price,
+                'unit_abbreviation' => $item->product?->unit?->abbreviation ?? $item->product?->unit?->name,
             ];
         })->values()->toArray();
     }

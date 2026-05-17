@@ -52,17 +52,18 @@ class PurchaseReturnController extends Controller
 
     public function returnableItems(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load('items.product');
+        $purchaseOrder->load('items.product.unit');
         $returnableQtys = $this->returnService->getReturnableQuantities($purchaseOrder);
 
         $items = $purchaseOrder->items
             ->filter(fn($item) => ($returnableQtys[$item->product_id] ?? 0) > 0)
             ->map(fn($item) => [
-                'product_id'         => $item->product_id,
-                'product_name'       => $item->product_name,
-                'cost_price'         => $item->cost_price,
-                'received_quantity'  => $item->received_quantity,
-                'returnable_quantity'=> $returnableQtys[$item->product_id] ?? 0,
+                'product_id'          => $item->product_id,
+                'product_name'        => $item->product_name,
+                'cost_price'          => $item->cost_price,
+                'received_quantity'   => $item->received_quantity,
+                'returnable_quantity' => $returnableQtys[$item->product_id] ?? 0,
+                'unit_abbreviation'   => $item->product?->unit?->abbreviation ?? $item->product?->unit?->name,
             ])
             ->values();
 

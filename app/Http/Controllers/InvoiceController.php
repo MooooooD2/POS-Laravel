@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Resources\InvoiceResource;
+use App\Http\Resources\ProductResource;
 use App\Models\Invoice;
 use App\Services\InvoiceService;
 use App\Services\SettingService;
@@ -41,7 +42,7 @@ class InvoiceController extends Controller
         }
 
         if ($result instanceof \App\Models\Product) {
-            return $this->success(['single' => true, 'product' => $result]);
+            return $this->success(['single' => true, 'product' => new ProductResource($result)]);
         }
 
         if ($result->isEmpty()) {
@@ -49,10 +50,10 @@ class InvoiceController extends Controller
         }
 
         if ($result->count() === 1) {
-            return $this->success(['single' => true, 'product' => $result->first()]);
+            return $this->success(['single' => true, 'product' => new ProductResource($result->first())]);
         }
 
-        return $this->success(['single' => false, 'products' => $result->values()]);
+        return $this->success(['single' => false, 'products' => ProductResource::collection($result->values())]);
     }
 
     public function createInvoice(StoreInvoiceRequest $request)

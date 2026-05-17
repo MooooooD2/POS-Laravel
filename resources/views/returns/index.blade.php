@@ -253,7 +253,7 @@ async function findInvoice() {
 
     document.getElementById('returnItemsBody').innerHTML = returnableItems.map((item, i) => `
         <tr>
-            <td>${item.product_name}</td>
+            <td>${item.product_name}${item.unit_abbreviation ? ` <span class="badge bg-secondary ms-1">${item.unit_abbreviation}</span>` : ''}</td>
             <td class="text-center fw-semibold">${item.returnable_qty}</td>
             <td style="width:100px">
                 <input type="number" class="form-control form-control-sm" id="retQty${i}"
@@ -415,7 +415,7 @@ function showReturnItems(returnId) {
 
     tbody.innerHTML = ret.items.map(item => `
         <tr>
-            <td>${item.product_name ?? '—'}</td>
+            <td>${item.product_name ?? '—'}${item.unit_abbreviation ? ` <span class="badge bg-secondary ms-1">${item.unit_abbreviation}</span>` : ''}</td>
             <td>${item.quantity}</td>
             <td>${formatCurrency(item.price)}</td>
             <td>${formatCurrency(item.subtotal ?? item.quantity * item.price)}</td>
