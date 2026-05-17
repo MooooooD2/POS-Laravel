@@ -7,9 +7,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /** Check if a named index exists on a table. */
+    /** Check if a named index exists on a table (MySQL only; always false on other drivers). */
     private function hasIndex(string $table, string $index): bool
     {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return false;
+        }
+
         return !empty(DB::select(
             "SHOW INDEX FROM `{$table}` WHERE Key_name = ?",
             [$index]

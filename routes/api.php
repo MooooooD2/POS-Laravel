@@ -18,6 +18,7 @@ use App\Http\Controllers\SupplierAccountController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
@@ -74,6 +75,12 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
         Route::post('/products/{product}/add-stock', [ProductController::class, 'addStock'])->middleware('throttle:30,1')->name('products.add-stock');
+
+        // Units
+        Route::get('/units', [UnitController::class, 'all'])->name('units.all');
+        Route::post('/units', [UnitController::class, 'store'])->name('units.store');
+        Route::put('/units/{unit}', [UnitController::class, 'update'])->name('units.update');
+        Route::delete('/units/{unit}', [UnitController::class, 'destroy'])->name('units.destroy');
 
         Route::get('/suppliers', [SupplierController::class, 'all'])->name('suppliers.all');
         Route::post('/suppliers', [SupplierController::class, 'store'])->middleware('throttle:20,1')->name('suppliers.store');

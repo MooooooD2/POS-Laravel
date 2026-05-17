@@ -21,6 +21,7 @@ class UpdateProductRequest extends FormRequest
             'barcode'    => 'nullable|string|max:100|unique:products,barcode,' . $productId,
             'category'   => 'nullable|string|max:100',
             'supplier'   => 'nullable|string|max:255',
+            'unit_id'    => 'nullable|exists:units,id',
         ];
     }
 }

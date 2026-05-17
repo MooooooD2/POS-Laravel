@@ -49,7 +49,7 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
 
     public function all(array $filters = [], bool $fetchAll = false): Collection|LengthAwarePaginator
     {
-        $query = Product::query()->orderByDesc('id');
+        $query = Product::query()->with('unit')->orderByDesc('id');
 
         if (!empty($filters['search'])) {
             $s = $filters['search'];

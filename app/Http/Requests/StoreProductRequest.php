@@ -24,6 +24,7 @@ class StoreProductRequest extends FormRequest
             'barcode'          => 'nullable|string|max:100|unique:products,barcode',
             'category'         => 'nullable|string|max:100',
             'supplier'         => 'nullable|string|max:255',
+            'unit_id'          => 'nullable|exists:units,id',
             'initial_quantity' => 'nullable|integer|min:0|max:999999',
             'warehouse_id'     => 'nullable|exists:warehouses,id',
         ];

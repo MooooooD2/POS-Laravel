@@ -19,9 +19,14 @@ DESCRIPTION: Product management with search, CRUD, stock management
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fas fa-boxes me-2"></i>{{ __('pos.warehouse') }}</span>
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
-            <i class="fas fa-plus me-1"></i>{{ __('pos.add_product') }}
-        </button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#unitsModal">
+                <i class="fas fa-ruler me-1"></i>{{ __('pos.manage_units') }}
+            </button>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                <i class="fas fa-plus me-1"></i>{{ __('pos.add_product') }}
+            </button>
+        </div>
     </div>
     <div class="card-body">
         <div class="row mb-3">
@@ -50,6 +55,7 @@ DESCRIPTION: Product management with search, CRUD, stock management
                         <th>{{ __('pos.product_name') }}</th>
                         <th>{{ __('pos.barcode') }}</th>
                         <th>{{ __('pos.category') }}</th>
+                        <th>{{ __('pos.unit') }}</th>
                         <th>{{ __('pos.selling_price') }}</th>
                         <th>{{ __('pos.cost_price') }}</th>
                         <th>{{ __('pos.current_stock') }}</th>
@@ -58,7 +64,7 @@ DESCRIPTION: Product management with search, CRUD, stock management
                     </tr>
                 </thead>
                 <tbody id="productsBody">
-                    <tr><td colspan="9" class="text-center py-4"><div class="spinner-border"></div></td></tr>
+                    <tr><td colspan="10" class="text-center py-4"><div class="spinner-border"></div></td></tr>
                 </tbody>
             </table>
         </div>
@@ -104,7 +110,13 @@ DESCRIPTION: Product management with search, CRUD, stock management
                         <label class="form-label">{{ __('pos.category') }}</label>
                         <input type="text" class="form-control" id="productCategory">
                     </div>
-                    <div class="col-12">
+                    <div class="col-6">
+                        <label class="form-label">{{ __('pos.unit') }}</label>
+                        <select class="form-select" id="productUnitId">
+                            <option value="">{{ __('pos.no_unit') }}</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
                         <label class="form-label">{{ __('pos.suppliers') }}</label>
                         <input type="text" class="form-control" id="productSupplier">
                     </div>
@@ -192,6 +204,57 @@ DESCRIPTION: Product management with search, CRUD, stock management
     </div>
 </div>
 
+{{-- Units Management Modal --}}
+<div class="modal fade" id="unitsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-ruler me-2"></i>{{ __('pos.manage_units') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {{-- Add / Edit form --}}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <input type="hidden" id="unitId">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label">{{ __('pos.unit_name') }} *</label>
+                                <input type="text" class="form-control" id="unitName" placeholder="{{ __('pos.unit_name') }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('pos.unit_abbreviation') }}</label>
+                                <input type="text" class="form-control" id="unitAbbreviation" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: كجم، لتر' : 'e.g. kg, L' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" data-fn="saveUnit">
+                                    <i class="fas fa-save me-1"></i>{{ __('pos.save') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{-- Units list --}}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>{{ __('pos.unit_name') }}</th>
+                                <th>{{ __('pos.unit_abbreviation') }}</th>
+                                <th>{{ __('pos.actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="unitsBody">
+                            <tr><td colspan="4" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -199,6 +262,8 @@ DESCRIPTION: Product management with search, CRUD, stock management
 let allProducts = [];
 let renderedProducts = [];
 let warehouseOpts = '';
+let allUnits = [];
+let unitOpts = '';
 
 async function loadWarehouses() {
     const res = await apiCall('{{ url("/api/warehouses") }}');
@@ -253,6 +318,11 @@ function renderProducts(products) {
                 <td class="fw-semibold">${p.name}</td>
                 <td><code>${p.barcode || '-'}</code></td>
                 <td>${p.category || '-'}</td>
+                <td>${p.unit_abbreviation
+                    ? `<span class="badge bg-info text-dark">${p.unit_abbreviation}</span>`
+                    : p.unit_name
+                    ? `<span class="badge bg-secondary">${p.unit_name}</span>`
+                    : '<span class="text-muted">-</span>'}</td>
                 <td class="text-success fw-semibold">${formatCurrency(p.price)}</td>
                 <td class="text-muted">${formatCurrency(p.cost_price)}</td>
                 <td class="fw-bold ${p.quantity === 0 ? 'text-danger' : p.low_stock ? 'text-warning' : 'text-success'}">${p.quantity}</td>
@@ -272,7 +342,7 @@ function renderProducts(products) {
                     </div>
                 </td>
             </tr>`).join('')
-        : '<tr><td colspan="9" class="text-center text-muted py-4">{{ __("pos.no_data") }}</td></tr>';
+        : '<tr><td colspan="10" class="text-center text-muted py-4">{{ __("pos.no_data") }}</td></tr>';
 }
 
 function editProduct(p) {
@@ -284,6 +354,7 @@ function editProduct(p) {
     document.getElementById('productBarcode').value   = p.barcode || '';
     document.getElementById('productCategory').value  = p.category || '';
     document.getElementById('productSupplier').value  = p.supplier || '';
+    document.getElementById('productUnitId').value    = p.unit_id || '';
     const qtyInput = document.getElementById('productQuantity');
     qtyInput.value    = p.quantity ?? 0;
     qtyInput.disabled = true;
@@ -295,6 +366,7 @@ function editProduct(p) {
 async function saveProduct() {
     const id          = document.getElementById('productId').value;
     const warehouseId = document.getElementById('productWarehouseId').value;
+    const unitVal = document.getElementById('productUnitId').value;
     const data = {
         name:             document.getElementById('productName').value,
         price:            document.getElementById('productPrice').value,
@@ -304,6 +376,7 @@ async function saveProduct() {
         barcode:          document.getElementById('productBarcode').value,
         category:         document.getElementById('productCategory').value,
         supplier:         document.getElementById('productSupplier').value,
+        unit_id:          unitVal ? parseInt(unitVal) : null,
     };
     if (!id && warehouseId) data.warehouse_id = parseInt(warehouseId);
 
@@ -363,12 +436,94 @@ document.getElementById('addProductModal').addEventListener('show.bs.modal', fun
     if (!e.relatedTarget) return;
     document.getElementById('productId').value = '';
     document.getElementById('productName').value = '';
+    document.getElementById('productUnitId').value = '';
     document.getElementById('productQuantity').disabled = false;
     document.getElementById('productWarehouseRow').style.display = '';
     document.getElementById('productModalTitle').textContent = '{{ __("pos.add_product") }}';
 });
 
+// ── Units ─────────────────────────────────────────────────────────────────────
+
+async function loadUnits() {
+    const res = await apiCall('{{ route("units.all") }}');
+    allUnits  = res.units ?? [];
+    unitOpts  = allUnits.map(u =>
+        `<option value="${u.id}">${u.name}${u.abbreviation ? ' (' + u.abbreviation + ')' : ''}</option>`
+    ).join('');
+    document.getElementById('productUnitId').innerHTML =
+        `<option value="">{{ __('pos.no_unit') }}</option>` + unitOpts;
+    renderUnits();
+}
+
+function renderUnits() {
+    const tbody = document.getElementById('unitsBody');
+    if (!tbody) return;
+    tbody.innerHTML = allUnits.length
+        ? allUnits.map((u, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td class="fw-semibold">${u.name}</td>
+                <td><span class="badge bg-secondary">${u.abbreviation || '-'}</span></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary" data-unit-action="edit" data-idx="${i}"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger" data-unit-action="delete" data-idx="${i}"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>`).join('')
+        : `<tr><td colspan="4" class="text-center text-muted py-3">{{ __('pos.no_data') }}</td></tr>`;
+}
+
+async function saveUnit() {
+    const id   = document.getElementById('unitId').value;
+    const data = {
+        name:         document.getElementById('unitName').value.trim(),
+        abbreviation: document.getElementById('unitAbbreviation').value.trim(),
+    };
+    if (!data.name) { showToast('{{ __("pos.unit_name") }} {{ __("pos.required") ?? "required" }}', 'error'); return; }
+
+    const url    = id ? `/api/units/${id}` : '{{ route("units.store") }}';
+    const method = id ? 'PUT' : 'POST';
+    const res    = await apiCall(url, method, data);
+
+    if (res.success) {
+        showToast('{{ __("pos.success") }}');
+        document.getElementById('unitId').value = '';
+        document.getElementById('unitName').value = '';
+        document.getElementById('unitAbbreviation').value = '';
+        await loadUnits();
+    } else {
+        showToast(res.message || '{{ __("pos.error") }}', 'error');
+    }
+}
+
+async function deleteUnit(id) {
+    if (!confirm('{{ __("pos.confirm_delete") }}')) return;
+    const res = await apiCall(`/api/units/${id}`, 'DELETE');
+    if (res.success) { showToast('{{ __("pos.success") }}'); loadUnits(); }
+    else showToast(res.message, 'error');
+}
+
+document.getElementById('unitsModal').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-unit-action]');
+    if (!btn) return;
+    const u = allUnits[parseInt(btn.dataset.idx)];
+    if (!u) return;
+    if (btn.dataset.unitAction === 'edit') {
+        document.getElementById('unitId').value = u.id;
+        document.getElementById('unitName').value = u.name;
+        document.getElementById('unitAbbreviation').value = u.abbreviation || '';
+    } else if (btn.dataset.unitAction === 'delete') {
+        deleteUnit(u.id);
+    }
+});
+
+document.getElementById('unitsModal').addEventListener('show.bs.modal', loadUnits);
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 loadWarehouses();
+loadUnits();
 loadProducts();
 
 document.getElementById('productsBody').addEventListener('click', function(e) {
