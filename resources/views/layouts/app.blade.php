@@ -168,6 +168,9 @@
 </div>
     </nav>
 
+    {{-- Mobile sidebar backdrop --}}
+    <div id="sidebar-backdrop" data-fn="toggleSidebar"></div>
+
     {{-- Impersonation Banner --}}
     @if(session('impersonator_id'))
     <div id="impersonation-banner" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#f59e0b;color:#1c1917;padding:0.4rem 1rem;display:flex;align-items:center;justify-content:space-between;font-size:0.85rem;font-weight:600;">
@@ -343,57 +346,34 @@
             return res.json();
         }
 
-// Replace the toggleSidebar function with this Safari-compatible version
 function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
+    const sidebar  = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
     if (!sidebar) return;
-    
-    // Force reflow before toggling for Safari
-    if (sidebar.classList.contains('show')) {
+
+    const isOpen = sidebar.classList.contains('show');
+
+    if (isOpen) {
         sidebar.classList.remove('show');
-        // Ensure transform is applied
-        if (LOCALE === 'ar') {
-            sidebar.style.transform = 'translateX(100%)';
-        } else {
-            sidebar.style.transform = 'translateX(-100%)';
-        }
+        if (backdrop) backdrop.classList.remove('show');
+        document.body.style.overflow = '';
     } else {
         sidebar.classList.add('show');
-        sidebar.style.transform = 'translateX(0)';
+        if (backdrop) backdrop.classList.add('show');
+        // Prevent body scroll while sidebar is open on mobile
+        if (window.innerWidth <= 768) document.body.style.overflow = 'hidden';
     }
 }
 
-// Also add this to ensure sidebar works on load
-document.addEventListener('DOMContentLoaded', function() {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar && window.innerWidth <= 768) {
-        if (LOCALE === 'ar') {
-            sidebar.style.transform = 'translateX(100%)';
-        } else {
-            sidebar.style.transform = 'translateX(-100%)';
-        }
-    }
-});
-
-// Handle window resize for Safari
-let resizeTimer;
+// Close sidebar on resize to desktop
 window.addEventListener('resize', function() {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function() {
-        const sidebar = document.getElementById('sidebar');
-        if (window.innerWidth > 768) {
-            sidebar.style.transform = '';
-            sidebar.classList.remove('show');
-        } else {
-            if (!sidebar.classList.contains('show')) {
-                if (LOCALE === 'ar') {
-                    sidebar.style.transform = 'translateX(100%)';
-                } else {
-                    sidebar.style.transform = 'translateX(-100%)';
-                }
-            }
-        }
-    }, 250);
+    if (window.innerWidth > 768) {
+        const sidebar  = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (sidebar)  sidebar.classList.remove('show');
+        if (backdrop) backdrop.classList.remove('show');
+        document.body.style.overflow = '';
+    }
 });
         // Format currency - تنسيق العملة
         function formatCurrency(amount) {
