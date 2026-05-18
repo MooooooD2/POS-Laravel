@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Contracts\Repositories\CashRegisterSessionRepositoryInterface;
 use App\Models\CashRegisterSession;
+use App\Models\CashSessionMovement;
 use App\Models\Invoice;
 use App\Models\SalesReturn;
 use Illuminate\Support\Facades\Auth;
@@ -26,37 +27,48 @@ class CashRegisterService
 
     public function open(array $data): CashRegisterSession
     {
-        if ($this->sessionRepo->currentOpen(Auth::id())) {
-            throw new \Exception('يوجد جلسة مفتوحة بالفعل. أغلقها أولاً.');
-        }
+        return DB::transaction(function () use ($data) {
+            // Lock any existing open sessions to prevent race condition on concurrent opens
+            $existing = CashRegisterSession::where('cashier_id', Auth::id())
+                ->where('status', 'open')
+                ->lockForUpdate()
+                ->first();
 
-        return $this->sessionRepo->create([
-            'session_number' => SequenceService::next('session', 'SES'),
-            'cashier_id'     => Auth::id(),
-            'cashier_name'   => Auth::user()->full_name,
-            'opening_amount' => $data['opening_amount'],
-            'status'         => 'open',
-            'notes'          => $data['notes'] ?? null,
-            'opened_at'      => now(),
-        ]);
+            if ($existing) {
+                throw new \Exception('يوجد جلسة مفتوحة بالفعل. أغلقها أولاً.');
+            }
+
+            return $this->sessionRepo->create([
+                'session_number' => SequenceService::next('session', 'SES'),
+                'cashier_id'     => Auth::id(),
+                'cashier_name'   => Auth::user()->full_name,
+                'opening_amount' => $data['opening_amount'],
+                'status'         => 'open',
+                'notes'          => $data['notes'] ?? null,
+                'opened_at'      => now(),
+            ]);
+        });
     }
 
     public function close(CashRegisterSession $session, array $data): CashRegisterSession
     {
-        if ($session->cashier_id !== Auth::id()) {
-            throw new \Exception('لا يمكنك إغلاق جلسة كاشير آخر.');
-        }
-        if ($session->status === 'closed') {
-            throw new \Exception('الجلسة مغلقة بالفعل.');
-        }
-
         $stats        = $this->calcSessionStats($session);
         $expectedCash = $session->opening_amount + $stats['cash_sales'] - $stats['cash_returns'];
         $actualCash   = (float) $data['actual_cash'];
         $difference   = $actualCash - $expectedCash;
 
         DB::transaction(function () use ($session, $stats, $expectedCash, $actualCash, $difference, $data) {
-            $this->sessionRepo->update($session, [
+            // Re-fetch with lock to prevent double-close race condition
+            $locked = CashRegisterSession::lockForUpdate()->findOrFail($session->id);
+
+            if ($locked->cashier_id !== Auth::id()) {
+                throw new \Exception('لا يمكنك إغلاق جلسة كاشير آخر.');
+            }
+            if ($locked->status === 'closed') {
+                throw new \Exception('الجلسة مغلقة بالفعل.');
+            }
+
+            $this->sessionRepo->update($locked, [
                 'expected_cash'  => round($expectedCash, 2),
                 'actual_cash'    => round($actualCash, 2),
                 'difference'     => round($difference, 2),
@@ -83,6 +95,30 @@ class CashRegisterService
         }
 
         return $session->fresh();
+    }
+
+    /**
+     * Record a manual cash drawer movement (deposit or withdrawal) during an open session.
+     */
+    public function recordMovement(CashRegisterSession $session, string $type, float $amount, ?string $reason): CashSessionMovement
+    {
+        if ($session->status !== 'open') {
+            throw new \Exception('لا يمكن تسجيل حركة على جلسة مغلقة.');
+        }
+        if ($session->cashier_id !== Auth::id()) {
+            throw new \Exception('لا يمكنك تسجيل حركة على جلسة كاشير آخر.');
+        }
+        if ($amount <= 0) {
+            throw new \Exception('يجب أن يكون المبلغ أكبر من صفر.');
+        }
+
+        return CashSessionMovement::create([
+            'cash_session_id' => $session->id,
+            'type'            => $type,
+            'amount'          => round($amount, 2),
+            'reason'          => $reason,
+            'user_id'         => Auth::id(),
+        ]);
     }
 
     public function history(array $filters): \Illuminate\Pagination\LengthAwarePaginator

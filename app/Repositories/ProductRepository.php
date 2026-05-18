@@ -88,7 +88,7 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
 
     public function lockForUpdate(array $ids): Collection
     {
-        return Product::whereIn('id', $ids)->lockForUpdate()->get()->keyBy('id');
+        return Product::with('taxCategory')->whereIn('id', $ids)->lockForUpdate()->get()->keyBy('id');
     }
 
     public function lowStock(): Collection

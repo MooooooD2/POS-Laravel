@@ -15,6 +15,7 @@ class StockService
     public function __construct(
         private ProductRepositoryInterface       $productRepo,
         private StockMovementRepositoryInterface $movementRepo,
+        private InventoryValuationService        $valuationService,
     ) {}
 
     // ── Public API ───────────────────────────────────────────────────────────
@@ -43,6 +44,9 @@ class StockService
                 $fresh->avg_cost  = round($newAvgCost, 4);
                 $fresh->last_cost = round($unitCost, 4);
                 $fresh->save();
+
+                // Create FIFO/LIFO cost layer for this stock addition
+                $this->valuationService->createLayer($fresh, $quantity, $unitCost, $referenceType, $referenceId, $warehouseId);
             }
 
             $fresh->increment('quantity', $quantity);
@@ -51,6 +55,10 @@ class StockService
         });
     }
 
+    /**
+     * Deduct stock that was already locked by lockForUpdate.
+     * Returns the unit cost consumed (WAC, FIFO, or LIFO depending on setting).
+     */
     public function deductLockedStock(
         Product $lockedProduct,
         int $quantity,
@@ -60,14 +68,19 @@ class StockService
         string $referenceType = 'manual',
         ?int $warehouseId = null,
         ?int $batchId = null
-    ): void {
+    ): float {
         if ($lockedProduct->quantity < $quantity) {
             throw new \Exception(__('pos.insufficient_stock', ['name' => $lockedProduct->name]));
         }
 
+        // Deduct from FIFO/LIFO cost layers and get the actual unit COGS
+        $unitCost = $this->valuationService->deductLayers($lockedProduct, $quantity, $warehouseId);
+
         $lockedProduct->decrement('quantity', $quantity);
         $this->syncWarehouseStock($lockedProduct->id, $warehouseId, -$quantity);
         $this->logMovement($lockedProduct, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, $batchId);
+
+        return $unitCost;
     }
 
     public function deductStock(

@@ -19,6 +19,10 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\TaxCategoryController;
+use App\Http\Controllers\FiscalPeriodController;
+use App\Http\Controllers\BackupMonitorController;
+use App\Http\Controllers\FraudDetectionController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +34,9 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
     // Units — read is available to all authenticated users (POS needs units for product display)
     Route::get('/units', [UnitController::class, 'all'])->name('units.all');
+
+    // Tax categories — read available to all (POS needs rates for display)
+    Route::get('/tax-categories', [TaxCategoryController::class, 'all'])->name('tax-categories.all');
 
     // Customers (search available to POS users; CRUD to warehouse+)
     Route::middleware('permission:view_pos')->group(function () {
@@ -84,6 +91,11 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::put('/units/{unit}', [UnitController::class, 'update'])->name('units.update');
         Route::delete('/units/{unit}', [UnitController::class, 'destroy'])->name('units.destroy');
 
+        // Tax categories — write (warehouse-level)
+        Route::post('/tax-categories', [TaxCategoryController::class, 'store'])->name('tax-categories.store');
+        Route::put('/tax-categories/{taxCategory}', [TaxCategoryController::class, 'update'])->name('tax-categories.update');
+        Route::delete('/tax-categories/{taxCategory}', [TaxCategoryController::class, 'destroy'])->name('tax-categories.destroy');
+
         Route::get('/suppliers', [SupplierController::class, 'all'])->name('suppliers.all');
         Route::post('/suppliers', [SupplierController::class, 'store'])->middleware('throttle:20,1')->name('suppliers.store');
         Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
@@ -123,6 +135,17 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::post('/product-batches', [WarehouseController::class, 'createBatch'])->name('batches.store');
     });
 
+    // Fiscal Periods
+    Route::middleware('permission:view_accounting')->group(function () {
+        Route::get('/fiscal-periods', [FiscalPeriodController::class, 'index'])->name('fiscal-periods.all');
+        Route::get('/fiscal-periods/current', [FiscalPeriodController::class, 'current'])->name('fiscal-periods.current');
+        Route::get('/fiscal-periods/{fiscalPeriod}/preview-close', [FiscalPeriodController::class, 'previewClose'])->name('fiscal-periods.preview-close');
+    });
+    Route::middleware('permission:manage_roles')->group(function () {
+        Route::post('/fiscal-periods', [FiscalPeriodController::class, 'store'])->name('fiscal-periods.store');
+        Route::post('/fiscal-periods/{fiscalPeriod}/close', [FiscalPeriodController::class, 'close'])->name('fiscal-periods.close');
+    });
+
     // Accounting
     Route::middleware('permission:view_accounting')->group(function () {
         Route::get('/accounts', [AccountingController::class, 'allAccounts'])->name('accounts.all');
@@ -131,6 +154,9 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::delete('/accounts/{account}', [AccountingController::class, 'destroyAccount'])->name('accounts.destroy');
         Route::get('/journal-entries', [AccountingController::class, 'allJournalEntries'])->name('journal-entries.all');
         Route::post('/journal-entries', [AccountingController::class, 'storeJournalEntry'])->middleware('throttle:30,1')->name('journal-entries.store');
+        Route::post('/journal-entries/{entry}/post', [AccountingController::class, 'postJournalEntry'])->name('journal-entries.post');
+        Route::post('/journal-entries/{entry}/reverse', [AccountingController::class, 'reverseJournalEntry'])->name('journal-entries.reverse');
+        Route::get('/audit-logs', [AccountingController::class, 'auditLogs'])->name('audit-logs.index');
 
         Route::get('/settings', [SettingController::class, 'all'])->name('settings.all');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
@@ -146,6 +172,19 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::post('/reports/cash-flow', [ReportController::class, 'cashFlowReport'])->middleware('throttle:60,1')->name('reports.cash-flow');
         Route::get('/reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
         Route::post('/reports/account-statement/{account}', [ReportController::class, 'accountStatement'])->name('reports.account-statement');
+        Route::get('/reports/inventory-valuation', [ReportController::class, 'inventoryValuation'])->name('reports.inventory-valuation');
+        Route::get('/reports/permissions-audit', [ReportController::class, 'permissionsAudit'])->name('reports.permissions-audit');
+        Route::post('/reports/tax', [TaxCategoryController::class, 'report'])->name('reports.tax');
+    });
+
+    // Backup monitoring (admin)
+    Route::middleware('permission:manage_roles')->group(function () {
+        Route::get('/backup/status', [BackupMonitorController::class, 'status'])->name('backup.status');
+    });
+
+    // Fraud detection signals (admin)
+    Route::middleware('permission:manage_roles')->group(function () {
+        Route::get('/fraud/signals', [FraudDetectionController::class, 'signals'])->name('fraud.signals');
     });
 
     // Multi-Branch (admin)
@@ -199,10 +238,11 @@ Route::middleware(['auth', 'permission:add_stock', 'throttle:30,1'])->group(func
 
 // ── تسوية الخزينة ──────────────────────────────────────────────────────────
 Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->group(function () {
-    Route::get('/cash-session/current',     [\App\Http\Controllers\CashRegisterController::class, 'currentSession'])->name('cash-session.current');
-    Route::post('/cash-session/open',       [\App\Http\Controllers\CashRegisterController::class, 'open'])->name('cash-session.open');
-    Route::post('/cash-session/{id}/close', [\App\Http\Controllers\CashRegisterController::class, 'close'])->name('cash-session.close');
-    Route::get('/cash-session/history',     [\App\Http\Controllers\CashRegisterController::class, 'history'])->name('cash-session.history');
+    Route::get('/cash-session/current',               [\App\Http\Controllers\CashRegisterController::class, 'currentSession'])->name('cash-session.current');
+    Route::post('/cash-session/open',                 [\App\Http\Controllers\CashRegisterController::class, 'open'])->name('cash-session.open');
+    Route::post('/cash-session/{id}/close',           [\App\Http\Controllers\CashRegisterController::class, 'close'])->name('cash-session.close');
+    Route::post('/cash-session/{id}/movements',       [\App\Http\Controllers\CashRegisterController::class, 'recordMovement'])->name('cash-session.movement');
+    Route::get('/cash-session/history',               [\App\Http\Controllers\CashRegisterController::class, 'history'])->name('cash-session.history');
 
     // تقارير الربحية
     Route::middleware('permission:view_reports')->group(function () {

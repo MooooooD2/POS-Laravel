@@ -113,8 +113,13 @@ return [
     'debit' => 'Debit',
     'credit' => 'Credit',
     'journal_unbalanced' => 'Entry is unbalanced: total debit ≠ total credit',
-    'journal_entry_not_balanced' => 'Journal entry is unbalanced: debit :debit ≠ credit :credit',
-    'account_has_dependencies' => 'Cannot delete account: has sub-accounts or journal entries',
+    'journal_entry_not_balanced'     => 'Journal entry is unbalanced: debit :debit ≠ credit :credit',
+    'account_has_dependencies'       => 'Cannot delete account: has sub-accounts or journal entries',
+    'journal_entry_posted_immutable' => 'Posted entries are immutable. Use a reversal entry instead.',
+    'journal_entry_already_posted'   => 'This journal entry is already posted.',
+    'journal_entry_not_posted'       => 'Entry is not posted — post it first before reversing.',
+    'journal_entry_already_reversed' => 'This journal entry has already been reversed.',
+    'reversal_of_entry'              => 'Reversal of entry :number',
 
     // Reports
     'start_date' => 'Start Date',

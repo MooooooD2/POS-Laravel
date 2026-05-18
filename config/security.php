@@ -14,5 +14,15 @@ return [
 
         // Alert after this many consecutive failed login attempts
         'failed_logins_threshold' => env('ANOMALY_FAILED_LOGINS', 10),
+
+        // Invoices created between off_hours_start and off_hours_end (24h format) are flagged
+        'off_hours_start' => (int) env('ANOMALY_OFF_HOURS_START', 22),
+        'off_hours_end'   => (int) env('ANOMALY_OFF_HOURS_END', 6),
+
+        // Flag a cashier who processes more than this many returns in 24 hours
+        'excessive_returns_threshold' => (int) env('ANOMALY_EXCESSIVE_RETURNS', 5),
+
+        // Lookback window (hours) for the fraud signals API endpoint
+        'signals_lookback_hours' => (int) env('ANOMALY_SIGNALS_HOURS', 24),
     ],
 ];

@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\ReturnItem;
 use App\Models\SalesReturn;
 use Illuminate\Support\Facades\Auth;
@@ -76,21 +77,37 @@ class ReturnService
             foreach ($data['items'] as $item) {
                 $invoiceItem = $invoiceItemPrices->get($item['product_id']);
                 $price       = $invoiceItem ? $invoiceItem->price : 0;
+                $qty         = $item['quantity'];
+                $subtotal    = round($price * $qty, 2);
+
+                // Proportional tax refund: tax_amount / original_qty * returned_qty
+                $itemTax = 0.0;
+                if ($invoiceItem && $invoiceItem->quantity > 0 && $invoiceItem->tax_amount > 0) {
+                    $itemTax = round($invoiceItem->tax_amount / $invoiceItem->quantity * $qty, 2);
+                }
 
                 ReturnItem::create([
                     'return_id'    => $return->id,
                     'product_id'   => $item['product_id'],
                     'product_name' => $invoiceItem?->product_name ?? '',
-                    'quantity'     => $item['quantity'],
+                    'quantity'     => $qty,
                     'price'        => $price,
-                    'subtotal'     => round($price * $item['quantity'], 2),
+                    'subtotal'     => $subtotal,
                 ]);
+
+                // Track returned quantity directly on the invoice item
+                if ($invoiceItem) {
+                    InvoiceItem::where('id', $invoiceItem->id)
+                        ->increment('returned_qty', $qty);
+                    InvoiceItem::where('id', $invoiceItem->id)
+                        ->increment('returned_tax', $itemTax);
+                }
 
                 $product = $this->productRepo->findById($item['product_id']);
                 if ($product) {
                     $this->stockService->addStock(
                         $product,
-                        $item['quantity'],
+                        $qty,
                         __('pos.return_note', ['ret' => $returnNumber]),
                         $return->id,
                         'return'

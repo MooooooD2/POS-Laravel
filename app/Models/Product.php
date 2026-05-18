@@ -10,12 +10,13 @@ class Product extends Model
     use HasFactory, SoftDeletes;
 
     // #7 fillable صريح — quantity محذوف (يتعدل عبر StockService فقط)
-    protected $fillable = ['name', 'price', 'cost_price', 'avg_cost', 'last_cost', 'min_stock', 'track_batches', 'barcode', 'category', 'supplier', 'unit_id'];
+    protected $fillable = ['name', 'price', 'cost_price', 'avg_cost', 'last_cost', 'min_stock', 'track_batches', 'barcode', 'category', 'supplier', 'unit_id', 'tax_category_id'];
     protected $hidden   = ['deleted_at'];
     protected $casts    = ['price' => 'float', 'cost_price' => 'float', 'avg_cost' => 'float', 'last_cost' => 'float', 'min_stock' => 'integer', 'quantity' => 'integer', 'track_batches' => 'boolean'];
 
     public function getLowStockAttribute(): bool  { return $this->quantity <= $this->min_stock; }
     public function unit()             { return $this->belongsTo(\App\Models\Unit::class); }
+    public function taxCategory()      { return $this->belongsTo(\App\Models\TaxCategory::class); }
     public function invoiceItems()     { return $this->hasMany(InvoiceItem::class); }
     public function stockMovements()   { return $this->hasMany(StockMovement::class); }
     public function batches()          { return $this->hasMany(ProductBatch::class); }

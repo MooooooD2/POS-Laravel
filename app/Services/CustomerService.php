@@ -69,14 +69,15 @@ class CustomerService
     public function addLoyaltyPoints(Customer $customer, float $invoiceTotal): void
     {
         $rate = (int) setting('loyalty_earn_rate', 10);
-        if ($rate <= 0) {
-            return;
-        }
+        if ($rate <= 0) return;
 
         $points = (int) floor($invoiceTotal / $rate);
-        if ($points > 0) {
-            $customer->increment('loyalty_points', $points);
-        }
+        if ($points <= 0) return;
+
+        // Lock to prevent race condition if two invoices complete simultaneously
+        DB::transaction(function () use ($customer, $points) {
+            Customer::lockForUpdate()->findOrFail($customer->id)->increment('loyalty_points', $points);
+        });
     }
 
     public function redeemLoyaltyPoints(Customer $customer, int $points): float
@@ -84,14 +85,16 @@ class CustomerService
         $value = (float) setting('loyalty_redeem_value', 0.5);
         $min   = (int) setting('loyalty_min_redeem', 100);
 
-        if ($points < $min || $customer->loyalty_points < $points) {
+        // Re-fetch with lock (caller is already inside a transaction)
+        $locked = Customer::lockForUpdate()->findOrFail($customer->id);
+
+        if ($points < $min || $locked->loyalty_points < $points) {
             throw new \Exception(__('pos.insufficient_loyalty_points', ['min' => $min]));
         }
 
-        $discount = $points * $value;
-        $customer->decrement('loyalty_points', $points);
+        $locked->decrement('loyalty_points', $points);
 
-        return $discount;
+        return $points * $value;
     }
 
     public function nextCode(): string

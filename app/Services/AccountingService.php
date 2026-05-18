@@ -3,7 +3,9 @@ namespace App\Services;
 
 use App\Contracts\Repositories\AccountRepositoryInterface;
 use App\Contracts\Repositories\JournalEntryRepositoryInterface;
+use App\Models\FiscalPeriod;
 use App\Models\JournalEntry;
+use App\Models\JournalEntryLine;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -17,6 +19,12 @@ class AccountingService
     public function createJournalEntry(array $data): JournalEntry
     {
         return DB::transaction(function () use ($data) {
+            // Reject writes into a closed fiscal period
+            $period = FiscalPeriod::forDate($data['entry_date']);
+            if ($period && $period->isClosed()) {
+                throw new \DomainException(__('pos.period_is_closed', ['name' => $period->name]));
+            }
+
             $totalDebit  = collect($data['lines'])->sum('debit');
             $totalCredit = collect($data['lines'])->sum('credit');
 
@@ -47,6 +55,81 @@ class AccountingService
             }
 
             return $entry->load('lines.account');
+        });
+    }
+
+    /**
+     * Lock a journal entry so it can never be edited or deleted.
+     */
+    public function postEntry(JournalEntry $entry): JournalEntry
+    {
+        if ($entry->is_posted) {
+            throw new \DomainException(__('pos.journal_entry_already_posted'));
+        }
+
+        // Reject if entry_date falls in a closed period
+        $period = FiscalPeriod::forDate($entry->entry_date->toDateString());
+        if ($period && $period->isClosed()) {
+            throw new \DomainException(__('pos.period_is_closed', ['name' => $period->name]));
+        }
+
+        // Bypass the immutability guard — posting IS the one allowed state change
+        JournalEntry::withoutEvents(function () use ($entry, $period) {
+            $entry->update([
+                'is_posted'        => true,
+                'posted_at'        => now(),
+                'posted_by'        => Auth::id(),
+                'fiscal_period_id' => $period?->id,
+            ]);
+        });
+
+        return $entry->fresh();
+    }
+
+    /**
+     * Reverse a posted entry by creating a new entry with negated amounts.
+     * The original entry remains untouched.
+     */
+    public function reverseEntry(JournalEntry $entry, string $description): JournalEntry
+    {
+        if (!$entry->is_posted) {
+            throw new \DomainException(__('pos.journal_entry_not_posted'));
+        }
+
+        if ($entry->reversals()->exists()) {
+            throw new \DomainException(__('pos.journal_entry_already_reversed'));
+        }
+
+        return DB::transaction(function () use ($entry, $description) {
+            $reversal = $this->journalRepo->create([
+                'entry_number'   => SequenceService::next('journal'),
+                'entry_date'     => now()->toDateString(),
+                'description'    => $description,
+                'reference_type' => 'reversal',
+                'reference_id'   => $entry->id,
+                'created_by'     => Auth::id(),
+                'reversal_of'    => $entry->id,
+            ]);
+
+            foreach ($entry->lines as $line) {
+                // Swap debit ↔ credit to negate the effect
+                $this->journalRepo->createLine([
+                    'entry_id'    => $reversal->id,
+                    'account_id'  => $line->account_id,
+                    'debit'       => $line->credit,
+                    'credit'      => $line->debit,
+                    'description' => __('pos.reversal_of_entry', ['number' => $entry->entry_number]),
+                ]);
+
+                $account = $this->accountRepo->findOrFail($line->account_id);
+                // Reversal: apply the negated amounts
+                $this->accountRepo->updateBalance($account, $line->credit, $line->debit);
+            }
+
+            // Auto-post the reversal so it too is immutable
+            $this->postEntry($reversal);
+
+            return $reversal->load('lines.account');
         });
     }
 

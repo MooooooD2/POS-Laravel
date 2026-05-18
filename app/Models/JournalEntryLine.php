@@ -12,4 +12,22 @@ class JournalEntryLine extends Model
 
     public function entry()   { return $this->belongsTo(JournalEntry::class, 'entry_id'); }
     public function account() { return $this->belongsTo(Account::class); }
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        // Lines of a posted entry cannot be modified or deleted
+        static::updating(function (JournalEntryLine $line) {
+            if ($line->entry?->is_posted) {
+                throw new \DomainException(__('pos.journal_entry_posted_immutable'));
+            }
+        });
+
+        static::deleting(function (JournalEntryLine $line) {
+            if ($line->entry?->is_posted) {
+                throw new \DomainException(__('pos.journal_entry_posted_immutable'));
+            }
+        });
+    }
 }

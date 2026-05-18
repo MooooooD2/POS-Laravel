@@ -5,6 +5,7 @@ use App\Contracts\Repositories\PurchaseOrderRepositoryInterface;
 use App\Contracts\Repositories\SupplierAccountRepositoryInterface;
 use App\Contracts\Repositories\SupplierRepositoryInterface;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,20 +64,28 @@ class PurchaseOrderService
     {
         return DB::transaction(function () use ($po, $receivedItems) {
             foreach ($receivedItems as $item) {
-                $poItem = $this->poRepo->findItem($item['item_id']);
+                // Lock the item row to prevent concurrent receive race conditions
+                $poItem = PurchaseOrderItem::lockForUpdate()->find($item['item_id']);
                 if (!$poItem) continue;
 
                 $requestedQty  = $poItem->quantity;
                 $alreadyRcvd   = $poItem->received_quantity;
                 $maxReceivable = $requestedQty - $alreadyRcvd;
                 $receivedQty   = (int) $item['received_quantity'];
+                $rejectedQty   = (int) ($item['rejected_qty'] ?? 0);
                 $actualQty     = max(0, $receivedQty);
                 $discrepancy   = $actualQty - $maxReceivable;
 
-                if ($actualQty <= 0) continue;
+                if ($actualQty <= 0 && $rejectedQty <= 0) continue;
+
+                $qualityStatus = $rejectedQty > 0
+                    ? ($actualQty > 0 ? 'passed' : 'rejected')
+                    : 'passed';
 
                 $this->poRepo->updateItem($poItem, [
                     'received_quantity' => $alreadyRcvd + $actualQty,
+                    'rejected_qty'      => $poItem->rejected_qty + $rejectedQty,
+                    'quality_status'    => $qualityStatus,
                     'discrepancy'       => $discrepancy,
                     'discrepancy_notes' => $item['discrepancy_notes'] ?? null,
                 ]);

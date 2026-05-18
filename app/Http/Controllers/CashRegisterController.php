@@ -65,6 +65,35 @@ class CashRegisterController extends Controller
         return $this->success(['session' => $closed]);
     }
 
+    public function recordMovement(Request $request, int $id)
+    {
+        $request->validate([
+            'type'   => 'required|in:deposit,withdrawal',
+            'amount' => 'required|numeric|min:0.01',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $session = CashRegisterSession::findOrFail($id);
+
+        try {
+            $movement = $this->cashRegisterService->recordMovement(
+                $session,
+                $request->type,
+                (float) $request->amount,
+                $request->reason
+            );
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        $this->audit('cash_session.movement', CashRegisterSession::class, $session->id, [
+            'type'   => $request->type,
+            'amount' => $request->amount,
+        ]);
+
+        return $this->success(['movement' => $movement], '', 201);
+    }
+
     public function history(Request $request)
     {
         $request->validate([

@@ -6,6 +6,7 @@ use App\Contracts\Repositories\JournalEntryRepositoryInterface;
 use App\Http\Requests\StoreAccountRequest;
 use App\Http\Requests\StoreJournalEntryRequest;
 use App\Models\Account;
+use App\Models\AuditLog as AuditLogModel;
 use App\Models\JournalEntry;
 use App\Services\AccountingService;
 use App\Traits\ApiResponse;
@@ -91,5 +92,69 @@ class AccountingController extends Controller
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
         }
+    }
+
+    /**
+     * Post (lock) a journal entry — makes it permanently immutable.
+     */
+    public function postJournalEntry(JournalEntry $entry)
+    {
+        $this->authorize('create_journal_entry');
+
+        try {
+            $posted = $this->accountingService->postEntry($entry);
+            $this->audit('journal.posted', JournalEntry::class, (int) $entry->id);
+            return $this->success(['entry' => $posted->load('lines.account')]);
+        } catch (\DomainException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Reverse a posted journal entry — creates a negating entry.
+     */
+    public function reverseJournalEntry(Request $request, JournalEntry $entry)
+    {
+        $this->authorize('create_journal_entry');
+
+        $data = $request->validate([
+            'description' => 'required|string|max:500',
+        ]);
+
+        try {
+            $reversal = $this->accountingService->reverseEntry($entry, $data['description']);
+            $this->audit('journal.reversed', JournalEntry::class, (int) $entry->id, [
+                'reversal_entry_id' => $reversal->id,
+            ]);
+            return $this->success(['reversal' => $reversal], '', 201);
+        } catch (\DomainException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Queryable audit log — returns DB-persisted entries filtered by action/model/user/date.
+     */
+    public function auditLogs(Request $request)
+    {
+        $data = $request->validate([
+            'action'     => 'nullable|string|max:100',
+            'model'      => 'nullable|string|max:150',
+            'user_id'    => 'nullable|integer|exists:users,id',
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'per_page'   => 'nullable|integer|min:10|max:200',
+        ]);
+
+        $logs = AuditLogModel::query()
+            ->when($data['action']     ?? null, fn($q, $v) => $q->where('action', 'like', "%{$v}%"))
+            ->when($data['model']      ?? null, fn($q, $v) => $q->where('model', $v))
+            ->when($data['user_id']    ?? null, fn($q, $v) => $q->where('user_id', $v))
+            ->when($data['start_date'] ?? null, fn($q, $v) => $q->whereDate('created_at', '>=', $v))
+            ->when($data['end_date']   ?? null, fn($q, $v) => $q->whereDate('created_at', '<=', $v))
+            ->orderByDesc('created_at')
+            ->paginate($data['per_page'] ?? 50);
+
+        return $this->success(['logs' => $logs]);
     }
 }

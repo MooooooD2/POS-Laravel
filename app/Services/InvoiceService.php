@@ -20,6 +20,7 @@ class InvoiceService
         private ProductRepositoryInterface $productRepo,
         private SettingRepositoryInterface $settingRepo,
         private CustomerService            $customerService,
+        private TaxService                 $taxService,
     ) {}
 
     public function createInvoice(array $data): Invoice
@@ -42,9 +43,20 @@ class InvoiceService
                 }
             }
 
-            $total = 0;
-            foreach ($data['items'] as $item) {
-                $total += $products->get($item['product_id'])->price * $item['quantity'];
+            $taxInclusive = (bool) $this->settingRepo->get('tax_inclusive', false);
+
+            // Build per-line data: subtotal + resolved tax rate (from TaxCategory or global fallback)
+            $lineData = [];
+            $total    = 0;
+            foreach ($data['items'] as $idx => $item) {
+                $product  = $products->get($item['product_id']);
+                $subtotal = $product->price * $item['quantity'];
+                $total   += $subtotal;
+                $lineData[$idx] = [
+                    'product_id' => $item['product_id'],
+                    'subtotal'   => $subtotal,
+                    'tax_rate'   => $this->taxService->resolveRate($product),
+                ];
             }
 
             $maxDiscountPercent = (float) $this->settingRepo->get(
@@ -67,7 +79,7 @@ class InvoiceService
                 throw new \Exception(__('pos.discount_exceeds_limit', ['max' => $maxDiscountPercent]));
             }
 
-            $discount      = min($requestedDiscount, $total, $maxAllowedDiscount);
+            $discount      = max(0.0, min($requestedDiscount, $total, $maxAllowedDiscount));
             $afterDiscount = $total - $discount;
 
             // Loyalty point redemption (applied as additional discount)
@@ -84,18 +96,21 @@ class InvoiceService
                 }
             }
 
-            $taxEnabled   = (bool) $this->settingRepo->get('tax_enabled', false);
-            $taxRate      = $taxEnabled ? (float) $this->settingRepo->get('tax_rate', 0) : 0;
-            $taxInclusive = (bool) $this->settingRepo->get('tax_inclusive', false);
-
-            $taxAmount = 0;
-            if ($taxEnabled && $taxRate > 0) {
-                $taxAmount = $taxInclusive
-                    ? $afterDiscount - ($afterDiscount / (1 + $taxRate / 100))
-                    : $afterDiscount * ($taxRate / 100);
+            // Distribute discount proportionally and calculate per-line taxes
+            $discountRatio = $total > 0 ? $afterDiscount / $total : 1;
+            $taxAmount     = 0.0;
+            foreach ($lineData as &$line) {
+                $discountedSubtotal    = $line['subtotal'] * $discountRatio;
+                $lineTax               = $this->taxService->calculateLineTax($discountedSubtotal, $line['tax_rate'], $taxInclusive);
+                $line['tax_amount']    = $lineTax['tax_amount'];
+                $taxAmount            += $lineTax['tax_amount'];
             }
+            unset($line);
+            $taxAmount  = round($taxAmount, 2);
 
-            $finalTotal = $afterDiscount + ($taxInclusive ? 0 : $taxAmount);
+            // Blended rate stored on the invoice header for reporting/backward compat
+            $blendedTaxRate = $afterDiscount > 0 ? round($taxAmount / $afterDiscount * 100, 4) : 0.0;
+            $finalTotal     = $afterDiscount + ($taxInclusive ? 0 : $taxAmount);
 
             $isSplit       = !empty($data['payments']);
             $paymentMethod = $isSplit ? $data['payments'][0]['method'] : $data['payment_method'];
@@ -136,7 +151,7 @@ class InvoiceService
                 'discount'            => round($discount, 2),
                 'loyalty_points_used' => $loyaltyPointsUsed,
                 'loyalty_discount'    => round($loyaltyDiscount, 2),
-                'tax_rate'            => $taxRate,
+                'tax_rate'            => $blendedTaxRate,
                 'tax_amount'          => round($taxAmount, 2),
                 'final_total'         => round($finalTotal, 2),
                 'cash_received'       => $cashReceived,
@@ -152,16 +167,20 @@ class InvoiceService
                 'date'                => now(),
             ]);
 
-            foreach ($data['items'] as $item) {
+            foreach ($data['items'] as $idx => $item) {
                 $product = $products->get($item['product_id']);
+                $line    = $lineData[$idx];
 
                 if ($product->track_batches) {
                     $allocations = $this->stockService->deductBatchStock(
                         $product, $item['quantity'], 'sale',
                         __('pos.sale_deduction'), $invoice->id, 'invoice', $warehouseId
                     );
-                    // Create one InvoiceItem per batch allocation
+                    // Distribute per-item tax across batch allocations by qty ratio
+                    $totalAllocQty = array_sum(array_column($allocations, 'quantity'));
                     foreach ($allocations as $alloc) {
+                        $qtyRatio   = $totalAllocQty > 0 ? $alloc['quantity'] / $totalAllocQty : 0;
+                        $allocSubtotal = round($product->price * $alloc['quantity'], 2);
                         InvoiceItem::create([
                             'invoice_id'   => $invoice->id,
                             'product_id'   => $product->id,
@@ -169,27 +188,32 @@ class InvoiceService
                             'quantity'     => $alloc['quantity'],
                             'price'        => $product->price,
                             'cost_price'   => $product->avg_cost > 0 ? $product->avg_cost : $product->cost_price,
-                            'subtotal'     => round($product->price * $alloc['quantity'], 2),
+                            'subtotal'     => $allocSubtotal,
+                            'tax_rate'     => $line['tax_rate'],
+                            'tax_amount'   => round($line['tax_amount'] * $qtyRatio, 2),
                             'warehouse_id' => $warehouseId,
                             'batch_id'     => $alloc['batch_id'],
                         ]);
                     }
                 } else {
+                    // Deduct first: returns actual COGS unit cost (WAC, FIFO, or LIFO)
+                    $unitCost = $this->stockService->deductLockedStock(
+                        $product, $item['quantity'], 'sale',
+                        __('pos.sale_deduction'), $invoice->id, 'invoice', $warehouseId
+                    );
+
                     InvoiceItem::create([
                         'invoice_id'   => $invoice->id,
                         'product_id'   => $product->id,
                         'product_name' => $product->name,
                         'quantity'     => $item['quantity'],
                         'price'        => $product->price,
-                        'cost_price'   => $product->avg_cost > 0 ? $product->avg_cost : $product->cost_price,
+                        'cost_price'   => $unitCost > 0 ? $unitCost : ($product->avg_cost > 0 ? $product->avg_cost : $product->cost_price),
                         'subtotal'     => round($product->price * $item['quantity'], 2),
+                        'tax_rate'     => $line['tax_rate'],
+                        'tax_amount'   => $line['tax_amount'],
                         'warehouse_id' => $warehouseId,
                     ]);
-
-                    $this->stockService->deductLockedStock(
-                        $product, $item['quantity'], 'sale',
-                        __('pos.sale_deduction'), $invoice->id, 'invoice', $warehouseId
-                    );
                 }
             }
 

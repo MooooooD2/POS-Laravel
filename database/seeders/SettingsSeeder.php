@@ -45,6 +45,9 @@ class SettingsSeeder extends Seeder
             ['key' => 'loyalty_earn_rate',  'value' => '10',  'type' => 'number',  'group' => 'loyalty', 'label_ar' => 'كل كم جنيه = نقطة',           'label_en' => 'Spend per Point (EGP)'],
             ['key' => 'loyalty_redeem_value','value' => '0.5','type' => 'number',  'group' => 'loyalty', 'label_ar' => 'قيمة النقطة عند الاسترداد',   'label_en' => 'Point Redeem Value (EGP)'],
             ['key' => 'loyalty_min_redeem', 'value' => '100', 'type' => 'number',  'group' => 'loyalty', 'label_ar' => 'الحد الأدنى للنقاط للاسترداد','label_en' => 'Minimum Points to Redeem'],
+
+            // Inventory - المخزون
+            ['key' => 'inventory_valuation_method', 'value' => 'weighted_average', 'type' => 'string', 'group' => 'inventory', 'label_ar' => 'طريقة تقييم المخزون', 'label_en' => 'Inventory Valuation Method'],
         ];
 
         foreach ($settings as $s) {

@@ -1,40 +1,63 @@
 <?php
+
 namespace App\Traits;
 
-use Illuminate\Support\Facades\Log;
+use App\Models\AuditLog as AuditLogModel;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 trait AuditLog
 {
     protected function audit(string $action, string $model, int|string $id, array $changes = []): void
     {
+        $userId   = Auth::id();
+        $username = Auth::user()?->username;
+        $ip       = $this->auditSanitizeIp(request()->ip());
+        $ua       = $this->auditSanitizeUserAgent(request()->userAgent());
+
         try {
+            // Structured log file (always)
             Log::channel('audit')->info($action, [
                 'model'      => $model,
                 'record_id'  => $id,
-                'user_id'    => Auth::id(),
-                'username'   => Auth::user()?->username,
-                'ip'         => $this->auditSanitizeIp(request()->ip()),
-                'user_agent' => $this->auditSanitizeUserAgent(request()->userAgent()),
+                'user_id'    => $userId,
+                'username'   => $username,
+                'ip'         => $ip,
+                'user_agent' => $ua,
                 'changes'    => $changes,
                 'timestamp'  => now()->toIso8601String(),
             ]);
         } catch (\Throwable) {
-            // Audit logging must never break a business operation
+            // Never break business operations
+        }
+
+        try {
+            // Persistent DB record (queryable audit trail)
+            AuditLogModel::create([
+                'action'     => $action,
+                'model'      => $model,
+                'record_id'  => (string) $id,
+                'user_id'    => $userId,
+                'username'   => $username,
+                'ip_address' => $ip,
+                'user_agent' => $ua,
+                'changes'    => $changes ?: null,
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable) {
+            // Never break business operations
         }
     }
 
     private function auditSanitizeIp(?string $ip): string
     {
         if (!$ip) return 'unknown';
-        // Reject anything that isn't a valid IPv4 or IPv6 address to prevent log injection
         return \filter_var($ip, FILTER_VALIDATE_IP) ? $ip : 'invalid';
     }
 
     private function auditSanitizeUserAgent(?string $ua): string
     {
         if (!$ua) return 'unknown';
-        // Strip control characters that could corrupt structured log lines
         return \substr(\preg_replace('/[\x00-\x1F\x7F]/', '', $ua), 0, 250);
     }
 }

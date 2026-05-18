@@ -9,11 +9,13 @@ class PurchaseOrderItem extends Model
         'po_id', 'product_id', 'product_name',
         'quantity', 'cost_price', 'selling_price',
         'subtotal', 'received_quantity',
+        'rejected_qty', 'quality_status',
         'discrepancy', 'discrepancy_notes',
     ];
     protected $casts = [
         'quantity'          => 'integer',
         'received_quantity' => 'integer',
+        'rejected_qty'      => 'integer',
         'discrepancy'       => 'integer',
         'cost_price'        => 'float',
         'selling_price'     => 'float',

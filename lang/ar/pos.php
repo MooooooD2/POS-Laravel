@@ -115,7 +115,12 @@ return [
     'credit'                       => 'دائن',
     'journal_unbalanced'           => 'القيد غير متوازن: إجمالي المدين ≠ إجمالي الدائن',
     'account_has_dependencies'     => 'لا يمكن حذف الحساب — عليه قيود أو حسابات فرعية.',
-    'journal_entry_not_balanced'   => 'القيد غير متوازن: المدين :debit ≠ الدائن :credit',
+    'journal_entry_not_balanced'        => 'القيد غير متوازن: المدين :debit ≠ الدائن :credit',
+    'journal_entry_posted_immutable'    => 'القيد المرحَّل لا يمكن تعديله أو حذفه. استخدم قيد العكس.',
+    'journal_entry_already_posted'      => 'تم ترحيل هذا القيد مسبقاً.',
+    'journal_entry_not_posted'          => 'القيد غير مرحَّل — يجب الترحيل أولاً قبل العكس.',
+    'journal_entry_already_reversed'    => 'تم عكس هذا القيد مسبقاً.',
+    'reversal_of_entry'                 => 'عكس القيد رقم :number',
 
     // Reports
     'start_date'                   => 'تاريخ البداية',

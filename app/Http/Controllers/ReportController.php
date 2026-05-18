@@ -5,6 +5,9 @@ use App\Exports\ReturnsReportExport;
 use App\Exports\SalesReportExport;
 use App\Exports\StockReportExport;
 use App\Models\Account;
+use App\Models\AuditLog as AuditLogModel;
+use App\Models\User;
+use App\Services\InventoryValuationService;
 use App\Services\ReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -12,7 +15,10 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
-    public function __construct(private ReportService $reportService) {}
+    public function __construct(
+        private ReportService              $reportService,
+        private InventoryValuationService  $valuationService,
+    ) {}
 
     public function index()
     {
@@ -157,5 +163,74 @@ class ReportController extends Controller
         return response()->json(
             $this->reportService->cashFlowReport($data['start_date'], $data['end_date'])
         );
+    }
+
+    /**
+     * Inventory valuation report — compares WAC, FIFO, and LIFO values side by side.
+     */
+    public function inventoryValuation(Request $request)
+    {
+        $warehouseId = $request->integer('warehouse_id') ?: null;
+
+        return response()->json($this->valuationService->valuationReport($warehouseId));
+    }
+
+    /**
+     * Permissions audit report — current permission matrix + recent changes + auth failures.
+     */
+    public function permissionsAudit(Request $request)
+    {
+        $request->validate([
+            'days' => 'nullable|integer|min:1|max:365',
+        ]);
+
+        $since = now()->subDays($request->integer('days', 30));
+
+        // Current permission matrix: all users with their roles and effective permissions
+        $matrix = User::with('roles.permissions')
+            ->orderBy('username')
+            ->get()
+            ->map(fn($u) => [
+                'id'          => $u->id,
+                'username'    => $u->username,
+                'full_name'   => $u->full_name,
+                'is_active'   => (bool) $u->is_active,
+                'roles'       => $u->getRoleNames()->values(),
+                'permissions' => $u->getAllPermissions()->pluck('name')->sort()->values(),
+            ]);
+
+        // Recent role/permission changes from the audit trail
+        $permissionChanges = AuditLogModel::whereIn('action', [
+                'role.created', 'role.updated', 'role.deleted',
+                'role.permissions_synced', 'user.role_assigned',
+            ])
+            ->where('created_at', '>=', $since)
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get(['action', 'model', 'record_id', 'username', 'ip_address', 'changes', 'created_at']);
+
+        // Auth event summary over the period
+        $authSummary = AuditLogModel::selectRaw('action, COUNT(*) as count')
+            ->whereIn('action', ['auth.login_success', 'auth.login_failed', 'auth.login_blocked', 'auth.logout'])
+            ->where('created_at', '>=', $since)
+            ->groupBy('action')
+            ->pluck('count', 'action');
+
+        // Top failed-login IPs (potential brute-force)
+        $suspiciousIps = AuditLogModel::where('action', 'auth.login_failed')
+            ->where('created_at', '>=', $since)
+            ->selectRaw('ip_address, COUNT(*) as attempts')
+            ->groupBy('ip_address')
+            ->orderByDesc('attempts')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'period_days'        => $request->integer('days', 30),
+            'matrix'             => $matrix,
+            'permission_changes' => $permissionChanges,
+            'auth_summary'       => $authSummary,
+            'suspicious_ips'     => $suspiciousIps,
+        ]);
     }
 }
