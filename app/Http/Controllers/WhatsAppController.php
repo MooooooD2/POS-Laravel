@@ -35,6 +35,13 @@ class WhatsAppController extends Controller
 
     public function receiveWebhook(Request $request): Response
     {
+        $rawBody   = $request->getContent();
+        $signature = $request->header('X-Hub-Signature-256');
+
+        if (!$this->service->verifySignature($rawBody, $signature)) {
+            return response('Forbidden', 403);
+        }
+
         $this->service->handleWebhook($request->all());
         return response('OK', 200);
     }

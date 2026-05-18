@@ -42,6 +42,7 @@ class RolePermissionSeeder extends Seeder
             // Warehouse — purchase orders
             'view_purchase_orders',
             'create_purchase_order',
+            'approve_purchase_order',   // item 20
             'receive_purchase_order',
 
             // Warehouse — supplier payments & accounts

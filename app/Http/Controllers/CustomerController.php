@@ -70,6 +70,8 @@ class CustomerController extends Controller
             'address'             => 'nullable|string|max:500',
             'credit_limit'        => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:500',
+            'customer_group_id'   => 'nullable|exists:customer_groups,id',
+            'price_level'         => 'nullable|in:retail,wholesale,vip',
             'is_active'           => 'boolean',
         ]);
 
@@ -96,6 +98,8 @@ class CustomerController extends Controller
             'address'             => 'nullable|string|max:500',
             'credit_limit'        => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:500',
+            'customer_group_id'   => 'nullable|exists:customer_groups,id',
+            'price_level'         => 'nullable|in:retail,wholesale,vip',
             'is_active'           => 'boolean',
         ]);
 

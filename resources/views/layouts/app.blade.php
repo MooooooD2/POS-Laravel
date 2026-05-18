@@ -114,6 +114,12 @@
         <a href="{{ route('customers') }}" class="{{ request()->routeIs('customers') ? 'active' : '' }}">
             <i class="fas fa-users"></i> {{ __('pos.customers') }}
         </a>
+        <a href="{{ route('customer-groups') }}" class="{{ request()->routeIs('customer-groups') ? 'active' : '' }}">
+            <i class="fas fa-layer-group"></i> {{ app()->getLocale()==='ar' ? 'مجموعات العملاء' : 'Customer Groups' }}
+        </a>
+        <a href="{{ route('promotions') }}" class="{{ request()->routeIs('promotions') ? 'active' : '' }}">
+            <i class="fas fa-tags"></i> {{ app()->getLocale()==='ar' ? 'العروض الترويجية' : 'Promotions' }}
+        </a>
     @endpermission
 
     @permission('view_pos')
@@ -128,6 +134,9 @@
     </a>
     <a href="{{ route('profit-reports') }}" class="{{ request()->routeIs('profit-reports') ? 'active' : '' }}">
         <i class="fas fa-percentage"></i> {{ __('pos.profit_reports') }}
+    </a>
+    <a href="{{ route('reports.budget') }}" class="{{ request()->routeIs('reports.budget') ? 'active' : '' }}">
+        <i class="fas fa-balance-scale"></i> {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}
     </a>
 @endpermission
 

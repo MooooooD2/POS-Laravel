@@ -195,6 +195,17 @@ class WhatsAppService
         return null;
     }
 
+    public function verifySignature(string $rawBody, ?string $signatureHeader): bool
+    {
+        $secret = config('whatsapp.app_secret');
+        if (empty($secret)) return true; // not configured — skip (dev mode)
+
+        if (!$signatureHeader || !str_starts_with($signatureHeader, 'sha256=')) return false;
+
+        $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
+        return hash_equals($expected, $signatureHeader);
+    }
+
     public function handleWebhook(array $payload): void
     {
         $entries = data_get($payload, 'entry', []);

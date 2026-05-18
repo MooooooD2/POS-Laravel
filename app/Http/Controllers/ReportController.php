@@ -11,6 +11,7 @@ use App\Services\InventoryValuationService;
 use App\Services\ReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
@@ -27,6 +28,7 @@ class ReportController extends Controller
 
     public function financialReports()
     {
+        Gate::authorize('report.financial');
         return view('financial-reports.index');
     }
 
@@ -165,6 +167,68 @@ class ReportController extends Controller
         );
     }
 
+    public function inventoryMovements(Request $request)
+    {
+        $data = $request->validate([
+            'start_date'    => 'required|date',
+            'end_date'      => 'required|date|after_or_equal:start_date',
+            'product_id'    => 'nullable|integer|exists:products,id',
+            'warehouse_id'  => 'nullable|integer|exists:warehouses,id',
+            'movement_type' => 'nullable|string|max:50',
+            'search'        => 'nullable|string|max:100',
+            'per_page'      => 'nullable|integer|min:10|max:200',
+        ]);
+
+        return response()->json($this->reportService->inventoryMovements($data));
+    }
+
+    public function agedReceivables()
+    {
+        Gate::authorize('report.aged');
+        return response()->json($this->reportService->agedReceivables());
+    }
+
+    public function agedPayables()
+    {
+        Gate::authorize('report.aged');
+        return response()->json($this->reportService->agedPayables());
+    }
+
+    public function bestSellingProducts(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+            'limit'      => 'nullable|integer|min:5|max:100',
+        ]);
+
+        return response()->json(
+            $this->reportService->bestSellingProducts($data['start_date'], $data['end_date'], (int) ($data['limit'] ?? 20))
+        );
+    }
+
+    public function cashierPerformance(Request $request)
+    {
+        Gate::authorize('report.cashier-performance');
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+
+        return response()->json(
+            $this->reportService->cashierPerformance($data['start_date'], $data['end_date'])
+        );
+    }
+
+    public function nearExpiryProducts(Request $request)
+    {
+        $data = $request->validate([
+            'days' => 'nullable|integer|min:1|max:365',
+        ]);
+
+        return response()->json($this->reportService->nearExpiryProducts((int) ($data['days'] ?? 30)));
+    }
+
     /**
      * Inventory valuation report — compares WAC, FIFO, and LIFO values side by side.
      */
@@ -180,6 +244,7 @@ class ReportController extends Controller
      */
     public function permissionsAudit(Request $request)
     {
+        Gate::authorize('report.permissions-audit');
         $request->validate([
             'days' => 'nullable|integer|min:1|max:365',
         ]);

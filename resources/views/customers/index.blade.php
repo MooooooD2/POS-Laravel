@@ -146,6 +146,20 @@
                         <input type="text" class="form-control" id="customerAddress" maxlength="500">
                     </div>
                     <div class="col-sm-6">
+                        <label class="form-label fw-semibold">{{ app()->getLocale() === 'ar' ? 'المجموعة' : 'Group' }}</label>
+                        <select class="form-select" id="customerGroupId">
+                            <option value="">— {{ app()->getLocale()==='ar' ? 'بدون مجموعة' : 'No group' }} —</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label fw-semibold">{{ app()->getLocale() === 'ar' ? 'مستوى السعر' : 'Price Level' }}</label>
+                        <select class="form-select" id="customerPriceLevel">
+                            <option value="retail">{{ app()->getLocale()==='ar' ? 'تجزئة' : 'Retail' }}</option>
+                            <option value="wholesale">{{ app()->getLocale()==='ar' ? 'جملة' : 'Wholesale' }}</option>
+                            <option value="vip">VIP</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
                         <label class="form-label fw-semibold">{{ app()->getLocale() === 'ar' ? 'حد الائتمان' : 'Credit Limit' }}</label>
                         <input type="number" class="form-control" id="customerCreditLimit" min="0" step="0.01" value="0">
                     </div>
@@ -194,6 +208,17 @@
 const isAr = LOCALE === 'ar';
 const API_CUSTOMERS = '{{ url("/api/customers") }}';
 let currentPage = 1;
+
+async function loadCustomerGroups() {
+    const res = await apiCall('{{ route("customer-groups.index") }}?per_page=100');
+    const groups = res.data || res.groups || [];
+    const sel = document.getElementById('customerGroupId');
+    const existing = sel.value;
+    sel.innerHTML = `<option value="">— ${isAr ? 'بدون مجموعة' : 'No group'} —</option>`
+        + groups.map(g => `<option value="${g.id}">${escHtml(g.name)}</option>`).join('');
+    if (existing) sel.value = existing;
+}
+loadCustomerGroups();
 
 function escHtml(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -302,6 +327,8 @@ window.openCustomerModal = function(c) {
     document.getElementById('customerAddress').value       = c?.address       ?? '';
     document.getElementById('customerCreditLimit').value   = c?.credit_limit  ?? 0;
     document.getElementById('customerNotes').value         = c?.notes         ?? '';
+    document.getElementById('customerGroupId').value        = c?.customer_group_id ?? '';
+    document.getElementById('customerPriceLevel').value    = c?.price_level      ?? 'retail';
     document.getElementById('customerIsActive').checked    = c ? !!c.is_active : true;
     document.getElementById('customerModalTitle').textContent = c
         ? (isAr ? 'تعديل بيانات العميل' : 'Edit Customer')
@@ -326,6 +353,8 @@ window.saveCustomer = async function() {
         address:             document.getElementById('customerAddress').value.trim()     || null,
         credit_limit:        parseFloat(document.getElementById('customerCreditLimit').value) || 0,
         notes:               document.getElementById('customerNotes').value.trim()       || null,
+        customer_group_id:   document.getElementById('customerGroupId').value            || null,
+        price_level:         document.getElementById('customerPriceLevel').value,
         is_active:           document.getElementById('customerIsActive').checked,
     };
 

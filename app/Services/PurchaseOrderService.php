@@ -35,7 +35,7 @@ class PurchaseOrderService
                 'total_amount'    => $totalAmount,
                 'discount'        => $discount,
                 'final_amount'    => $finalAmount,
-                'status'          => 'pending',
+                'status'          => 'draft',
                 'order_date'      => $data['order_date'],
                 'expected_date'   => $data['expected_date'] ?? null,
                 'notes'           => $data['notes'] ?? null,

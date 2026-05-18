@@ -86,4 +86,16 @@ class InvoiceController extends Controller
         if ($invoice->status !== 'completed') return $this->error(__('pos.invoice_not_completed'), 422);
         return $this->success(['items' => $this->invoiceService->getReturnableItems($invoice)]);
     }
+
+    public function cancel(Invoice $invoice)
+    {
+        $this->authorize('cancel', $invoice);
+        try {
+            $cancelled = $this->invoiceService->cancelInvoice($invoice);
+            $this->audit('invoice.cancelled', Invoice::class, $invoice->id, ['total' => $invoice->final_total]);
+            return $this->success(['invoice' => new InvoiceResource($cancelled)]);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+    }
 }

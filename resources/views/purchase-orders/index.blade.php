@@ -33,7 +33,10 @@
             <span class="text-muted small">{{ __('pos.filter') }}:</span>
             <select class="form-select form-select-sm" id="poStatusFilter" style="width:180px" data-on-change="loadPOs">
                 <option value="">{{ __('pos.all') }}</option>
+                <option value="draft">{{ app()->getLocale()==='ar' ? 'مسودة' : 'Draft' }}</option>
                 <option value="pending">{{ __('pos.po_status_pending') }}</option>
+                <option value="approved">{{ app()->getLocale()==='ar' ? 'معتمد' : 'Approved' }}</option>
+                <option value="rejected">{{ app()->getLocale()==='ar' ? 'مرفوض' : 'Rejected' }}</option>
                 <option value="received">{{ __('pos.po_status_received') }}</option>
                 <option value="partial">{{ __('pos.po_status_partial') }}</option>
                 <option value="cancelled">{{ __('pos.po_status_cancelled') }}</option>
@@ -215,6 +218,7 @@
 let poProducts  = [];
 let poItemCount = 0;
 let renderedPOs = [];
+const isAr      = LOCALE === 'ar';
 
 function escapeHtml(str) {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -240,33 +244,52 @@ async function loadPOs() {
     const orders = res.purchase_orders?.data || [];
 
     const statusMap = {
+        draft:     { label: isAr ? 'مسودة'  : 'Draft',     cls: 'secondary' },
         pending:   { label: '{{ __("pos.po_status_pending") }}',   cls: 'warning text-dark' },
+        approved:  { label: isAr ? 'معتمد'  : 'Approved',  cls: 'success' },
+        rejected:  { label: isAr ? 'مرفوض'  : 'Rejected',  cls: 'danger' },
         received:  { label: '{{ __("pos.po_status_received") }}',  cls: 'success' },
         partial:   { label: '{{ __("pos.po_status_partial") }}',   cls: 'info text-dark' },
         cancelled: { label: '{{ __("pos.po_status_cancelled") }}', cls: 'danger' },
     };
 
     renderedPOs = orders;
-    const isAr = LOCALE === 'ar';
 
     document.getElementById('poBody').innerHTML = orders.length
         ? orders.map((po, i) => {
             const st = statusMap[po.status] || { label: po.status, cls: 'secondary' };
-            const canReceive = po.status !== 'received' && po.status !== 'cancelled';
+
+            let actions = '';
+            if (po.status === 'draft') {
+                actions = `<button class="btn btn-sm btn-outline-primary me-1" data-action="submit-po" data-po-id="${po.id}">
+                    <i class="fas fa-paper-plane me-1"></i>${isAr ? 'إرسال للاعتماد' : 'Submit'}
+                </button>`;
+            }
+            @can('approve_purchase_order')
+            if (po.status === 'pending') {
+                actions = `<button class="btn btn-sm btn-success me-1" data-action="approve-po" data-po-id="${po.id}">
+                    <i class="fas fa-check me-1"></i>${isAr ? 'اعتماد' : 'Approve'}
+                </button>
+                <button class="btn btn-sm btn-outline-danger" data-action="reject-po" data-po-id="${po.id}">
+                    <i class="fas fa-times me-1"></i>${isAr ? 'رفض' : 'Reject'}
+                </button>`;
+            }
+            @endcan
+            if (po.status === 'approved') {
+                actions += `<button class="btn btn-sm btn-outline-success" data-action="receive-po" data-po-idx="${i}">
+                    <i class="fas fa-box-open me-1"></i>${isAr ? 'استلام' : 'Receive'}
+                </button>`;
+            }
+            if (!actions) actions = '<span class="text-muted small">—</span>';
+
             return `<tr>
-                <td><span class="badge bg-primary po-badge-num">${po.po_number}</span></td>
-                <td>${po.supplier_name}</td>
+                <td><span class="badge bg-primary po-badge-num">${escapeHtml(po.po_number)}</span></td>
+                <td>${escapeHtml(po.supplier_name)}</td>
                 <td class="fw-semibold">${formatCurrency(po.final_amount)}</td>
                 <td class="small text-muted">${formatDate(po.order_date)}</td>
                 <td class="small text-muted">${po.expected_date ? formatDate(po.expected_date) : '—'}</td>
                 <td><span class="badge bg-${st.cls}">${st.label}</span></td>
-                <td>
-                    ${canReceive
-                        ? `<button class="btn btn-sm btn-outline-success" data-action="receive-po" data-po-idx="${i}">
-                               <i class="fas fa-box-open me-1"></i>${isAr ? 'استلام' : 'Receive'}
-                           </button>`
-                        : '<span class="text-muted small">—</span>'}
-                </td>
+                <td class="text-nowrap">${actions}</td>
             </tr>`;
         }).join('')
         : '<tr><td colspan="7" class="text-center text-muted py-4">{{ __("pos.no_data") }}</td></tr>';
@@ -486,10 +509,50 @@ async function submitReceivePO() {
     }
 }
 
+// ── Submit / Approve / Reject ─────────────────────────────────────────────
+async function submitPO(poId) {
+    if (!confirm(isAr ? 'إرسال أمر الشراء للاعتماد؟' : 'Submit this PO for approval?')) return;
+    const res = await apiCall(`/api/purchase-orders/${poId}/submit`, 'POST');
+    if (res.success) {
+        showToast(isAr ? 'تم الإرسال للاعتماد' : 'Submitted for approval', 'success');
+        loadPOs();
+    } else {
+        showToast(res.message || '{{ __("pos.error") }}', 'danger');
+    }
+}
+
+async function approvePO(poId) {
+    if (!confirm(isAr ? 'اعتماد أمر الشراء هذا؟' : 'Approve this purchase order?')) return;
+    const res = await apiCall(`/api/purchase-orders/${poId}/approve`, 'POST');
+    if (res.success) {
+        showToast(isAr ? '✅ تم الاعتماد' : '✅ Approved', 'success');
+        loadPOs();
+    } else {
+        showToast(res.message || '{{ __("pos.error") }}', 'danger');
+    }
+}
+
+async function rejectPO(poId) {
+    const reason = prompt(isAr ? 'سبب الرفض:' : 'Rejection reason:');
+    if (!reason) return;
+    const res = await apiCall(`/api/purchase-orders/${poId}/reject`, 'POST', { reason });
+    if (res.success) {
+        showToast(isAr ? 'تم رفض أمر الشراء' : 'Purchase order rejected', 'warning');
+        loadPOs();
+    } else {
+        showToast(res.message || '{{ __("pos.error") }}', 'danger');
+    }
+}
+
 // ── Event delegation ──────────────────────────────────────────────────────
 document.getElementById('poBody').addEventListener('click', function(e) {
-    const btn = e.target.closest('[data-action="receive-po"]');
-    if (btn) showReceivePO(renderedPOs[parseInt(btn.dataset.poIdx)]);
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if      (action === 'receive-po') showReceivePO(renderedPOs[parseInt(btn.dataset.poIdx)]);
+    else if (action === 'submit-po')  submitPO(btn.dataset.poId);
+    else if (action === 'approve-po') approvePO(btn.dataset.poId);
+    else if (action === 'reject-po')  rejectPO(btn.dataset.poId);
 });
 
 document.getElementById('poItemsBody').addEventListener('change', function(e) {

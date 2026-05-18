@@ -10,7 +10,7 @@ class Customer extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'code', 'type', 'name', 'phone', 'email',
+        'code', 'customer_group_id', 'type', 'price_level', 'name', 'phone', 'email',
         'national_id', 'tax_number', 'commercial_register',
         'governate', 'city', 'address',
         'credit_limit', 'loyalty_points', 'notes', 'is_active',
@@ -22,6 +22,11 @@ class Customer extends Model
         'credit_limit' => 'decimal:2',
         'balance'      => 'decimal:2',
     ];
+
+    public function group(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(CustomerGroup::class, 'customer_group_id');
+    }
 
     public function invoices(): \Illuminate\Database\Eloquent\Relations\HasMany
     {

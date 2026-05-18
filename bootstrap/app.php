@@ -41,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenancy'            => \App\Http\Middleware\InitializeTenancyBySession::class,
             '2fa'                => \App\Http\Middleware\EnforceTwoFactor::class,
+            'ip.whitelist'       => \App\Http\Middleware\IpWhitelist::class,
             'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,

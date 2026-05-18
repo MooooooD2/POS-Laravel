@@ -9,6 +9,7 @@ use App\Services\PurchaseOrderService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PurchaseOrderController extends Controller
 {
@@ -25,7 +26,7 @@ class PurchaseOrderController extends Controller
     {
         $request->validate([
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
-            'status'      => 'nullable|in:pending,partial,received,cancelled',
+            'status'      => 'nullable|in:draft,pending,approved,partial,received,cancelled,rejected',
         ]);
 
         return $this->success(['purchase_orders' => $this->poRepo->paginate(
@@ -45,12 +46,83 @@ class PurchaseOrderController extends Controller
         }
     }
 
+    // Submit a draft PO for approval
+    public function submit(PurchaseOrder $purchaseOrder)
+    {
+        $this->authorize('submit', $purchaseOrder);
+
+        if ($purchaseOrder->status !== 'draft') {
+            return $this->error(__('pos.po_not_draft'), 422);
+        }
+
+        $purchaseOrder->update(['status' => 'pending']);
+
+        $this->audit('po.submitted', PurchaseOrder::class, $purchaseOrder->id, [
+            'po_number' => $purchaseOrder->po_number,
+        ]);
+
+        return $this->success(['purchase_order' => $purchaseOrder->fresh()]);
+    }
+
+    // Approve a pending PO
+    public function approve(PurchaseOrder $purchaseOrder)
+    {
+        $this->authorize('approve', $purchaseOrder);
+
+        if ($purchaseOrder->status !== 'pending') {
+            return $this->error(__('pos.po_not_pending'), 422);
+        }
+
+        $purchaseOrder->update([
+            'status'      => 'approved',
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
+        ]);
+
+        $this->audit('po.approved', PurchaseOrder::class, $purchaseOrder->id, [
+            'po_number' => $purchaseOrder->po_number,
+        ]);
+
+        return $this->success(['purchase_order' => $purchaseOrder->fresh()]);
+    }
+
+    // Reject a pending PO with a reason
+    public function reject(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        $this->authorize('approve', $purchaseOrder);
+
+        $data = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        if ($purchaseOrder->status !== 'pending') {
+            return $this->error(__('pos.po_not_pending'), 422);
+        }
+
+        $purchaseOrder->update([
+            'status'           => 'rejected',
+            'rejection_reason' => $data['reason'],
+        ]);
+
+        $this->audit('po.rejected', PurchaseOrder::class, $purchaseOrder->id, [
+            'po_number' => $purchaseOrder->po_number,
+            'reason'    => $data['reason'],
+        ]);
+
+        return $this->success(['purchase_order' => $purchaseOrder->fresh()]);
+    }
+
     public function receive(ReceivePurchaseOrderRequest $request, PurchaseOrder $purchaseOrder)
     {
         $this->authorize('receive', $purchaseOrder);
+
         if (in_array($purchaseOrder->status, ['received', 'cancelled'])) {
             return $this->error(__('pos.po_already_closed'), 422);
         }
+        if ($purchaseOrder->status !== 'approved') {
+            return $this->error(__('pos.po_must_be_approved'), 422);
+        }
+
         try {
             $po = $this->poService->receivePurchaseOrder($purchaseOrder, $request->validated()['items']);
             $this->audit('po.received', PurchaseOrder::class, (int) $po->id);

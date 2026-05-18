@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerGroupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProductController;
@@ -22,6 +23,8 @@ use App\Http\Controllers\UnitController;
 use App\Http\Controllers\TaxCategoryController;
 use App\Http\Controllers\FiscalPeriodController;
 use App\Http\Controllers\BackupMonitorController;
+use App\Http\Controllers\BudgetController;
+use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\FraudDetectionController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WhatsAppController;
@@ -48,6 +51,13 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::get('/customers/{customer}',   [CustomerController::class, 'show'])->name('customers.show');
         Route::put('/customers/{customer}',   [CustomerController::class, 'update'])->name('customers.update');
         Route::delete('/customers/{customer}',[CustomerController::class, 'destroy'])->name('customers.destroy');
+
+        // Customer groups
+        Route::get('/customer-groups',                    [CustomerGroupController::class, 'index'])->name('customer-groups.index');
+        Route::post('/customer-groups',                   [CustomerGroupController::class, 'store'])->middleware('throttle:30,1')->name('customer-groups.store');
+        Route::get('/customer-groups/{customerGroup}',    [CustomerGroupController::class, 'show'])->name('customer-groups.show');
+        Route::put('/customer-groups/{customerGroup}',    [CustomerGroupController::class, 'update'])->name('customer-groups.update');
+        Route::delete('/customer-groups/{customerGroup}', [CustomerGroupController::class, 'destroy'])->name('customer-groups.destroy');
     });
 
     // POS
@@ -56,6 +66,7 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::post('/invoices', [InvoiceController::class, 'createInvoice'])->name('invoices.create');
         Route::get('/invoices', [InvoiceController::class, 'getByNumber'])->name('invoices.by-number');
         Route::get('/invoices/{invoice}/returnable-items', [InvoiceController::class, 'returnableItems'])->name('invoices.returnable-items');
+        Route::post('/invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->middleware('throttle:20,1')->name('invoices.cancel');
 
         // Held Invoices
         Route::get('/held-invoices', [HeldInvoiceController::class, 'active'])->name('held-invoices.active');
@@ -103,6 +114,9 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
         Route::get('/purchase-orders', [PurchaseOrderController::class, 'all'])->name('purchase-orders.all');
         Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->middleware('throttle:20,1')->name('purchase-orders.store');
+        Route::post('/purchase-orders/{purchaseOrder}/submit',  [PurchaseOrderController::class, 'submit'])->name('purchase-orders.submit');
+        Route::post('/purchase-orders/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve'])->middleware('permission:approve_purchase_order')->name('purchase-orders.approve');
+        Route::post('/purchase-orders/{purchaseOrder}/reject',  [PurchaseOrderController::class, 'reject'])->middleware('permission:approve_purchase_order')->name('purchase-orders.reject');
         Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
 
         Route::get('/purchase-returns', [PurchaseReturnController::class, 'all'])->name('purchase-returns.all');
@@ -175,6 +189,26 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::get('/reports/inventory-valuation', [ReportController::class, 'inventoryValuation'])->name('reports.inventory-valuation');
         Route::get('/reports/permissions-audit', [ReportController::class, 'permissionsAudit'])->name('reports.permissions-audit');
         Route::post('/reports/tax', [TaxCategoryController::class, 'report'])->name('reports.tax');
+        Route::post('/reports/inventory-movements', [ReportController::class, 'inventoryMovements'])->name('reports.inventory-movements');
+        Route::get('/reports/aged-receivables', [ReportController::class, 'agedReceivables'])->name('reports.aged-receivables');
+        Route::get('/reports/aged-payables', [ReportController::class, 'agedPayables'])->name('reports.aged-payables');
+        Route::post('/reports/best-selling', [ReportController::class, 'bestSellingProducts'])->name('reports.best-selling');
+        Route::post('/reports/cashier-performance', [ReportController::class, 'cashierPerformance'])->name('reports.cashier-performance');
+        Route::get('/reports/near-expiry', [ReportController::class, 'nearExpiryProducts'])->name('reports.near-expiry');
+
+        // Budget vs actual (item 41)
+        Route::get('/budgets',           [BudgetController::class, 'index'])->name('budgets.index');
+        Route::post('/budgets',          [BudgetController::class, 'upsert'])->name('budgets.upsert');
+        Route::delete('/budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
+        Route::get('/reports/budget-vs-actual', [BudgetController::class, 'report'])->name('reports.budget-vs-actual');
+
+        // Promotions (item 17)
+        Route::get('/promotions',                  [PromotionController::class, 'index'])->name('promotions.index');
+        Route::get('/promotions/active',           [PromotionController::class, 'active'])->name('promotions.active');
+        Route::post('/promotions',                 [PromotionController::class, 'store'])->middleware('throttle:30,1')->name('promotions.store');
+        Route::put('/promotions/{promotion}',      [PromotionController::class, 'update'])->name('promotions.update');
+        Route::delete('/promotions/{promotion}',   [PromotionController::class, 'destroy'])->name('promotions.destroy');
+        Route::post('/promotions/preview',         [PromotionController::class, 'preview'])->name('promotions.preview');
     });
 
     // Backup monitoring (admin)

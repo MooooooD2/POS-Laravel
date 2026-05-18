@@ -140,10 +140,15 @@ class CashRegisterService
             ->groupBy('payment_method')
             ->get()->keyBy('payment_method');
 
-        $returns = SalesReturn::where('processed_by', $session->cashier_id)
+        $returnsQuery = SalesReturn::where('processed_by', $session->cashier_id)
             ->where('status', 'completed')
-            ->whereBetween('return_date', [$from->toDateString(), $to->toDateString()])
-            ->sum('total_amount');
+            ->whereBetween('return_date', [$from->toDateString(), $to->toDateString()]);
+
+        // Total returns for reporting
+        $totalReturns = (float) $returnsQuery->sum('total_amount');
+
+        // Only cash refunds reduce the expected cash balance in the drawer
+        $cashReturns = (float) $returnsQuery->where('refund_method', 'cash')->sum('refund_amount');
 
         $cashSales     = $invoices->get('cash')?->total     ?? 0;
         $cardSales     = $invoices->get('card')?->total     ?? 0;
@@ -156,8 +161,8 @@ class CashRegisterService
             'card_sales'     => $cardSales,
             'transfer_sales' => $transferSales,
             'total_sales'    => $totalSales,
-            'total_returns'  => $returns,
-            'cash_returns'   => $returns,
+            'total_returns'  => $totalReturns,
+            'cash_returns'   => $cashReturns,
             'invoices_count' => $invoicesCount,
         ];
     }

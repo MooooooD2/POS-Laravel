@@ -13,6 +13,7 @@ use App\Policies\AccountPolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\PurchaseOrderPolicy;
+use App\Policies\ReportPolicy;
 use App\Policies\SalesReturnPolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\SupplierPaymentPolicy;
@@ -42,5 +43,16 @@ class AuthServiceProvider extends ServiceProvider
         Gate::before(function (User $user, string $ability): ?bool {
             return $user->hasRole('admin') ? true : null;
         });
+
+        // Report gates (policy-style gates without a bound model)
+        $policy = new ReportPolicy();
+        Gate::define('report.sales',               fn(User $u) => $policy->viewSales($u));
+        Gate::define('report.stock',               fn(User $u) => $policy->viewStock($u));
+        Gate::define('report.returns',             fn(User $u) => $policy->viewReturns($u));
+        Gate::define('report.financial',           fn(User $u) => $policy->viewFinancial($u));
+        Gate::define('report.cashier-performance', fn(User $u) => $policy->viewCashierPerformance($u));
+        Gate::define('report.permissions-audit',   fn(User $u) => $policy->viewPermissionsAudit($u));
+        Gate::define('report.aged',                fn(User $u) => $policy->viewAged($u));
+        Gate::define('report.export',              fn(User $u) => $policy->export($u));
     }
 }

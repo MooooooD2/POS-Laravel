@@ -90,7 +90,10 @@ return [
     'po_status_cancelled' => 'Cancelled',
     'purchase_receipt' => 'Purchase order receipt: :po',
     'po_debt_note' => 'Purchase order debt: :po',
-    'po_already_closed' => 'Purchase order is closed and cannot be received.',
+    'po_already_closed'    => 'Purchase order is closed and cannot be received.',
+    'po_not_draft'         => 'Only draft purchase orders can be submitted for approval.',
+    'po_not_pending'       => 'Only pending purchase orders can be approved or rejected.',
+    'po_must_be_approved'  => 'Purchase order must be approved before receiving.',
 
     // Payments
     'add_payment' => 'Add Payment',
@@ -304,6 +307,8 @@ return [
     'edit_customer'                 => 'Edit Customer',
     'customer_deleted'              => 'Customer deleted successfully.',
     'customer_has_invoices'         => 'Cannot delete customer — they have existing invoices.',
+    'group_deleted'                 => 'Customer group deleted successfully.',
+    'group_has_customers'           => 'Cannot delete group — it has assigned customers.',
     'customer_code'                 => 'Customer Code',
     'customer_type'                 => 'Customer Type',
     'individual'                    => 'Individual',
@@ -392,6 +397,9 @@ return [
     'expense_date'          => 'Expense Date',
     'expense_deleted'       => 'Expense deleted successfully.',
     'uncategorized'         => 'Uncategorized',
+    'general'               => 'General',
+    'budget_deleted'        => 'Budget entry deleted successfully.',
+    'promotion_deleted'     => 'Promotion deleted successfully.',
     'expenses_summary'      => 'Expenses Summary',
     'total_expenses'        => 'Total Expenses',
 

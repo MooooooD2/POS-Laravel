@@ -30,7 +30,8 @@ return new class extends Migration
                 $table->index('entry_date', 'idx_je_entry_date');
             }
             // Composite for postEntry / reversal queries: posted=true within a date range.
-            if (!$this->hasIndex('journal_entries', 'idx_je_posted_date')) {
+            if (Schema::hasColumn('journal_entries', 'is_posted')
+                && !$this->hasIndex('journal_entries', 'idx_je_posted_date')) {
                 $table->index(['is_posted', 'entry_date'], 'idx_je_posted_date');
             }
         });

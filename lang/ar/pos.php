@@ -92,6 +92,9 @@ return [
     'purchase_receipt'             => 'إيصال أمر الشراء: :po',
     'po_debt_note'                 => 'دين أمر شراء رقم :po',
     'po_already_closed'            => 'أمر الشراء مغلق ولا يمكن استلامه.',
+    'po_not_draft'                 => 'يمكن إرسال أوامر الشراء للاعتماد في حالة المسودة فقط.',
+    'po_not_pending'               => 'يمكن اعتماد أو رفض أوامر الشراء المعلقة فقط.',
+    'po_must_be_approved'          => 'يجب اعتماد أمر الشراء قبل الاستلام.',
 
     // Payments
     'add_payment'                  => 'إضافة دفعة',
@@ -109,7 +112,6 @@ return [
     'liability'                    => 'الخصوم',
     'equity'                       => 'حقوق الملكية',
     'revenue'                      => 'الإيرادات',
-    'expense'                      => 'المصروفات',
     'journal_entry'                => 'قيد يومية',
     'debit'                        => 'مدين',
     'credit'                       => 'دائن',
@@ -136,11 +138,9 @@ return [
     'stock_value'                  => 'قيمة المخزون',
 
     // Returns
-    'return_number'                => 'رقم المرتجع',
     'return_reason'                => 'سبب الإرجاع',
     'process_return'               => 'معالجة المرتجع',
     'return_note'                  => 'مرتجع: :ret',
-    'returnable_qty'               => 'الكمية القابلة للإرجاع',
     'returns_report'               => 'تقرير المرتجعات',
     'total_returned'               => 'إجمالي المرتجعات',
     'total_returned_value'         => 'إجمالي قيمة المرتجعات',
@@ -287,6 +287,8 @@ return [
     'edit_customer'                 => 'تعديل عميل',
     'customer_deleted'              => 'تم حذف العميل بنجاح.',
     'customer_has_invoices'         => 'لا يمكن حذف العميل — عليه فواتير سابقة.',
+    'group_deleted'                 => 'تم حذف المجموعة بنجاح.',
+    'group_has_customers'           => 'لا يمكن حذف المجموعة — بها عملاء مرتبطون.',
     'customer_code'                 => 'كود العميل',
     'customer_type'                 => 'نوع العميل',
     'individual'                    => 'فرد',
@@ -298,10 +300,6 @@ return [
     'credit_limit'                  => 'حد الائتمان',
     'balance'                       => 'الرصيد',
     'account_statement'             => 'كشف الحساب',
-    'wa_invoice_queued'             => 'تمت جدولة إرسال الفاتورة عبر واتساب.',
-    'wa_reminder_queued'            => 'تمت جدولة تذكير الدين.',
-    'wa_reminders_queued'           => 'تمت جدولة :count تذكير.',
-    'wa_promotions_queued'          => 'تمت جدولة :count رسالة ترويجية.',
 
     // تسوية الخزينة
     'cash_register_reconciliation'  => 'تسوية الخزينة',
@@ -406,6 +404,9 @@ return [
     'expense_date'          => 'تاريخ المصروف',
     'expense_deleted'       => 'تم حذف المصروف بنجاح.',
     'uncategorized'         => 'بدون فئة',
+    'general'               => 'عام',
+    'budget_deleted'        => 'تم حذف بند الميزانية بنجاح.',
+    'promotion_deleted'     => 'تم حذف العرض الترويجي بنجاح.',
     'expenses_summary'      => 'ملخص المصروفات',
     'total_expenses'        => 'إجمالي المصروفات',
 

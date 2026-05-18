@@ -9,7 +9,7 @@ class Supplier extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['name', 'phone', 'address', 'email'];
+    protected $fillable = ['name', 'phone', 'address', 'email', 'tax_number'];
     protected $hidden   = ['deleted_at'];
 
     public function purchaseOrders() { return $this->hasMany(PurchaseOrder::class); }

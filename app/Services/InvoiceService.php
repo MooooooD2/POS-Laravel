@@ -45,15 +45,29 @@ class InvoiceService
 
             $taxInclusive = (bool) $this->settingRepo->get('tax_inclusive', false);
 
-            // Build per-line data: subtotal + resolved tax rate (from TaxCategory or global fallback)
+            // Resolve customer price level: customer override > group default > retail
+            $priceLevel = 'retail';
+            if (!empty($data['customer_id'])) {
+                $customer = \App\Models\Customer::with('group')
+                    ->find($data['customer_id']);
+                if ($customer) {
+                    $priceLevel = ($customer->price_level !== 'retail')
+                        ? $customer->price_level
+                        : ($customer->group?->price_level ?? 'retail');
+                }
+            }
+
+            // Build per-line data: subtotal + resolved tax rate
             $lineData = [];
             $total    = 0;
             foreach ($data['items'] as $idx => $item) {
-                $product  = $products->get($item['product_id']);
-                $subtotal = $product->price * $item['quantity'];
-                $total   += $subtotal;
+                $product   = $products->get($item['product_id']);
+                $unitPrice = $product->priceFor($priceLevel);
+                $subtotal  = $unitPrice * $item['quantity'];
+                $total    += $subtotal;
                 $lineData[$idx] = [
                     'product_id' => $item['product_id'],
+                    'unit_price' => $unitPrice,
                     'subtotal'   => $subtotal,
                     'tax_rate'   => $this->taxService->resolveRate($product),
                 ];
@@ -179,14 +193,14 @@ class InvoiceService
                     // Distribute per-item tax across batch allocations by qty ratio
                     $totalAllocQty = array_sum(array_column($allocations, 'quantity'));
                     foreach ($allocations as $alloc) {
-                        $qtyRatio   = $totalAllocQty > 0 ? $alloc['quantity'] / $totalAllocQty : 0;
-                        $allocSubtotal = round($product->price * $alloc['quantity'], 2);
+                        $qtyRatio      = $totalAllocQty > 0 ? $alloc['quantity'] / $totalAllocQty : 0;
+                        $allocSubtotal = round($line['unit_price'] * $alloc['quantity'], 2);
                         InvoiceItem::create([
                             'invoice_id'   => $invoice->id,
                             'product_id'   => $product->id,
                             'product_name' => $product->name,
                             'quantity'     => $alloc['quantity'],
-                            'price'        => $product->price,
+                            'price'        => $line['unit_price'],
                             'cost_price'   => $product->avg_cost > 0 ? $product->avg_cost : $product->cost_price,
                             'subtotal'     => $allocSubtotal,
                             'tax_rate'     => $line['tax_rate'],
@@ -196,7 +210,6 @@ class InvoiceService
                         ]);
                     }
                 } else {
-                    // Deduct first: returns actual COGS unit cost (WAC, FIFO, or LIFO)
                     $unitCost = $this->stockService->deductLockedStock(
                         $product, $item['quantity'], 'sale',
                         __('pos.sale_deduction'), $invoice->id, 'invoice', $warehouseId
@@ -207,9 +220,9 @@ class InvoiceService
                         'product_id'   => $product->id,
                         'product_name' => $product->name,
                         'quantity'     => $item['quantity'],
-                        'price'        => $product->price,
+                        'price'        => $line['unit_price'],
                         'cost_price'   => $unitCost > 0 ? $unitCost : ($product->avg_cost > 0 ? $product->avg_cost : $product->cost_price),
-                        'subtotal'     => round($product->price * $item['quantity'], 2),
+                        'subtotal'     => round($line['unit_price'] * $item['quantity'], 2),
                         'tax_rate'     => $line['tax_rate'],
                         'tax_amount'   => $line['tax_amount'],
                         'warehouse_id' => $warehouseId,
@@ -265,6 +278,80 @@ class InvoiceService
         app(\App\Services\WhatsAppService::class)->sendLargeInvoiceAlert($invoice);
 
         return $invoice;
+    }
+
+    public function cancelInvoice(Invoice $invoice): Invoice
+    {
+        return DB::transaction(function () use ($invoice) {
+            $locked = Invoice::with('items.product')->lockForUpdate()->findOrFail($invoice->id);
+
+            if ($locked->status === 'cancelled') {
+                throw new \Exception(__('pos.invoice_already_cancelled'));
+            }
+            if ($locked->status !== 'completed') {
+                throw new \Exception(__('pos.invoice_cannot_be_cancelled'));
+            }
+
+            // Block cancellation if any return exists
+            $hasReturns = \App\Models\SalesReturn::where('invoice_id', $locked->id)
+                ->where('status', 'completed')
+                ->exists();
+            if ($hasReturns) {
+                throw new \Exception(__('pos.invoice_has_returns'));
+            }
+
+            // Restore stock for each item
+            $warehouseId = $locked->warehouse_id ?? null;
+            foreach ($locked->items as $item) {
+                $product = $this->productRepo->findById($item->product_id);
+                if ($product) {
+                    $this->stockService->addStock(
+                        $product,
+                        $item->quantity,
+                        __('pos.invoice_cancelled_note', ['inv' => $locked->invoice_number]),
+                        $locked->id,
+                        'invoice_cancel',
+                        null,
+                        $warehouseId
+                    );
+                }
+            }
+
+            // Reverse loyalty points if redeemed
+            if ($locked->loyalty_points_used > 0 && $locked->customer_id) {
+                $customer = \App\Models\Customer::lockForUpdate()->find($locked->customer_id);
+                if ($customer) {
+                    $customer->increment('loyalty_points', $locked->loyalty_points_used);
+                }
+            }
+
+            // Reverse customer account balance if credit payment
+            if ($locked->customer_id) {
+                $creditAmount = $locked->is_split_payment
+                    ? (float) \App\Models\InvoicePayment::where('invoice_id', $locked->id)
+                        ->where('method', 'credit')->sum('amount')
+                    : ($locked->payment_method === 'credit' ? $locked->final_total : 0.0);
+
+                if ($creditAmount > 0) {
+                    $this->customerService->recordPayment(
+                        \App\Models\Customer::findOrFail($locked->customer_id),
+                        $creditAmount,
+                        'cancellation'
+                    );
+                }
+            }
+
+            $locked->update(['status' => 'cancelled']);
+
+            Log::channel('audit')->info('invoice.cancelled', [
+                'invoice_number' => $locked->invoice_number,
+                'total'          => $locked->final_total,
+                'user_id'        => Auth::id(),
+                'timestamp'      => now()->toIso8601String(),
+            ]);
+
+            return $locked->fresh();
+        });
     }
 
     public function searchProduct(string $query, bool $exact = false): mixed

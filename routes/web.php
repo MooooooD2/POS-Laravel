@@ -56,6 +56,8 @@ Route::middleware(['auth', 'tenancy', '2fa'])->group(function () {
         Route::get('/supplier-accounts', fn() => view('supplier-accounts.index'))->name('supplier-accounts');
         Route::get('/purchase-returns', [PurchaseReturnController::class, 'index'])->name('purchase-returns');
         Route::get('/customers', [CustomerController::class, 'index'])->name('customers');
+        Route::get('/customer-groups', fn() => view('customer-groups.index'))->name('customer-groups');
+        Route::get('/promotions',      fn() => view('promotions.index'))->name('promotions');
     });
     Route::middleware(['permission:view_accounting'])->group(function () {
         Route::get('/accounting', fn() => view('accounting.index'))->name('accounting');
@@ -64,9 +66,12 @@ Route::middleware(['auth', 'tenancy', '2fa'])->group(function () {
     });
     Route::middleware(['permission:view_reports'])->group(function () {
         Route::get('/reports', fn() => view('reports.index'))->name('reports');
-        Route::get('/reports/export/sales',   [ReportController::class, 'exportSales'])->name('reports.export.sales');
-        Route::get('/reports/export/returns', [ReportController::class, 'exportReturns'])->name('reports.export.returns');
-        Route::get('/reports/export/stock',   [ReportController::class, 'exportStock'])->name('reports.export.stock');
+        Route::get('/reports/budget', fn() => view('reports.budget'))->name('reports.budget');
+        Route::middleware('throttle:10,1')->group(function () {
+            Route::get('/reports/export/sales',   [ReportController::class, 'exportSales'])->name('reports.export.sales');
+            Route::get('/reports/export/returns', [ReportController::class, 'exportReturns'])->name('reports.export.returns');
+            Route::get('/reports/export/stock',   [ReportController::class, 'exportStock'])->name('reports.export.stock');
+        });
     });
     Route::middleware(['permission:manage_roles'])->get('/roles', fn() => view('roles.index'))->name('roles');
     Route::middleware(['permission:manage_roles'])->get('/branches', [BranchController::class, 'page'])->name('branches');
