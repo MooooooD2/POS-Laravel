@@ -79,8 +79,16 @@ class RolePermissionSeeder extends Seeder
         $warehouse = Role::firstOrCreate(['name' => 'warehouse', 'guard_name' => $guard]);
         $cashier   = Role::firstOrCreate(['name' => 'cashier',   'guard_name' => $guard]);
 
-        // Admin gets everything
-        $admin->syncPermissions(Permission::all());
+        // Admin gets everything except manage_tenants — that belongs to the master tenant only.
+        // If this IS the master tenant, also grant manage_tenants.
+        $isMaster = config('tenancy.master_tenant') &&
+                    tenancy()->tenant?->id === config('tenancy.master_tenant');
+
+        $adminPerms = Permission::where('name', '!=', 'manage_tenants')->get();
+        if ($isMaster) {
+            $adminPerms = Permission::all();
+        }
+        $admin->syncPermissions($adminPerms);
 
         // Warehouse: full warehouse + POS + returns (no accounting/settings/roles)
         $warehouse->syncPermissions([

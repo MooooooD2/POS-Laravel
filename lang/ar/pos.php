@@ -547,6 +547,28 @@ return [
     'seed_tenant'                     => 'بيانات أولية',
     'seed_tenant_confirm'             => 'إدراج البيانات الافتراضية للمستأجر',
 
+    // إدارة الاشتراكات
+    'total_tenants'              => 'إجمالي المستأجرين',
+    'active_subscriptions'       => 'اشتراكات نشطة',
+    'trial_subscriptions'        => 'في فترة التجربة',
+    'expired_subscriptions'      => 'منتهية / ملغاة',
+    'all_tenants'                => 'جميع المستأجرين',
+    'subscription_status'        => 'الاشتراك',
+    'subscription_ends'          => 'تاريخ الانتهاء',
+    'extend_subscription'        => 'تمديد الاشتراك',
+    'extend_months'              => 'التمديد بـ (أشهر)',
+    'extend'                     => 'تمديد',
+    'months'                     => 'أشهر',
+    'days'                       => 'أيام',
+    'trial_days'                 => 'مدة التجربة',
+    'suspend_subscription'       => 'تعليق الاشتراك',
+    'cancel_subscription'        => 'إلغاء الاشتراك',
+    'subscription_extended'      => 'تم تمديد الاشتراك بنجاح.',
+    'subscription_suspended'     => 'تم تعليق الاشتراك.',
+    'subscription_cancelled'     => 'تم إلغاء الاشتراك.',
+    'suspend_confirm'            => 'تعليق اشتراك',
+    'cancel_subscription_confirm'=> 'إلغاء اشتراك',
+
     // User management
     'add_user'             => 'إضافة مستخدم',
     'edit_user'            => 'تعديل مستخدم',

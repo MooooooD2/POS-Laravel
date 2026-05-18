@@ -542,6 +542,28 @@ return [
     'seed_tenant'                     => 'Seed Data',
     'seed_tenant_confirm'             => 'Seed default data into tenant',
 
+    // Subscription management
+    'total_tenants'              => 'Total Tenants',
+    'active_subscriptions'       => 'Active Subscriptions',
+    'trial_subscriptions'        => 'On Trial',
+    'expired_subscriptions'      => 'Expired / Cancelled',
+    'all_tenants'                => 'All Tenants',
+    'subscription_status'        => 'Subscription',
+    'subscription_ends'          => 'Ends At',
+    'extend_subscription'        => 'Extend Subscription',
+    'extend_months'              => 'Extend by (months)',
+    'extend'                     => 'Extend',
+    'months'                     => 'months',
+    'days'                       => 'days',
+    'trial_days'                 => 'Trial Duration',
+    'suspend_subscription'       => 'Suspend Subscription',
+    'cancel_subscription'        => 'Cancel Subscription',
+    'subscription_extended'      => 'Subscription extended successfully.',
+    'subscription_suspended'     => 'Subscription suspended.',
+    'subscription_cancelled'     => 'Subscription cancelled.',
+    'suspend_confirm'            => 'Suspend subscription for',
+    'cancel_subscription_confirm'=> 'Cancel subscription for',
+
     // User management
     'add_user'             => 'Add User',
     'edit_user'            => 'Edit User',

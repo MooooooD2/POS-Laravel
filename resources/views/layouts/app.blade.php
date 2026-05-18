@@ -174,6 +174,27 @@
             <i class="fas fa-cog"></i> {{ __('pos.settings') }}
         </a>
     @endpermission
+
+    {{-- SaaS Owner panel — master tenant only --}}
+    @php $isMasterTenant = config('tenancy.master_tenant') && tenancy()->tenant?->id === config('tenancy.master_tenant'); @endphp
+    @if($isMasterTenant)
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section-label">{{ app()->getLocale()==='ar' ? 'لوحة المالك' : 'Owner Panel' }}</div>
+        <a href="{{ route('admin.cpanel') }}"
+           class="{{ request()->routeIs('admin.cpanel') ? 'active' : '' }}">
+            <i class="fas fa-gauge-high"></i>
+            {{ app()->getLocale()==='ar' ? 'لوحة التحكم' : 'cPanel' }}
+        </a>
+        <a href="{{ route('admin.tenants') }}"
+           class="{{ request()->routeIs('admin.tenants') ? 'active' : '' }}">
+            <i class="fas fa-layer-group"></i>
+            {{ app()->getLocale()==='ar' ? 'الاشتراكات' : 'Subscriptions' }}
+        </a>
+        <a href="{{ route('roles') }}"
+           class="{{ request()->routeIs('roles') ? 'active' : '' }}">
+            <i class="fas fa-user-shield"></i> {{ __('pos.roles') }}
+        </a>
+    @endif
 </div>
     </nav>
 

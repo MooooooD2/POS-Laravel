@@ -15,6 +15,9 @@ use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
+// ── Landing page ──────────────────────────────────────────────────────────
+Route::get('/welcome', fn() => view('welcome'))->name('welcome');
+
 // ── Auth ──────────────────────────────────────────────────────────────────
 Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login',   [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.post');
@@ -86,12 +89,19 @@ Route::middleware(['auth', 'tenancy', '2fa'])->group(function () {
 
     // ── Tenant management (master-tenant admin only) ───────────────────────
     Route::middleware(['permission:manage_tenants'])->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/tenants',           [TenantController::class, 'index'])->name('tenants');
-        Route::post('/tenants',          [TenantController::class, 'store'])->name('tenants.store');
-        Route::put('/tenants/{id}',      [TenantController::class, 'update'])->name('tenants.update');
-        Route::patch('/tenants/{id}/toggle', [TenantController::class, 'toggle'])->name('tenants.toggle');
-        Route::delete('/tenants/{id}',   [TenantController::class, 'destroy'])->name('tenants.destroy');
-        Route::post('/tenants/{id}/seed', [TenantController::class, 'seed'])->name('tenants.seed');
+        Route::get('/cpanel',                    [TenantController::class, 'cpanel'])->name('cpanel');
+        Route::get('/tenants',                   [TenantController::class, 'index'])->name('tenants');
+        Route::get('/tenants/stats',             [TenantController::class, 'stats'])->name('tenants.stats');
+        Route::post('/tenants',                  [TenantController::class, 'store'])->name('tenants.store');
+        Route::put('/tenants/{id}',              [TenantController::class, 'update'])->name('tenants.update');
+        Route::patch('/tenants/{id}/toggle',     [TenantController::class, 'toggle'])->name('tenants.toggle');
+        Route::delete('/tenants/{id}',           [TenantController::class, 'destroy'])->name('tenants.destroy');
+        Route::post('/tenants/{id}/seed',        [TenantController::class, 'seed'])->name('tenants.seed');
+        Route::post('/tenants/{id}/extend',              [TenantController::class, 'extend'])->name('tenants.extend');
+        Route::patch('/tenants/{id}/suspend',            [TenantController::class, 'suspend'])->name('tenants.suspend');
+        Route::patch('/tenants/{id}/cancel',             [TenantController::class, 'cancelSubscription'])->name('tenants.cancel');
+        Route::get('/tenants/{id}/users',                [TenantController::class, 'tenantUsers'])->name('tenants.users');
+        Route::patch('/tenants/{id}/users/{userId}/toggle', [TenantController::class, 'toggleTenantUser'])->name('tenants.users.toggle');
     });
 });
 

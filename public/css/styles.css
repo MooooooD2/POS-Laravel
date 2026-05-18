@@ -808,3 +808,19 @@ body.rtl .toast-container {
     overflow-y: auto;
     border-radius: 10px;
 }
+
+/* Sidebar owner panel divider & section label */
+.sidebar-divider {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin: 0.5rem 1rem;
+}
+.sidebar-section-label {
+    padding: 0.6rem 1.25rem 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    color: inherit;
+    pointer-events: none;
+}
