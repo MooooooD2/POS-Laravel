@@ -3,7 +3,7 @@
 @section('title', app()->getLocale()==='ar' ? 'لوحة تحكم المالك' : 'Owner cPanel')
 
 @push('styles')
-<style>
+<style @nonce>
     .cpanel-stat-card { border: none; border-radius: 1rem; transition: transform .2s; }
     .cpanel-stat-card:hover { transform: translateY(-3px); }
     .stat-icon { width: 52px; height: 52px; border-radius: .75rem; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
