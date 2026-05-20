@@ -11,7 +11,7 @@
         : 'Full-featured cloud POS system for small and medium businesses. Manage sales, inventory, and accounting in one place.' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Inter:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
@@ -28,19 +28,13 @@
         }
 
         * {
-            font-family: {{ $isAr ? "'Tajawal'" : "'Inter'" }}, sans-serif;
+            font-family: {{ $isAr ? 'Cairo' : 'Inter'}}, sans-serif;
             box-sizing: border-box;
         }
 
-        html { scroll-behavior: smooth; }
+        html { scroll-behavior: smooth; overflow-x: hidden; }
         body { overflow-x: hidden; background: #fff; }
 
-        /* ── Scroll Progress ── */
-        /* #scrollProgress {
-            position: fixed; top: 0; right: 0; width: 0%; height: 3px;
-            background: linear-gradient(90deg, var(--brand), var(--accent));
-            z-index: 9999; transition: width .1s;
-        } */
 
         /* ── Navbar ── */
         .navbar {
@@ -444,7 +438,6 @@
 </head>
 
 <body>
-<div id="scrollProgress"></div>
 
 {{-- ── Navbar ── --}}
 <nav class="navbar navbar-expand-lg sticky-top" id="navbar">
@@ -492,7 +485,7 @@
     <div class="hero-glow-2"></div>
     <div class="container position-relative" style="z-index:2">
         <div class="row align-items-center g-5">
-            <div class="col-lg-5" data-aos="fade-left" data-aos-duration="800">
+            <div class="col-lg-5" data-aos="fade-up" data-aos-duration="800">
                 <div class="hero-badge">
                     <span class="hero-badge-dot"></span>
                     {{ $isAr ? 'متاح الآن · نظام سحابي متكامل' : 'Live Now · Fully Cloud-Based' }}
@@ -548,7 +541,7 @@
             </div>
 
             {{-- POS Mockup --}}
-            <div class="col-lg-7 d-none d-lg-block" data-aos="fade-right" data-aos-duration="900" data-aos-delay="100">
+            <div class="col-lg-7 d-none d-lg-block" data-aos="fade-up" data-aos-duration="900" data-aos-delay="100">
                 <div class="position-relative ps-3">
                     <span class="pos-badge"><i class="fas fa-circle-check me-1"></i>{{ $isAr ? 'فاتورة مكتملة +275 ر.س' : 'Invoice Complete +275 SAR' }}</span>
                     <div class="pos-mockup">
@@ -678,7 +671,7 @@
                     ['2','fa-sliders',   '#00B04E', $isAr ? 'خصّص النظام'      : 'Customize the System',   $isAr ? 'أضف منتجاتك، مستخدميك، وفروعك بضغطات بسيطة.'                                         : 'Add your products, users, and branches with a few simple clicks.'],
                     ['3','fa-rocket',    '#ea580c', $isAr ? 'ابدأ البيع فوراً' : 'Start Selling Now',       $isAr ? 'النظام جاهز للعمل على الحاسب، الجوال، أو الجهاز اللوحي.'                             : 'Works on desktop, mobile, or tablet — right out of the box.'],
                 ] as $j => $step)
-                    <div class="d-flex gap-3 align-items-start mb-4" data-aos="fade-left" data-aos-delay="{{ $j * 150 }}">
+                    <div class="d-flex gap-3 align-items-start mb-4" data-aos="fade-up" data-aos-delay="{{ $j * 150 }}">
                         <div class="step-num flex-shrink-0">{{ $step[0] }}</div>
                         <div class="pt-1">
                             <div style="font-weight:800;color:var(--dark);margin-bottom:.25rem">
@@ -692,7 +685,7 @@
                     @endif
                 @endforeach
             </div>
-            <div class="col-lg-8" data-aos="fade-right" data-aos-delay="100">
+            <div class="col-lg-8" data-aos="fade-up" data-aos-delay="100">
                 <div style="background:linear-gradient(135deg,#081324,#12244E);border-radius:1.5rem;padding:2.5rem;box-shadow:0 30px 80px rgba(0,0,0,.2)">
                     <div class="row g-3">
                         @foreach ([
@@ -997,13 +990,16 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
 <script nonce="{{ app('csp-nonce') }}">
-    AOS.init({ once: true, offset: 60 });
+    AOS.init({
+        once: true,
+        offset: window.innerWidth < 576 ? 20 : 60,
+        duration: window.innerWidth < 576 ? 400 : 600,
+        disable: function () { return window.innerWidth < 480; },
+    });
 
     const navbar = document.getElementById('navbar');
     window.addEventListener('scroll', () => {
         navbar.classList.toggle('scrolled', window.scrollY > 20);
-        const prog = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
-        document.getElementById('scrollProgress').style.width = prog + '%';
         document.getElementById('scrollTop').classList.toggle('show', window.scrollY > 400);
     });
 
