@@ -21,11 +21,11 @@ class TenantSeeder extends Seeder
 {
     public function run(): void
     {
-        // // Only create if no tenants exist yet
-        // if (Tenant::count() > 0) {
-        //     $this->command->info('Tenants already seeded – skipping.');
-        //     return;
-        // }
+        // Only create if no tenants exist yet
+        if (Tenant::count() > 0) {
+            $this->command->info('Tenants already seeded – skipping.');
+            return;
+        }
 
         $tenant = Tenant::create([
             'name'      => 'المتجر الرئيسي',
