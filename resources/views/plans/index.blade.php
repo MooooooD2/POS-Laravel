@@ -111,7 +111,7 @@
                     @foreach($plan->features as $feature)
                     <div class="plan-feature">
                         <i class="fas fa-check-circle fa-sm text-success"></i>
-                        <span>{{ $feature }}</span>
+                        <span>{{ is_array($feature) ? ($isAr ? ($feature['ar'] ?? $feature['en'] ?? '') : ($feature['en'] ?? $feature['ar'] ?? '')) : $feature }}</span>
                     </div>
                     @endforeach
                 </div>
@@ -276,7 +276,9 @@ function editPlan(plan) {
     document.getElementById('pMaxUsers').value   = plan.max_users ?? '';
     document.getElementById('pMaxProducts').value= plan.max_products ?? '';
     document.getElementById('pOrder').value      = plan.sort_order;
-    document.getElementById('pFeatures').value   = Array.isArray(plan.features) ? plan.features.join('\n') : '';
+    document.getElementById('pFeatures').value   = Array.isArray(plan.features)
+        ? plan.features.map(f => typeof f === 'object' ? (isAr ? (f.ar||f.en||'') : (f.en||f.ar||'')) : f).join('\n')
+        : '';
     clearModalAlert();
     planModal.show();
 }
