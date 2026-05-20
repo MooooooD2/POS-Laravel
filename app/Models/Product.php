@@ -31,4 +31,7 @@ class Product extends Model
     public function stockMovements()   { return $this->hasMany(StockMovement::class); }
     public function batches()          { return $this->hasMany(ProductBatch::class); }
     public function warehouseStock()   { return $this->hasMany(WarehouseStock::class); }
+    public function recipe()           { return $this->hasMany(ProductRecipe::class); }
+    public function usedInRecipes()    { return $this->hasMany(ProductRecipe::class, 'ingredient_id'); }
+    public function unitConversion()   { return $this->hasOne(UnitConversion::class); }
 }

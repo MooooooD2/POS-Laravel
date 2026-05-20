@@ -57,6 +57,46 @@
                 </div>
             </div>
 
+            {{-- Cash Drawer Movements --}}
+            <div class="border rounded p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0">
+                        <i class="fas fa-exchange-alt me-2 text-primary"></i>
+                        {{ app()->getLocale() === 'ar' ? 'حركات الخزينة' : 'Cash Drawer Movements' }}
+                    </h6>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="badge bg-info fs-6" id="estimatedBalanceBadge">
+                            {{ app()->getLocale() === 'ar' ? 'الرصيد المقدر: ...' : 'Est. Balance: ...' }}
+                        </span>
+                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#movementModal">
+                            <i class="fas fa-plus me-1"></i>{{ app()->getLocale() === 'ar' ? 'تسجيل حركة' : 'Record Movement' }}
+                        </button>
+                    </div>
+                </div>
+                <div id="movementsListPlaceholder" class="text-muted small text-center py-2">
+                    {{ app()->getLocale() === 'ar' ? 'لا توجد حركات مسجلة في هذه الجلسة.' : 'No movements recorded in this session.' }}
+                </div>
+                <div id="movementsList" class="d-none">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>{{ app()->getLocale() === 'ar' ? 'الوقت' : 'Time' }}</th>
+                                    <th>{{ app()->getLocale() === 'ar' ? 'النوع' : 'Type' }}</th>
+                                    <th class="text-end">{{ app()->getLocale() === 'ar' ? 'المبلغ' : 'Amount' }}</th>
+                                    <th>{{ app()->getLocale() === 'ar' ? 'السبب' : 'Reason' }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="movementsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="lowBalanceAlert" class="alert alert-warning py-2 small d-none mt-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    <span id="lowBalanceMsg"></span>
+                </div>
+            </div>
+
             <div class="border rounded p-3 bg-light">
                 <h6 class="fw-bold mb-3"><i class="fas fa-lock me-2"></i>{{ __('pos.close_reconcile') }}</h6>
                 <div class="row g-3">
@@ -130,6 +170,52 @@
                     <tr><td colspan="10" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Record Cash Movement --}}
+<div class="modal fade" id="movementModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>{{ app()->getLocale() === 'ar' ? 'تسجيل حركة نقدية' : 'Record Cash Movement' }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ app()->getLocale() === 'ar' ? 'نوع الحركة *' : 'Movement Type *' }}</label>
+                    <div class="d-flex gap-2">
+                        <div class="form-check form-check-inline flex-fill">
+                            <input class="form-check-input" type="radio" name="movType" id="movDeposit" value="deposit" checked>
+                            <label class="form-check-label text-success fw-semibold" for="movDeposit">
+                                <i class="fas fa-arrow-down me-1"></i>{{ app()->getLocale() === 'ar' ? 'إيداع (دخول)' : 'Deposit (In)' }}
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline flex-fill">
+                            <input class="form-check-input" type="radio" name="movType" id="movWithdrawal" value="withdrawal">
+                            <label class="form-check-label text-danger fw-semibold" for="movWithdrawal">
+                                <i class="fas fa-arrow-up me-1"></i>{{ app()->getLocale() === 'ar' ? 'سحب (خروج)' : 'Withdrawal (Out)' }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">{{ app()->getLocale() === 'ar' ? 'المبلغ *' : 'Amount *' }}</label>
+                    <input type="number" class="form-control form-control-lg" id="movAmount" step="0.01" min="0.01" placeholder="0.00">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">{{ app()->getLocale() === 'ar' ? 'السبب / الملاحظة' : 'Reason / Note' }}</label>
+                    <input type="text" class="form-control" id="movReason" maxlength="500"
+                        placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: صرف فواتير، إيداع من المبيعات...' : 'e.g. Petty cash, supply purchase...' }}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
+                <button class="btn btn-primary" data-fn="recordMovement">
+                    <i class="fas fa-save me-1"></i>{{ app()->getLocale() === 'ar' ? 'تسجيل' : 'Record' }}
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -229,6 +315,7 @@ function showOpenPanel() {
     const expected = (s.opening_amount||0) + (s.cash_sales||0) - (s.cash_returns||0);
     document.getElementById('expectedCash').textContent = formatCurrency(expected);
     calcDifference();
+    loadSessionMovements();
 }
 
 function showNoSessionPanel() {
@@ -275,6 +362,90 @@ async function closeSession() {
         printShiftReport(res.session);
         loadCurrentSession();
     } else showToast(res.message || _t.error, 'danger');
+}
+
+let sessionMovements = [];
+
+async function loadSessionMovements() {
+    if (!currentSession) return;
+    // Fetch movements from the session movements endpoint — no direct API yet, so track locally
+    renderMovements();
+}
+
+function renderMovements() {
+    const tbody      = document.getElementById('movementsBody');
+    const list       = document.getElementById('movementsList');
+    const placeholder = document.getElementById('movementsListPlaceholder');
+    const isAr       = LOCALE === 'ar';
+
+    if (!sessionMovements.length) {
+        list.classList.add('d-none');
+        placeholder.classList.remove('d-none');
+    } else {
+        list.classList.remove('d-none');
+        placeholder.classList.add('d-none');
+        tbody.innerHTML = sessionMovements.map(m => `
+            <tr>
+                <td class="small">${new Date(m.created_at).toLocaleTimeString()}</td>
+                <td><span class="badge ${m.type === 'deposit' ? 'bg-success' : 'bg-danger'}">
+                    ${m.type === 'deposit' ? (isAr ? 'إيداع' : 'Deposit') : (isAr ? 'سحب' : 'Withdrawal')}
+                </span></td>
+                <td class="text-end fw-semibold ${m.type === 'deposit' ? 'text-success' : 'text-danger'}">
+                    ${m.type === 'deposit' ? '+' : '-'}${formatCurrency(m.amount)}
+                </td>
+                <td class="small text-muted">${m.reason || '—'}</td>
+            </tr>`).join('');
+    }
+
+    // Update estimated balance badge
+    if (currentSession) {
+        const deposits    = sessionMovements.filter(m => m.type === 'deposit').reduce((s, m) => s + m.amount, 0);
+        const withdrawals = sessionMovements.filter(m => m.type === 'withdrawal').reduce((s, m) => s + m.amount, 0);
+        const base        = (currentSession.opening_amount||0) + (currentSession.cash_sales||0) - (currentSession.cash_returns||0);
+        const estimated   = base + deposits - withdrawals;
+        const badge       = document.getElementById('estimatedBalanceBadge');
+        badge.textContent = (isAr ? 'الرصيد المقدر: ' : 'Est. Balance: ') + formatCurrency(estimated);
+        badge.className   = `badge fs-6 ${estimated < 0 ? 'bg-danger' : 'bg-info'}`;
+    }
+}
+
+async function recordMovement() {
+    if (!currentSession) return;
+    const type   = document.querySelector('input[name="movType"]:checked')?.value;
+    const amount = parseFloat(document.getElementById('movAmount').value);
+    const reason = document.getElementById('movReason').value.trim();
+
+    if (!amount || amount <= 0) {
+        showToast('{{ app()->getLocale() === "ar" ? "أدخل مبلغاً صحيحاً" : "Enter a valid amount" }}', 'danger');
+        return;
+    }
+
+    const res = await apiCall(`${CASH_SESSION_BASE_URL}/${currentSession.id}/movements`, 'POST', { type, amount, reason });
+
+    if (res.success) {
+        const movement = res.movement;
+        sessionMovements.push(movement);
+        renderMovements();
+
+        // Show low-balance warnings if returned
+        const warnings = res.warnings || [];
+        const alertEl  = document.getElementById('lowBalanceAlert');
+        const msgEl    = document.getElementById('lowBalanceMsg');
+        if (warnings.length) {
+            msgEl.textContent = warnings.join(' ');
+            alertEl.classList.remove('d-none');
+        } else {
+            alertEl.classList.add('d-none');
+        }
+
+        // Reset form and close modal
+        document.getElementById('movAmount').value = '';
+        document.getElementById('movReason').value = '';
+        bootstrap.Modal.getInstance(document.getElementById('movementModal')).hide();
+        showToast('{{ app()->getLocale() === "ar" ? "تم تسجيل الحركة" : "Movement recorded" }}');
+    } else {
+        showToast(res.message || _t.error, 'danger');
+    }
 }
 
 async function loadHistory() {

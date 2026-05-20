@@ -46,6 +46,16 @@ class SettingsSeeder extends Seeder
             ['key' => 'loyalty_redeem_value','value' => '0.5','type' => 'number',  'group' => 'loyalty', 'label_ar' => 'قيمة النقطة عند الاسترداد',   'label_en' => 'Point Redeem Value (EGP)'],
             ['key' => 'loyalty_min_redeem', 'value' => '100', 'type' => 'number',  'group' => 'loyalty', 'label_ar' => 'الحد الأدنى للنقاط للاسترداد','label_en' => 'Minimum Points to Redeem'],
 
+            // POS extended
+            ['key' => 'allow_cashier_price_change', 'value' => '0',  'type' => 'boolean', 'group' => 'pos',        'label_ar' => 'السماح للكاشير بتغيير السعر', 'label_en' => 'Allow Cashier Price Change'],
+
+            // Accounting - المحاسبة
+            ['key' => 'max_daily_withdrawal',  'value' => '0',    'type' => 'number', 'group' => 'accounting', 'label_ar' => 'الحد الأقصى للسحب اليومي',    'label_en' => 'Max Daily Withdrawal'],
+            ['key' => 'min_cash_balance',      'value' => '0',    'type' => 'number', 'group' => 'accounting', 'label_ar' => 'الحد الأدنى لرصيد الخزينة',   'label_en' => 'Min Cash Balance'],
+            ['key' => 'cash_account_code',     'value' => '1001', 'type' => 'string', 'group' => 'accounting', 'label_ar' => 'كود حساب الخزينة',             'label_en' => 'Cash Account Code'],
+            ['key' => 'revenue_account_code',  'value' => '4001', 'type' => 'string', 'group' => 'accounting', 'label_ar' => 'كود حساب الإيرادات',           'label_en' => 'Revenue Account Code'],
+            ['key' => 'profit_margin_target',  'value' => '0',    'type' => 'number', 'group' => 'accounting', 'label_ar' => 'هدف هامش الربح (%)',           'label_en' => 'Profit Margin Target (%)'],
+
             // Inventory - المخزون
             ['key' => 'inventory_valuation_method', 'value' => 'weighted_average', 'type' => 'string', 'group' => 'inventory', 'label_ar' => 'طريقة تقييم المخزون', 'label_en' => 'Inventory Valuation Method'],
         ];

@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerGroupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HeldInvoiceController;
@@ -62,11 +63,14 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\CheckSubscripti
 
     // POS
     Route::middleware('permission:view_pos')->group(function () {
-        Route::get('/search-product', [InvoiceController::class, 'searchProduct'])->name('products.search');
+        Route::get('/search-product',    [InvoiceController::class, 'searchProduct'])->name('products.search');
+        Route::get('/products/for-cache', [InvoiceController::class, 'productsForCache'])->name('products.for-cache');
+        Route::post('/offline/sync',      [OfflineSyncController::class, 'sync'])->name('offline.sync');
         Route::post('/invoices', [InvoiceController::class, 'createInvoice'])->name('invoices.create');
         Route::get('/invoices', [InvoiceController::class, 'getByNumber'])->name('invoices.by-number');
         Route::get('/invoices/{invoice}/returnable-items', [InvoiceController::class, 'returnableItems'])->name('invoices.returnable-items');
         Route::post('/invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->middleware('throttle:20,1')->name('invoices.cancel');
+        Route::get('/invoices/eta-log', [InvoiceController::class, 'etaSubmissionLog'])->name('invoices.eta-log');
 
         // Held Invoices
         Route::get('/held-invoices', [HeldInvoiceController::class, 'active'])->name('held-invoices.active');
@@ -96,6 +100,11 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\CheckSubscripti
         Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
         Route::post('/products/{product}/add-stock', [ProductController::class, 'addStock'])->middleware('throttle:30,1')->name('products.add-stock');
+        Route::get('/products/{product}/recipe',      [\App\Http\Controllers\RecipeController::class, 'show'])->name('products.recipe.show');
+        Route::post('/products/{product}/recipe',     [\App\Http\Controllers\RecipeController::class, 'sync'])->name('products.recipe.sync');
+        Route::get('/products/{product}/unit-conversion',  [\App\Http\Controllers\UnitConversionController::class, 'show'])->name('products.unit-conversion.show');
+        Route::post('/products/{product}/unit-conversion', [\App\Http\Controllers\UnitConversionController::class, 'upsert'])->name('products.unit-conversion.upsert');
+        Route::delete('/products/{product}/unit-conversion', [\App\Http\Controllers\UnitConversionController::class, 'destroy'])->name('products.unit-conversion.destroy');
 
         // Units — write operations (manage_roles is warehouse-level access)
         Route::post('/units', [UnitController::class, 'store'])->name('units.store');
@@ -137,6 +146,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\CheckSubscripti
         Route::get('/warehouses/{warehouse}/stock', [WarehouseController::class, 'stock'])->name('warehouses.stock');
         Route::post('/warehouses/{warehouse}/adjust-stock', [WarehouseController::class, 'adjustStock'])->name('warehouses.adjust-stock');
         Route::post('/warehouses/{warehouse}/sync-stock', [WarehouseController::class, 'syncStock'])->name('warehouses.sync-stock');
+        Route::post('/warehouses/{warehouse}/toggle-lock', [WarehouseController::class, 'toggleLock'])->name('warehouses.toggle-lock');
 
         // Warehouse Transfers
         Route::get('/warehouse-transfers', [WarehouseController::class, 'transfers'])->name('warehouse-transfers.all');
@@ -189,12 +199,24 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\CheckSubscripti
         Route::get('/reports/inventory-valuation', [ReportController::class, 'inventoryValuation'])->name('reports.inventory-valuation');
         Route::get('/reports/permissions-audit', [ReportController::class, 'permissionsAudit'])->name('reports.permissions-audit');
         Route::post('/reports/tax', [TaxCategoryController::class, 'report'])->name('reports.tax');
+        Route::get('/reports/tax/monthly', [TaxCategoryController::class, 'monthlyReport'])->name('reports.tax.monthly');
+        Route::post('/reports/revenue-monitoring', [ReportController::class, 'revenueMonitoring'])->name('reports.revenue-monitoring');
         Route::post('/reports/inventory-movements', [ReportController::class, 'inventoryMovements'])->name('reports.inventory-movements');
         Route::get('/reports/aged-receivables', [ReportController::class, 'agedReceivables'])->name('reports.aged-receivables');
         Route::get('/reports/aged-payables', [ReportController::class, 'agedPayables'])->name('reports.aged-payables');
         Route::post('/reports/best-selling', [ReportController::class, 'bestSellingProducts'])->name('reports.best-selling');
         Route::post('/reports/cashier-performance', [ReportController::class, 'cashierPerformance'])->name('reports.cashier-performance');
         Route::get('/reports/near-expiry', [ReportController::class, 'nearExpiryProducts'])->name('reports.near-expiry');
+        Route::get('/reports/inventory-turnover', [ReportController::class, 'inventoryTurnover'])->name('reports.inventory-turnover');
+        Route::get('/reports/waste-ratio', [ReportController::class, 'monthlyWasteRatio'])->name('reports.waste-ratio');
+        Route::post('/reports/net-profit',                  [ReportController::class, 'netProfitReport'])->name('reports.net-profit');
+        Route::get('/reports/net-profit/export',            [ReportController::class, 'exportNetProfit'])->name('reports.net-profit.export');
+        Route::post('/reports/profitable-products',         [ReportController::class, 'profitableProducts'])->name('reports.profitable-products');
+        Route::get('/reports/profitable-products/export',   [ReportController::class, 'exportProfitableProducts'])->name('reports.profitable-products.export');
+        Route::post('/reports/weekly-expenses',     [ReportController::class, 'weeklyExpenses'])->name('reports.weekly-expenses');
+        Route::post('/reports/break-even',          [ReportController::class, 'breakEvenReport'])->name('reports.break-even');
+        Route::get('/reports/kpi-dashboard',        [ReportController::class, 'kpiDashboard'])->name('reports.kpi-dashboard');
+        Route::post('/reports/supplier-rating',      [ReportController::class, 'supplierRating'])->name('reports.supplier-rating');
 
         // Budget vs actual (item 41)
         Route::get('/budgets',           [BudgetController::class, 'index'])->name('budgets.index');
@@ -268,6 +290,12 @@ Route::prefix('webhook/whatsapp')->name('webhook.whatsapp.')->group(function () 
 Route::middleware(['auth', 'permission:add_stock', 'throttle:30,1'])->group(function () {
     Route::post('/stock/reconcile', [\App\Http\Controllers\StockReconciliationController::class, 'reconcile'])->name('stock.reconcile');
     Route::get('/stock/audit-trail/{productId}', [\App\Http\Controllers\StockReconciliationController::class, 'auditTrail'])->name('stock.audit-trail');
+});
+
+// Waste / Spoilage Recording
+Route::middleware(['auth', 'permission:add_stock', 'throttle:30,1'])->group(function () {
+    Route::post('/waste',    [\App\Http\Controllers\WasteController::class, 'store'])->name('waste.store');
+    Route::get('/waste',     [\App\Http\Controllers\WasteController::class, 'history'])->name('waste.history');
 });
 
 // ── تسوية الخزينة ──────────────────────────────────────────────────────────

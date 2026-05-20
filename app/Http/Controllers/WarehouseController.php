@@ -134,6 +134,30 @@ class WarehouseController extends Controller
         return response()->json(['success' => true, 'message' => __('pos.stock_adjusted')]);
     }
 
+    public function toggleLock(Warehouse $warehouse): JsonResponse
+    {
+        if ($warehouse->is_locked) {
+            $warehouse->update(['is_locked' => false, 'locked_by' => null, 'locked_at' => null]);
+            $message = __('pos.warehouse_unlocked');
+        } else {
+            $warehouse->update([
+                'is_locked' => true,
+                'locked_by' => auth()->id(),
+                'locked_at' => now(),
+            ]);
+            $message = __('pos.warehouse_locked_success');
+        }
+
+        \Illuminate\Support\Facades\Log::channel('audit')->info('warehouse.lock_toggled', [
+            'warehouse_id' => $warehouse->id,
+            'is_locked'    => $warehouse->is_locked,
+            'user_id'      => auth()->id(),
+            'timestamp'    => now()->toIso8601String(),
+        ]);
+
+        return response()->json(['success' => true, 'is_locked' => $warehouse->is_locked, 'message' => $message]);
+    }
+
     // ── Transfers ────────────────────────────────────────────────────────────
 
     public function transfers(Request $request): JsonResponse

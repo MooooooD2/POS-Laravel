@@ -12,6 +12,7 @@ class ProductResource extends JsonResource
             'name'             => $this->name,
             'price'            => $this->price,
             'cost_price'       => $this->when(auth()->user()?->can('view_accounting'), $this->cost_price),
+            'avg_cost'         => $this->when(auth()->user()?->can('add_stock'), $this->avg_cost > 0 ? $this->avg_cost : $this->cost_price),
             'quantity'         => $this->quantity,
             'min_stock'        => $this->min_stock,
             'barcode'          => $this->barcode,
@@ -21,7 +22,7 @@ class ProductResource extends JsonResource
             'unit_name'        => $this->unit?->name,
             'unit_abbreviation'=> $this->unit?->abbreviation,
             'low_stock'        => $this->low_stock,
-            'created_at'       => $this->created_at->toDateString(),
+            'created_at'       => $this->created_at?->toDateString(),
         ];
     }
 }

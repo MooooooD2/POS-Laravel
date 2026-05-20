@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\PurchaseOrder;
 use App\Models\TaxCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -104,6 +106,72 @@ class TaxCategoryController extends Controller
             'totals'  => [
                 'taxable_amount' => round($rows->sum('taxable_amount'), 2),
                 'tax_collected'  => round($rows->sum('tax_collected'), 2),
+            ],
+        ]);
+    }
+
+    /**
+     * Monthly tax report: tax collected grouped by month for a given year.
+     */
+    public function monthlyReport(Request $request): JsonResponse
+    {
+        $request->validate(['year' => 'required|integer|min:2020|max:2099']);
+        $year = (int) $request->year;
+
+        $rows = InvoiceItem::query()
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->where('invoices.status', 'completed')
+            ->whereYear('invoices.date', $year)
+            ->select(
+                DB::raw('MONTH(invoices.date) AS month'),
+                DB::raw('SUM(invoice_items.subtotal)   AS taxable_amount'),
+                DB::raw('SUM(invoice_items.tax_amount) AS tax_collected'),
+                DB::raw('SUM(invoice_items.subtotal + invoice_items.tax_amount) AS gross_revenue'),
+                DB::raw('COUNT(DISTINCT invoices.id)   AS invoice_count'),
+            )
+            ->groupBy(DB::raw('MONTH(invoices.date)'))
+            ->orderBy('month')
+            ->get()
+            ->keyBy('month');
+
+        // Input tax: VAT paid on received purchase orders grouped by month
+        $poRows = PurchaseOrder::query()
+            ->where('status', 'received')
+            ->whereYear('received_date', $year)
+            ->selectRaw('MONTH(received_date) AS month, SUM(tax_amount) AS input_tax')
+            ->groupByRaw('MONTH(received_date)')
+            ->get()
+            ->keyBy('month');
+
+        $months = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $row       = $rows->get($m);
+            $poRow     = $poRows->get($m);
+            $collected = round((float) ($row->tax_collected ?? 0), 2);
+            $inputTax  = round((float) ($poRow->input_tax  ?? 0), 2);
+            $months[]  = [
+                'month'           => $m,
+                'taxable_amount'  => round((float) ($row->taxable_amount ?? 0), 2),
+                'tax_collected'   => $collected,
+                'input_tax'       => $inputTax,
+                'net_tax_payable' => round($collected - $inputTax, 2),
+                'gross_revenue'   => round((float) ($row->gross_revenue  ?? 0), 2),
+                'invoice_count'   => (int) ($row->invoice_count ?? 0),
+            ];
+        }
+
+        $totalCollected = round(collect($months)->sum('tax_collected'), 2);
+        $totalInputTax  = round(collect($months)->sum('input_tax'), 2);
+
+        return response()->json([
+            'year'   => $year,
+            'months' => $months,
+            'totals' => [
+                'taxable_amount'  => round($rows->sum('taxable_amount'), 2),
+                'tax_collected'   => $totalCollected,
+                'input_tax'       => $totalInputTax,
+                'net_tax_payable' => round($totalCollected - $totalInputTax, 2),
+                'gross_revenue'   => round($rows->sum('gross_revenue'), 2),
             ],
         ]);
     }

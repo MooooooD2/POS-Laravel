@@ -8,7 +8,8 @@ class Invoice extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'invoice_number', 'total', 'discount', 'loyalty_points_used', 'loyalty_discount',
+        'invoice_number', 'offline_uuid',
+        'total', 'discount', 'loyalty_points_used', 'loyalty_discount',
         'tax_rate', 'tax_amount', 'final_total',
         'cash_received', 'change_amount',
         'payment_method', 'is_split_payment',

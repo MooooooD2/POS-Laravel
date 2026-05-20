@@ -60,6 +60,9 @@ Route::middleware(['auth', 'tenancy'])->group(function () {
     })->name('subscribe');
 });
 
+// ── Impersonate leave — only auth+tenancy; no 2FA/subscription gate needed ──
+Route::middleware(['auth', 'tenancy'])->post('/impersonate/leave', [ImpersonateController::class, 'leave'])->name('impersonate.leave');
+
 // ── Authenticated web views ───────────────────────────────────────────────
 Route::middleware(['auth', 'tenancy', '2fa', \App\Http\Middleware\CheckSubscriptionActive::class])->group(function () {
     Route::get('/session-info', [AuthController::class, 'sessionInfo'])->name('session.info');
@@ -74,6 +77,7 @@ Route::middleware(['auth', 'tenancy', '2fa', \App\Http\Middleware\CheckSubscript
     Route::middleware(['permission:view_warehouse'])->group(function () {
         Route::get('/warehouse', fn() => view('warehouse.index'))->name('warehouse');
         Route::get('/warehouses', [WarehouseController::class, 'page'])->name('warehouses');
+        Route::get('/waste', [\App\Http\Controllers\WasteController::class, 'index'])->name('waste');
         Route::get('/suppliers', fn() => view('suppliers.index'))->name('suppliers');
         Route::get('/purchase-orders', fn() => view('purchase-orders.index'))->name('purchase-orders');
         Route::get('/supplier-payments', fn() => view('supplier-payments.index'))->name('supplier-payments');
@@ -102,8 +106,6 @@ Route::middleware(['auth', 'tenancy', '2fa', \App\Http\Middleware\CheckSubscript
     Route::middleware(['permission:manage_roles'])->get('/whatsapp', fn() => view('whatsapp.index'))->name('whatsapp');
 
     // ── Impersonation ─────────────────────────────────────────────────────
-    // leave must come before {user} so "leave" is not treated as a User ID
-    Route::post('/impersonate/leave', [ImpersonateController::class, 'leave'])->name('impersonate.leave');
     Route::middleware(['permission:manage_roles'])->group(function () {
         Route::post('/impersonate/{user}', [ImpersonateController::class, 'start'])->name('impersonate.start');
     });

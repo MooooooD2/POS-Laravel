@@ -13,6 +13,12 @@ class SettingService
         'invoice_prefix', 'invoice_footer', 'invoice_header', 'invoice_notes',
         'show_tax_invoice', 'auto_print', 'receipt_copies',
         'default_payment', 'pos_sound', 'low_stock_alert', 'allow_negative_stock',
+        'max_discount_percent', 'allow_cashier_price_change',
+        'max_daily_withdrawal', 'min_cash_balance', 'cash_account_code',
+        'revenue_account_code', 'profit_margin_target',
+        'loyalty_enabled', 'loyalty_earn_rate', 'loyalty_redeem_value', 'loyalty_min_redeem',
+        'inventory_valuation_method',
+        'ip_whitelist', 'company_tax_number',
     ];
 
     public function __construct(private SettingRepositoryInterface $settingRepo) {}

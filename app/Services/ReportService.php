@@ -556,10 +556,10 @@ class ReportService
         }
 
         return [
-            'year'    => $year,
-            'month'   => $month,
-            'rows'    => $rows,
-            'totals'  => [
+            'year'   => $year,
+            'month'  => $month,
+            'rows'   => $rows,
+            'totals' => [
                 'revenue' => [
                     'budget' => round(collect($rows)->sum('revenue.budget'), 2),
                     'actual' => round(collect($rows)->sum('revenue.actual'), 2),
@@ -569,6 +569,447 @@ class ReportService
                     'actual' => round(collect($rows)->sum('expenses.actual'), 2),
                 ],
             ],
+        ];
+    }
+
+    /**
+     * Item 7: معدل دوران المخزون لكل منتج خلال فترة
+     * Inventory Turnover = COGS_sold / avg_stock_value
+     */
+    public function inventoryTurnover(string $start, string $end): array
+    {
+        $end .= ' 23:59:59';
+
+        $sold = DB::table('invoice_items')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->where('invoices.status', 'completed')
+            ->whereBetween('invoices.date', [$start, $end])
+            ->selectRaw('
+                invoice_items.product_id,
+                SUM(invoice_items.quantity)                        AS units_sold,
+                SUM(invoice_items.quantity * invoice_items.cost_price) AS cogs
+            ')
+            ->groupBy('invoice_items.product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $products = DB::table('products')
+            ->whereIn('id', $sold->keys())
+            ->select('id', 'name', 'quantity', 'avg_cost', 'cost_price')
+            ->get();
+
+        $rows = $products->map(function ($p) use ($sold) {
+            $s         = $sold[$p->id];
+            $cogs      = (float) $s->cogs;
+            $unitCost  = $p->avg_cost > 0 ? $p->avg_cost : $p->cost_price;
+            $stockVal  = $p->quantity * $unitCost;
+            $turnover  = $stockVal > 0 ? round($cogs / $stockVal, 2) : null;
+            return [
+                'product_id'    => $p->id,
+                'product_name'  => $p->name,
+                'units_sold'    => (int) $s->units_sold,
+                'cogs'          => round($cogs, 2),
+                'current_stock' => $p->quantity,
+                'stock_value'   => round($stockVal, 2),
+                'turnover_rate' => $turnover,
+            ];
+        })->sortByDesc('turnover_rate')->values()->toArray();
+
+        return ['start' => $start, 'end' => $end, 'rows' => $rows];
+    }
+
+    // ── Section 5 additions ────────────────────────────────────────────────────
+
+    /**
+     * Net profit: revenue - COGS - operating expenses, with prior-period comparison.
+     */
+    public function netProfitReport(string $start, string $end): array
+    {
+        $current  = $this->netProfitData($start, $end);
+        $days     = \Carbon\Carbon::parse($start)->diffInDays(\Carbon\Carbon::parse($end)) + 1;
+        $prevEnd  = \Carbon\Carbon::parse($start)->subDay()->toDateString();
+        $prevStart= \Carbon\Carbon::parse($prevEnd)->subDays($days - 1)->toDateString();
+        $previous = $this->netProfitData($prevStart, $prevEnd);
+
+        $pct = fn($cur, $prev) => $prev != 0 ? round(($cur - $prev) / abs($prev) * 100, 1) : null;
+
+        $marginTarget = (float) \App\Models\Setting::get('profit_margin_target', 0);
+
+        return array_merge($current, [
+            'start_date'        => $start,
+            'end_date'          => $end,
+            'margin_target_pct' => $marginTarget,
+            'below_target'      => $marginTarget > 0 && $current['gross_margin_pct'] < $marginTarget,
+            'comparison' => [
+                'prev_start_date'       => $prevStart,
+                'prev_end_date'         => $prevEnd,
+                'prev_net_sales'        => $previous['net_sales'],
+                'prev_cogs'             => $previous['cogs'],
+                'prev_gross_profit'     => $previous['gross_profit'],
+                'prev_operating_expenses' => $previous['operating_expenses'],
+                'prev_net_profit'       => $previous['net_profit'],
+                'prev_gross_margin_pct' => $previous['gross_margin_pct'],
+                'net_sales_change_pct'        => $pct($current['net_sales'],    $previous['net_sales']),
+                'cogs_change_pct'             => $pct($current['cogs'],         $previous['cogs']),
+                'gross_profit_change_pct'     => $pct($current['gross_profit'], $previous['gross_profit']),
+                'operating_expenses_change_pct' => $pct($current['operating_expenses'], $previous['operating_expenses']),
+                'net_profit_change_pct'       => $pct($current['net_profit'],   $previous['net_profit']),
+            ],
+        ]);
+    }
+
+    private function netProfitData(string $start, string $end): array
+    {
+        $inv = DB::table('invoices')
+            ->where('status', 'completed')
+            ->whereBetween('date', [$start, $end])
+            ->selectRaw('SUM(total) AS gross_sales, SUM(discount) AS discounts, SUM(tax_amount) AS tax, SUM(final_total) AS net_sales, COUNT(*) AS invoice_count')
+            ->first();
+
+        $cogs = (float) DB::table('invoice_items')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->where('invoices.status', 'completed')
+            ->whereBetween('invoices.date', [$start, $end])
+            ->selectRaw('SUM(invoice_items.quantity * invoice_items.cost_price) AS cogs')
+            ->value('cogs');
+
+        $returns  = (float) DB::table('sales_returns')->where('status', 'completed')->whereBetween('return_date', [$start, $end])->sum('total_amount');
+        $expenses = (float) DB::table('expenses')->whereBetween('expense_date', [$start, $end])->sum('amount');
+
+        $grossSales = round((float) ($inv->gross_sales ?? 0), 2);
+        $discounts  = round((float) ($inv->discounts  ?? 0), 2);
+        $tax        = round((float) ($inv->tax        ?? 0), 2);
+        $netSales   = round((float) ($inv->net_sales  ?? 0), 2);
+        $cogs       = round($cogs, 2);
+        $returns    = round($returns, 2);
+        $expenses   = round($expenses, 2);
+
+        $netRevenue     = round($netSales - $returns, 2);
+        $netRevExTax    = round($netRevenue - $tax, 2);
+        $grossProfit    = round($netRevExTax - $cogs, 2);
+        $netProfit      = round($grossProfit - $expenses, 2);
+        $grossMarginPct = $netRevExTax > 0 ? round($grossProfit / $netRevExTax * 100, 2) : 0.0;
+        $netMarginPct   = $netRevenue  > 0 ? round($netProfit   / $netRevenue  * 100, 2) : 0.0;
+
+        return [
+            'invoice_count'      => (int) ($inv->invoice_count ?? 0),
+            'gross_sales'        => $grossSales,
+            'discounts'          => $discounts,
+            'tax'                => $tax,
+            'net_sales'          => $netSales,
+            'returns'            => $returns,
+            'net_revenue'        => $netRevenue,
+            'cogs'               => $cogs,
+            'gross_profit'       => $grossProfit,
+            'operating_expenses' => $expenses,
+            'net_profit'         => $netProfit,
+            'gross_margin_pct'   => $grossMarginPct,
+            'net_margin_pct'     => $netMarginPct,
+        ];
+    }
+
+    /**
+     * Products sorted by gross profit margin (highest first).
+     */
+    public function profitableProductsByMargin(string $start, string $end, int $limit = 20): array
+    {
+        $rows = DB::table('invoice_items')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->leftJoin('products', 'products.id', '=', 'invoice_items.product_id')
+            ->where('invoices.status', 'completed')
+            ->whereBetween('invoices.date', [$start, $end])
+            ->selectRaw('
+                invoice_items.product_id,
+                invoice_items.product_name,
+                products.category,
+                products.barcode,
+                SUM(invoice_items.quantity)                                            AS total_qty,
+                SUM(invoice_items.subtotal)                                            AS total_revenue,
+                SUM(invoice_items.quantity * invoice_items.cost_price)                 AS total_cost,
+                SUM(invoice_items.subtotal) - SUM(invoice_items.quantity * invoice_items.cost_price) AS gross_profit
+            ')
+            ->groupBy('invoice_items.product_id', 'invoice_items.product_name', 'products.category', 'products.barcode')
+            ->having('total_revenue', '>', 0)
+            ->get()
+            ->map(function ($r) {
+                $r->profit_margin = round((float) $r->gross_profit / (float) $r->total_revenue * 100, 2);
+                $r->total_revenue = round((float) $r->total_revenue, 2);
+                $r->total_cost    = round((float) $r->total_cost, 2);
+                $r->gross_profit  = round((float) $r->gross_profit, 2);
+                $r->total_qty     = (int) $r->total_qty;
+                return $r;
+            })
+            ->sortByDesc('profit_margin')
+            ->take($limit)
+            ->values();
+
+        return [
+            'products'   => $rows,
+            'start_date' => $start,
+            'end_date'   => $end,
+        ];
+    }
+
+    /**
+     * Weekly operational expenses grouped by week and category.
+     */
+    public function weeklyExpenses(string $start, string $end): array
+    {
+        $rows = DB::table('expenses')
+            ->leftJoin('expense_categories', 'expense_categories.id', '=', 'expenses.category_id')
+            ->whereBetween('expense_date', [$start, $end])
+            ->selectRaw("
+                YEARWEEK(expense_date, 1)   AS week_key,
+                MIN(expense_date)           AS week_start,
+                expense_categories.name     AS category,
+                SUM(amount)                 AS total,
+                COUNT(*)                    AS expense_count
+            ")
+            ->groupByRaw("YEARWEEK(expense_date, 1), expense_categories.name")
+            ->orderBy('week_key')
+            ->get();
+
+        $weeks = $rows->groupBy('week_key')->map(fn($g) => [
+            'week_key'    => $g->first()->week_key,
+            'week_start'  => $g->first()->week_start,
+            'total'       => round((float) $g->sum('total'), 2),
+            'by_category' => $g->map(fn($r) => [
+                'category' => $r->category ?? 'غير مصنف',
+                'total'    => round((float) $r->total, 2),
+                'count'    => (int) $r->expense_count,
+            ])->values(),
+        ])->values();
+
+        $byCategory = $rows->groupBy('category')->map(fn($g, $cat) => [
+            'category' => $cat ?? 'غير مصنف',
+            'total'    => round((float) $g->sum('total'), 2),
+            'count'    => (int) $g->sum('expense_count'),
+        ])->sortByDesc('total')->values();
+
+        return [
+            'start_date'  => $start,
+            'end_date'    => $end,
+            'weeks'       => $weeks,
+            'by_category' => $byCategory,
+            'total'       => round((float) $rows->sum('total'), 2),
+        ];
+    }
+
+    /**
+     * Break-even: fixed costs / contribution margin ratio.
+     */
+    public function breakEvenReport(string $start, string $end): array
+    {
+        $inv = DB::table('invoices')
+            ->where('status', 'completed')
+            ->whereBetween('date', [$start, $end])
+            ->selectRaw('SUM(final_total) AS revenue, SUM(tax_amount) AS tax, COUNT(*) AS count, AVG(final_total) AS avg_order')
+            ->first();
+
+        $cogs = (float) DB::table('invoice_items')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->where('invoices.status', 'completed')
+            ->whereBetween('invoices.date', [$start, $end])
+            ->selectRaw('SUM(invoice_items.quantity * invoice_items.cost_price) AS cogs')
+            ->value('cogs');
+
+        $fixedCosts = (float) DB::table('expenses')
+            ->whereBetween('expense_date', [$start, $end])
+            ->sum('amount');
+
+        $revenue      = round((float) ($inv->revenue ?? 0), 2);
+        $tax          = round((float) ($inv->tax ?? 0), 2);
+        $cogs         = round($cogs, 2);
+        $fixed        = round($fixedCosts, 2);
+        $revenueExTax = max(0.0, $revenue - $tax);
+
+        $vcRatio  = $revenueExTax > 0 ? $cogs / $revenueExTax : 0;
+        $cmRatio  = 1 - $vcRatio;
+        $beRev    = $cmRatio > 0 ? round($fixed / $cmRatio, 2) : null;
+
+        $days = max(1, \Carbon\Carbon::parse($start)->diffInDays(\Carbon\Carbon::parse($end)) + 1);
+        $dailyBE   = $beRev !== null ? round($beRev / $days, 2) : null;
+        $avgOrder  = round((float) ($inv->avg_order ?? 0), 2);
+        $beOrders  = ($beRev !== null && $avgOrder > 0) ? (int) ceil($beRev / $avgOrder) : null;
+
+        return [
+            'start_date'                    => $start,
+            'end_date'                      => $end,
+            'period_days'                   => $days,
+            'revenue'                       => $revenue,
+            'revenue_ex_tax'                => round($revenueExTax, 2),
+            'cogs'                          => $cogs,
+            'fixed_costs'                   => $fixed,
+            'variable_cost_ratio_pct'       => round($vcRatio * 100, 2),
+            'contribution_margin_ratio_pct' => round($cmRatio * 100, 2),
+            'break_even_revenue'            => $beRev,
+            'daily_break_even'              => $dailyBE,
+            'break_even_orders'             => $beOrders,
+            'avg_order_value'               => $avgOrder,
+            'invoice_count'                 => (int) ($inv->count ?? 0),
+            'is_profitable'                 => $beRev !== null && $revenue >= $beRev,
+            'margin_of_safety'              => $beRev !== null ? round($revenue - $beRev, 2) : null,
+        ];
+    }
+
+    /**
+     * Real-time KPI dashboard for a given date (defaults to today).
+     */
+    public function kpiDashboard(?string $date = null): array
+    {
+        $date       = $date ?? now()->toDateString();
+        $monthStart = now()->startOfMonth()->toDateString();
+
+        $today = DB::table('invoices')
+            ->where('status', 'completed')
+            ->whereBetween('date', [$date, $date])
+            ->selectRaw('COUNT(*) as cnt, SUM(final_total) as revenue, AVG(final_total) as avg_val, SUM(tax_amount) as tax')
+            ->first();
+
+        $month = DB::table('invoices')
+            ->where('status', 'completed')
+            ->whereBetween('date', [$monthStart, $date])
+            ->selectRaw('COUNT(*) as cnt, SUM(final_total) as revenue, AVG(final_total) as avg_val')
+            ->first();
+
+        $todayCogs = (float) DB::table('invoice_items')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->where('invoices.status', 'completed')
+            ->whereBetween('invoices.date', [$date, $date])
+            ->selectRaw('SUM(invoice_items.quantity * invoice_items.cost_price) AS cogs')
+            ->value('cogs');
+
+        $todayExpenses = (float) DB::table('expenses')->where('expense_date', $date)->sum('amount');
+        $todayReturns  = (float) DB::table('sales_returns')->where('status', 'completed')->where('return_date', $date)->sum('total_amount');
+
+        $lowStock    = DB::table('products')->whereColumn('quantity', '<=', 'min_stock')->where('quantity', '>', 0)->count();
+        $outOfStock  = DB::table('products')->where('quantity', '<=', 0)->count();
+
+        $rev   = round((float) ($today->revenue ?? 0), 2);
+        $cogs  = round($todayCogs, 2);
+        $gross = round($rev - $cogs, 2);
+        $net   = round($gross - $todayExpenses, 2);
+        $pct   = $rev > 0 ? round($gross / $rev * 100, 2) : 0;
+
+        $marginTarget = (float) \App\Models\Setting::get('profit_margin_target', 0);
+
+        return [
+            'date'         => $date,
+            'today'        => [
+                'revenue'          => $rev,
+                'invoice_count'    => (int) ($today->cnt ?? 0),
+                'avg_invoice'      => round((float) ($today->avg_val ?? 0), 2),
+                'cogs'             => $cogs,
+                'gross_profit'     => $gross,
+                'expenses'         => round($todayExpenses, 2),
+                'net_profit'       => $net,
+                'returns'          => round($todayReturns, 2),
+                'tax_collected'    => round((float) ($today->tax ?? 0), 2),
+                'gross_margin_pct' => $pct,
+            ],
+            'month'        => [
+                'revenue'       => round((float) ($month->revenue ?? 0), 2),
+                'invoice_count' => (int) ($month->cnt ?? 0),
+                'avg_invoice'   => round((float) ($month->avg_val ?? 0), 2),
+            ],
+            'alerts'       => [
+                'low_stock_count'    => $lowStock,
+                'out_of_stock_count' => $outOfStock,
+                'below_margin_target'=> $marginTarget > 0 && $pct < $marginTarget,
+                'margin_target_pct'  => $marginTarget,
+            ],
+        ];
+    }
+
+    /**
+     * Item 8: نسبة الهدر الشهري = قيمة الهالك / إجمالي المشتريات
+     * Monthly Waste Ratio Report
+     */
+    public function monthlyWasteRatio(int $year): array
+    {
+        $wasteByMonth = DB::table('waste_records')
+            ->selectRaw('MONTH(created_at) AS month, SUM(total_value) AS waste_value')
+            ->whereYear('created_at', $year)
+            ->groupByRaw('MONTH(created_at)')
+            ->pluck('waste_value', 'month');
+
+        $purchasesByMonth = DB::table('purchase_orders')
+            ->selectRaw('MONTH(order_date) AS month, SUM(total_amount) AS purchase_value')
+            ->where('status', 'received')
+            ->whereYear('order_date', $year)
+            ->groupByRaw('MONTH(order_date)')
+            ->pluck('purchase_value', 'month');
+
+        $rows = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $waste     = (float) ($wasteByMonth[$m] ?? 0);
+            $purchases = (float) ($purchasesByMonth[$m] ?? 0);
+            $rows[] = [
+                'month'          => $m,
+                'waste_value'    => round($waste, 2),
+                'purchase_value' => round($purchases, 2),
+                'waste_ratio_pct'=> $purchases > 0 ? round($waste / $purchases * 100, 2) : null,
+            ];
+        }
+
+        return [
+            'year'            => $year,
+            'rows'            => $rows,
+            'total_waste'     => round($wasteByMonth->sum(), 2),
+            'total_purchases' => round($purchasesByMonth->sum(), 2),
+        ];
+    }
+
+    /**
+     * Supplier rating: on-time delivery rate, average lead time, PO counts.
+     * On-time = received_date <= expected_date (only POs that have both dates).
+     */
+    public function supplierRatingReport(string $start, string $end): array
+    {
+        $rows = DB::table('purchase_orders')
+            ->join('suppliers', 'suppliers.id', '=', 'purchase_orders.supplier_id')
+            ->whereBetween('purchase_orders.order_date', [$start, $end])
+            ->selectRaw("
+                purchase_orders.supplier_id,
+                suppliers.name                              AS supplier_name,
+                COUNT(*)                                    AS total_pos,
+                SUM(CASE WHEN purchase_orders.status = 'received'  THEN 1 ELSE 0 END)  AS received_count,
+                SUM(CASE WHEN purchase_orders.status = 'cancelled' THEN 1 ELSE 0 END)  AS cancelled_count,
+                SUM(CASE WHEN purchase_orders.status = 'received'
+                          AND purchase_orders.expected_date IS NOT NULL
+                          AND purchase_orders.received_date <= purchase_orders.expected_date
+                          THEN 1 ELSE 0 END)                AS on_time_count,
+                SUM(CASE WHEN purchase_orders.status = 'received'
+                          AND purchase_orders.expected_date IS NOT NULL
+                          THEN 1 ELSE 0 END)                AS with_deadline_count,
+                AVG(CASE WHEN purchase_orders.status = 'received' AND purchase_orders.received_date IS NOT NULL
+                          THEN DATEDIFF(purchase_orders.received_date, purchase_orders.order_date)
+                          END)                              AS avg_lead_days,
+                SUM(CASE WHEN purchase_orders.status = 'received' THEN purchase_orders.total_amount ELSE 0 END) AS total_value
+            ")
+            ->groupBy('purchase_orders.supplier_id', 'suppliers.name')
+            ->orderByDesc('total_value')
+            ->get()
+            ->map(function ($r) {
+                $onTimePct = $r->with_deadline_count > 0
+                    ? round($r->on_time_count / $r->with_deadline_count * 100, 1)
+                    : null;
+                return [
+                    'supplier_id'      => $r->supplier_id,
+                    'supplier_name'    => $r->supplier_name,
+                    'total_pos'        => (int) $r->total_pos,
+                    'received_count'   => (int) $r->received_count,
+                    'cancelled_count'  => (int) $r->cancelled_count,
+                    'on_time_pct'      => $onTimePct,
+                    'avg_lead_days'    => $r->avg_lead_days !== null ? round((float) $r->avg_lead_days, 1) : null,
+                    'total_value'      => round((float) $r->total_value, 2),
+                ];
+            });
+
+        return [
+            'start_date' => $start,
+            'end_date'   => $end,
+            'suppliers'  => $rows->values(),
         ];
     }
 }

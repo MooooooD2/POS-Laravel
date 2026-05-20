@@ -76,7 +76,7 @@ class CashRegisterController extends Controller
         $session = CashRegisterSession::findOrFail($id);
 
         try {
-            $movement = $this->cashRegisterService->recordMovement(
+            ['movement' => $movement, 'warnings' => $warnings] = $this->cashRegisterService->recordMovement(
                 $session,
                 $request->type,
                 (float) $request->amount,
@@ -91,7 +91,7 @@ class CashRegisterController extends Controller
             'amount' => $request->amount,
         ]);
 
-        return $this->success(['movement' => $movement], '', 201);
+        return $this->success(['movement' => $movement, 'warnings' => $warnings], '', 201);
     }
 
     public function history(Request $request)

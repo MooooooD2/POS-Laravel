@@ -29,6 +29,15 @@ class InvoiceController extends Controller
         return view('pos.index', compact('settings', 'waEnabled'));
     }
 
+    public function productsForCache()
+    {
+        $products = \App\Models\Product::query()
+            ->where('is_active', true)
+            ->with('unit')
+            ->get();
+        return $this->success(['products' => ProductResource::collection($products)]);
+    }
+
     public function searchProduct(Request $request)
     {
         $request->validate(['query' => 'required|string|min:1|max:100', 'exact' => 'nullable|boolean']);
@@ -97,5 +106,38 @@ class InvoiceController extends Controller
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
+    }
+
+    /**
+     * ETA submission log: paginated list of invoices with their ETA status.
+     * Used for the invoice submission log / immutable archive view.
+     */
+    public function etaSubmissionLog(Request $request)
+    {
+        $request->validate([
+            'status'     => 'nullable|in:pending,submitted,valid,invalid,cancelled,rejected',
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'per_page'   => 'nullable|integer|min:10|max:100',
+        ]);
+
+        $query = Invoice::query()
+            ->select('id', 'invoice_number', 'final_total', 'tax_amount', 'status',
+                     'eta_status', 'eta_uuid', 'eta_submitted_at', 'date', 'cashier_name')
+            ->orderByDesc('date');
+
+        if ($request->filled('status')) {
+            $query->where('eta_status', $request->status);
+        }
+        if ($request->filled('start_date')) {
+            $query->whereDate('date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('date', '<=', $request->end_date);
+        }
+
+        $perPage = (int) ($request->per_page ?? 50);
+
+        return response()->json($query->paginate($perPage));
     }
 }

@@ -33,16 +33,32 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         $query = trim(strip_tags($query));
         if (!$query) return collect();
 
+        // Exclude batch-tracked products whose every batch is expired (no active batch left)
+        $hasActiveBatch = fn($q) => $q->whereNot(function ($sub) {
+            $sub->where('track_batches', true)
+                ->whereDoesntHave('batches', fn($b) => $b->active());
+        });
+
         if ($exact) {
-            return Product::with('unit:id,name,abbreviation')->where('barcode', $query)->where('quantity', '>', 0)->first();
+            return Product::with('unit:id,name,abbreviation')
+                ->where('barcode', $query)
+                ->where('quantity', '>', 0)
+                ->tap($hasActiveBatch)
+                ->first();
         }
 
-        $exactMatch = Product::with('unit:id,name,abbreviation')->where('barcode', $query)->first();
+        $exactMatch = Product::with('unit:id,name,abbreviation')
+            ->where('barcode', $query)
+            ->tap($hasActiveBatch)
+            ->first();
         if ($exactMatch) return collect([$exactMatch]);
 
         return Product::with('unit:id,name,abbreviation')
-            ->where('name', 'like', '%' . $query . '%')
-            ->orWhere('barcode', 'like', '%' . $query . '%')
+            ->where(fn($q) => $q
+                ->where('name', 'like', '%' . $query . '%')
+                ->orWhere('barcode', 'like', '%' . $query . '%')
+            )
+            ->tap($hasActiveBatch)
             ->orderByDesc('quantity')
             ->limit(10)
             ->get();

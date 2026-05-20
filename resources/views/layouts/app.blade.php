@@ -9,6 +9,10 @@
     <meta name="csp-nonce" content="{{ app('csp-nonce') ?? '' }}">
     <title>@yield('title', __('pos.app_name'))</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     {{-- Remove default favicon / No icon --}}
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' dominant-baseline='middle' font-size='80'>🏪</text></svg>">
@@ -132,6 +136,9 @@
         <a href="{{ route('promotions') }}" class="{{ request()->routeIs('promotions') ? 'active' : '' }}">
             <i class="fas fa-percent"></i> {{ app()->getLocale()==='ar' ? 'العروض الترويجية' : 'Promotions' }}
         </a>
+        <a href="{{ route('waste') }}" class="{{ request()->routeIs('waste') ? 'active' : '' }}">
+            <i class="fas fa-trash-alt"></i> {{ __('pos.waste_recording') }}
+        </a>
     @endpermission
 
     @permission('view_pos')
@@ -227,13 +234,10 @@
                 ? 'أنت تتصفح بوصفك: ' . auth()->user()->full_name
                 : 'Viewing as: ' . auth()->user()->full_name }}
         </span>
-        <form action="{{ route('impersonate.leave') }}" method="POST" class="d-inline">
-            @csrf
-            <button type="submit" class="btn btn-sm btn-dark py-0 px-2">
-                <i class="fas fa-undo me-1"></i>
-                {{ app()->getLocale() === 'ar' ? 'العودة لحسابي' : 'Return to my account' }}
-            </button>
-        </form>
+        <button type="button" class="btn btn-sm btn-dark py-0 px-2" id="leaveImpersonationBtn">
+            <i class="fas fa-undo me-1"></i>
+            {{ app()->getLocale() === 'ar' ? 'العودة لحسابي' : 'Return to my account' }}
+        </button>
     </div>
     <style @nonce>#sidebar, #main-content { margin-top: 36px; }</style>
     @endif
@@ -577,6 +581,20 @@ window.addEventListener('resize', function() {
     </script>
 
     <script @nonce>
+    // ── Leave impersonation (fresh CSRF at click time, avoids stale-page 419) ──
+    (function () {
+        const btn = document.getElementById('leaveImpersonationBtn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ route("impersonate.leave") }}';
+            form.innerHTML = '<input type="hidden" name="_token" value="' +
+                document.querySelector('meta[name="csrf-token"]').getAttribute('content') + '">';
+            document.body.appendChild(form);
+            form.submit();
+        });
+    })();
     // ── Stock Alert Notification Bell ──────────────────────────────────
     (function initStockBell() {
         const isAr = LOCALE === 'ar';

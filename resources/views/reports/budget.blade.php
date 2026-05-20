@@ -58,7 +58,7 @@
             {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}
         </h5>
         <div class="d-flex gap-2 no-print">
-            <button class="btn btn-outline-secondary btn-sm" onclick="printReport()">
+            <button class="btn btn-outline-secondary btn-sm" id="printReportBtn">
                 <i class="fas fa-print me-1"></i>{{ app()->getLocale()==='ar' ? 'طباعة' : 'Print' }}
             </button>
             <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#budgetEntryModal">
@@ -196,6 +196,7 @@ let expCategories = [];
 // ── Year navigation ────────────────────────────────────────────────────────
 document.getElementById('yearPrev').addEventListener('click', () => { reportYear--; document.getElementById('currentYear').textContent = reportYear; loadReport(); });
 document.getElementById('yearNext').addEventListener('click', () => { reportYear++; document.getElementById('currentYear').textContent = reportYear; loadReport(); });
+document.getElementById('printReportBtn').addEventListener('click', printReport);
 
 // ── Load expense categories ────────────────────────────────────────────────
 async function loadExpenseCategories() {

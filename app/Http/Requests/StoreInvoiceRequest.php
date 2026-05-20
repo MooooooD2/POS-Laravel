@@ -41,6 +41,7 @@ class StoreInvoiceRequest extends FormRequest
             'redeem_loyalty_points'  => 'nullable|integer|min:1',
             'warehouse_id'           => 'nullable|exists:warehouses,id',
             'branch_id'              => 'nullable|exists:branches,id',
+            'offline_uuid'           => 'nullable|uuid',
         ];
     }
 
@@ -53,5 +54,12 @@ class StoreInvoiceRequest extends FormRequest
             'payment_method.in'         => 'طريقة الدفع غير صالحة.',
             'cash_received.min'         => 'المبلغ المستلم لا يمكن أن يكون سالباً.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('notes')) {
+            $this->merge(['notes' => strip_tags((string) $this->notes)]);
+        }
     }
 }

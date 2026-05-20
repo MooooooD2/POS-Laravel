@@ -113,6 +113,12 @@
                         <button class="nav-link text-start" data-tab="roles" data-fn="showTab" data-args='["roles"]'>
                             <i class="fas fa-shield-alt me-2"></i>{{ __('pos.roles_permissions') }}
                         </button>
+                        <button class="nav-link text-start" data-tab="treasury" data-fn="showTab" data-args='["treasury"]'>
+                            <i class="fas fa-vault me-2"></i>{{ __('pos.treasury_link') }}
+                        </button>
+                        <button class="nav-link text-start" data-tab="financial" data-fn="showTab" data-args='["financial"]'>
+                            <i class="fas fa-chart-line me-2"></i>{{ app()->getLocale() === 'ar' ? 'الربحية' : 'Profitability' }}
+                        </button>
                     </nav>
                 </div>
             </div>
@@ -632,6 +638,108 @@
                                 data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
                             <button type="button" class="btn btn-primary"
                                 data-fn="saveRole">{{ __('pos.save') }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Treasury Settings --}}
+            <div id="tab-treasury" class="settings-tab d-none">
+                <div class="setting-card">
+                    <div class="setting-card-header">
+                        <i class="fas fa-vault me-2 text-success"></i>{{ __('pos.treasury_link') }}
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ __('pos.max_daily_withdrawal') }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'الحد الأقصى للمبلغ المسحوب يومياً من الخزينة (0 = بلا حد)' : 'Maximum cash withdrawal per day (0 = unlimited)' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="input-group">
+                                <input type="number" class="form-control" data-key="max_daily_withdrawal" id="s_max_daily_withdrawal" min="0" step="0.01" placeholder="0">
+                                <span class="input-group-text">{{ \App\Models\Setting::get('currency_symbol', 'ج.م') }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ __('pos.min_cash_balance') }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'تنبيه عند انخفاض الرصيد النقدي عن هذا الحد (0 = لا تنبيه)' : 'Alert when cash balance drops below this threshold (0 = disabled)' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="input-group">
+                                <input type="number" class="form-control" data-key="min_cash_balance" id="s_min_cash_balance" min="0" step="0.01" placeholder="0">
+                                <span class="input-group-text">{{ \App\Models\Setting::get('currency_symbol', 'ج.م') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <div class="setting-card-header">
+                        <i class="fas fa-book me-2 text-primary"></i>{{ app()->getLocale() === 'ar' ? 'الربط المحاسبي — تلقائي عند إغلاق الجلسة' : 'Accounting Link — Auto Journal on Session Close' }}
+                    </div>
+
+                    <div class="alert alert-info mx-3 mt-2 py-2 small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        {{ app()->getLocale() === 'ar'
+                            ? 'عند إغلاق جلسة الكاشير، سيتم تلقائياً إنشاء قيد محاسبي في حساب الخزينة وحساب الإيرادات المحددَين أدناه. اتركهما فارغَين لتعطيل الربط.'
+                            : 'When a cashier session is closed, a journal entry is automatically posted to the accounts below. Leave blank to disable.' }}
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ __('pos.cash_account_code') }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'كود حساب النقدية في دفتر الأستاذ (مثال: 1001)' : 'Cash/Treasury account code in chart of accounts (e.g. 1001)' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="text" class="form-control" data-key="cash_account_code" id="s_cash_account_code" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: 1001' : 'e.g. 1001' }}">
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ __('pos.revenue_account_code') }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'كود حساب الإيرادات في دفتر الأستاذ (مثال: 4001)' : 'Revenue account code in chart of accounts (e.g. 4001)' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="text" class="form-control" data-key="revenue_account_code" id="s_revenue_account_code" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: 4001' : 'e.g. 4001' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Financial / Profit Settings --}}
+            <div id="tab-financial" class="settings-tab d-none">
+                <div class="setting-card">
+                    <div class="setting-card-header">
+                        <i class="fas fa-chart-line me-2 text-success"></i>{{ app()->getLocale() === 'ar' ? 'إعدادات الربحية والأداء' : 'Profitability & Performance Settings' }}
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'نسبة هامش الربح المستهدفة %' : 'Target Profit Margin %' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'ينبه تقرير صافي الربح ولوحة الأداء عند الانخفاض عن هذه النسبة (0 = معطّل)' : 'Alerts in net profit report and KPI dashboard when margin drops below this (0 = disabled)' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="input-group">
+                                <input type="number" class="form-control" data-key="profit_margin_target" id="s_profit_margin_target" min="0" max="100" step="0.1" placeholder="0">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'السماح للكاشير بتغيير سعر البيع' : 'Allow Cashier to Change Item Price' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'عند التعطيل، لا يمكن للكاشير تعديل سعر المنتج في الفاتورة — يتطلب صلاحية مدير' : 'When disabled, cashier cannot override item price — requires manager permission' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" data-key="allow_cashier_price_change" id="s_allow_cashier_price_change">
+                            </div>
                         </div>
                     </div>
                 </div>

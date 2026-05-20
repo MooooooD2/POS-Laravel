@@ -6,6 +6,7 @@ use App\Models\CashRegisterSession;
 use App\Models\CashSessionMovement;
 use App\Models\Invoice;
 use App\Models\SalesReturn;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -94,13 +95,19 @@ class CashRegisterService
             ]);
         }
 
+        // Link to financial reports: auto-create journal entry if accounting is configured
+        $this->postSessionToAccounting($session, $stats, round($actualCash, 2));
+
         return $session->fresh();
     }
 
     /**
      * Record a manual cash drawer movement (deposit or withdrawal) during an open session.
+     * Returns the movement plus any threshold warnings.
+     *
+     * @return array{movement: CashSessionMovement, warnings: string[]}
      */
-    public function recordMovement(CashRegisterSession $session, string $type, float $amount, ?string $reason): CashSessionMovement
+    public function recordMovement(CashRegisterSession $session, string $type, float $amount, ?string $reason): array
     {
         if ($session->status !== 'open') {
             throw new \Exception('لا يمكن تسجيل حركة على جلسة مغلقة.');
@@ -112,13 +119,70 @@ class CashRegisterService
             throw new \Exception('يجب أن يكون المبلغ أكبر من صفر.');
         }
 
-        return CashSessionMovement::create([
+        // Daily withdrawal limit check
+        if ($type === 'withdrawal') {
+            $maxDailyWithdrawal = (float) Setting::get('max_daily_withdrawal', 0);
+            if ($maxDailyWithdrawal > 0) {
+                $todayWithdrawals = CashSessionMovement::whereHas('session', fn($q) => $q->where('cashier_id', Auth::id()))
+                    ->where('type', 'withdrawal')
+                    ->whereDate('created_at', today())
+                    ->sum('amount');
+
+                if ($todayWithdrawals + $amount > $maxDailyWithdrawal) {
+                    throw new \Exception(__('pos.daily_withdrawal_limit_exceeded', [
+                        'limit' => number_format($maxDailyWithdrawal, 2),
+                        'used'  => number_format($todayWithdrawals, 2),
+                    ]));
+                }
+            }
+        }
+
+        $movement = CashSessionMovement::create([
             'cash_session_id' => $session->id,
             'type'            => $type,
             'amount'          => round($amount, 2),
             'reason'          => $reason,
             'user_id'         => Auth::id(),
         ]);
+
+        // Low balance alert check after withdrawal
+        $warnings = [];
+        if ($type === 'withdrawal') {
+            $minBalance = (float) Setting::get('min_cash_balance', 0);
+            if ($minBalance > 0) {
+                $estimatedBalance = $this->estimatedCashBalance($session);
+                if ($estimatedBalance < $minBalance) {
+                    $warnings[] = __('pos.low_cash_balance_alert', [
+                        'balance' => number_format($estimatedBalance, 2),
+                        'min'     => number_format($minBalance, 2),
+                    ]);
+                    Log::channel('audit')->warning('cash_session.low_balance', [
+                        'session_id'        => $session->id,
+                        'cashier_id'        => Auth::id(),
+                        'estimated_balance' => $estimatedBalance,
+                        'min_balance'       => $minBalance,
+                    ]);
+                }
+            }
+        }
+
+        return compact('movement', 'warnings');
+    }
+
+    /**
+     * Estimate the current cash balance in an open session.
+     */
+    public function estimatedCashBalance(CashRegisterSession $session): float
+    {
+        $stats       = $this->calcSessionStats($session);
+        $movements   = CashSessionMovement::where('cash_session_id', $session->id)->get();
+        $deposits    = $movements->where('type', 'deposit')->sum('amount');
+        $withdrawals = $movements->where('type', 'withdrawal')->sum('amount');
+
+        return round(
+            $session->opening_amount + $stats['cash_sales'] - $stats['cash_returns'] + $deposits - $withdrawals,
+            2
+        );
     }
 
     public function history(array $filters): \Illuminate\Pagination\LengthAwarePaginator
@@ -126,6 +190,62 @@ class CashRegisterService
         $user      = Auth::user();
         $canSeeAll = $user->hasPermissionTo('view_reports') || $user->hasPermissionTo('manage_roles');
         return $this->sessionRepo->history($filters, $canSeeAll, $user->id);
+    }
+
+    /**
+     * Optionally post a summary journal entry when a session closes.
+     * Only runs if accounts tagged 'cash_account' and 'revenue_account' exist.
+     */
+    private function postSessionToAccounting(CashRegisterSession $session, array $stats, float $actualCash): void
+    {
+        try {
+            $cashAccount    = \App\Models\Account::where('account_code', Setting::get('cash_account_code', ''))->first();
+            $revenueAccount = \App\Models\Account::where('account_code', Setting::get('revenue_account_code', ''))->first();
+
+            if (!$cashAccount || !$revenueAccount || $stats['total_sales'] <= 0) {
+                return;
+            }
+
+            $entryNumber = 'CASH-SES-' . $session->session_number;
+            if (\App\Models\JournalEntry::where('reference_type', 'cash_session')
+                    ->where('reference_id', $session->id)->exists()) {
+                return; // already posted
+            }
+
+            $entry = \App\Models\JournalEntry::create([
+                'entry_number'   => $entryNumber,
+                'entry_date'     => $session->closed_at?->toDateString() ?? today()->toDateString(),
+                'description'    => 'تسوية جلسة الكاشير ' . $session->session_number,
+                'reference_type' => 'cash_session',
+                'reference_id'   => $session->id,
+                'created_by'     => $session->cashier_id,
+                'is_posted'      => true,
+            ]);
+
+            // Debit cash account (actual cash received)
+            \App\Models\JournalEntryLine::create([
+                'entry_id'    => $entry->id,
+                'account_id'  => $cashAccount->id,
+                'debit'       => $actualCash,
+                'credit'      => 0,
+                'description' => 'إيرادات نقدية - جلسة ' . $session->session_number,
+            ]);
+
+            // Credit revenue account (total sales)
+            \App\Models\JournalEntryLine::create([
+                'entry_id'    => $entry->id,
+                'account_id'  => $revenueAccount->id,
+                'debit'       => 0,
+                'credit'      => round($stats['total_sales'], 2),
+                'description' => 'إيرادات مبيعات - جلسة ' . $session->session_number,
+            ]);
+        } catch (\Throwable $e) {
+            // Non-fatal: accounting link is optional; log and continue
+            Log::warning('cash_session.accounting_link_failed', [
+                'session_id' => $session->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
     }
 
     public function calcSessionStats(CashRegisterSession $session): array

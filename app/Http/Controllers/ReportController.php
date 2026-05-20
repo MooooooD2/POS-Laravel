@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Exports\NetProfitReportExport;
+use App\Exports\ProfitableProductsExport;
 use App\Exports\ReturnsReportExport;
 use App\Exports\SalesReportExport;
 use App\Exports\StockReportExport;
@@ -160,11 +162,32 @@ class ReportController extends Controller
         $data = $request->validate([
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after_or_equal:start_date',
+            'group_by'   => 'nullable|in:day,week,month',
         ]);
 
-        return response()->json(
-            $this->reportService->cashFlowReport($data['start_date'], $data['end_date'])
-        );
+        $result  = $this->reportService->cashFlowReport($data['start_date'], $data['end_date']);
+        $groupBy = $data['group_by'] ?? 'day';
+
+        // Aggregate daily rows into weekly or monthly periods if requested
+        if ($groupBy !== 'day' && !empty($result['daily'])) {
+            $result['daily'] = collect($result['daily'])->groupBy(function ($row) use ($groupBy) {
+                $date = \Carbon\Carbon::parse($row['date']);
+                return $groupBy === 'week'
+                    ? $date->format('o-\WW')   // ISO week: 2026-W21
+                    : $date->format('Y-m');
+            })->map(function ($group, $period) {
+                return [
+                    'date'    => $period,
+                    'inflow'  => round($group->sum('inflow'), 2),
+                    'outflow' => round($group->sum('outflow'), 2),
+                    'net'     => round($group->sum('net'), 2),
+                ];
+            })->values()->all();
+        }
+
+        $result['group_by'] = $groupBy;
+
+        return response()->json($result);
     }
 
     public function inventoryMovements(Request $request)
@@ -296,6 +319,157 @@ class ReportController extends Controller
             'permission_changes' => $permissionChanges,
             'auth_summary'       => $authSummary,
             'suspicious_ips'     => $suspiciousIps,
+        ]);
+    }
+
+    public function netProfitReport(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+        return response()->json($this->reportService->netProfitReport($data['start_date'], $data['end_date']));
+    }
+
+    public function profitableProducts(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+            'limit'      => 'nullable|integer|min:5|max:100',
+        ]);
+        return response()->json(
+            $this->reportService->profitableProductsByMargin($data['start_date'], $data['end_date'], (int) ($data['limit'] ?? 20))
+        );
+    }
+
+    public function exportNetProfit(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+        $report = $this->reportService->netProfitReport($data['start_date'], $data['end_date']);
+        $file   = "net_profit_{$data['start_date']}_{$data['end_date']}.xlsx";
+        return Excel::download(new NetProfitReportExport($report, $data['start_date'], $data['end_date']), $file);
+    }
+
+    public function exportProfitableProducts(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+            'limit'      => 'nullable|integer|min:5|max:100',
+        ]);
+        $report   = $this->reportService->profitableProductsByMargin($data['start_date'], $data['end_date'], (int) ($data['limit'] ?? 20));
+        $products = collect($report['products']);
+        $file     = "profitable_products_{$data['start_date']}_{$data['end_date']}.xlsx";
+        return Excel::download(new ProfitableProductsExport($products), $file);
+    }
+    // Note: these are GET routes — validation still works because Request::validate() reads both query and body
+
+    public function supplierRating(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+        return response()->json($this->reportService->supplierRatingReport($data['start_date'], $data['end_date']));
+    }
+
+    public function weeklyExpenses(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+        return response()->json($this->reportService->weeklyExpenses($data['start_date'], $data['end_date']));
+    }
+
+    public function breakEvenReport(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+        return response()->json($this->reportService->breakEvenReport($data['start_date'], $data['end_date']));
+    }
+
+    public function kpiDashboard(Request $request)
+    {
+        $data = $request->validate(['date' => 'nullable|date']);
+        return response()->json($this->reportService->kpiDashboard($data['date'] ?? null));
+    }
+
+    public function inventoryTurnover(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+        return response()->json($this->reportService->inventoryTurnover($data['start_date'], $data['end_date']));
+    }
+
+    public function monthlyWasteRatio(Request $request)
+    {
+        $data = $request->validate(['year' => 'nullable|integer|min:2020|max:2100']);
+        return response()->json($this->reportService->monthlyWasteRatio((int) ($data['year'] ?? now()->year)));
+    }
+
+    /**
+     * Revenue monitoring: daily revenue + tax trend within a date range.
+     * Useful for charts showing gross revenue vs tax collected over time.
+     */
+    public function revenueMonitoring(Request $request)
+    {
+        $data = $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+            'group_by'   => 'nullable|in:day,week,month',
+        ]);
+
+        $groupBy   = $data['group_by'] ?? 'day';
+        $dateExpr  = match ($groupBy) {
+            'month' => "DATE_FORMAT(invoices.date, '%Y-%m')",
+            'week'  => "DATE_FORMAT(invoices.date, '%x-W%v')",
+            default => 'DATE(invoices.date)',
+        };
+
+        $rows = \App\Models\Invoice::query()
+            ->where('status', 'completed')
+            ->whereBetween('date', [$data['start_date'], $data['end_date']])
+            ->selectRaw("
+                {$dateExpr}           AS period,
+                SUM(total)            AS gross_revenue,
+                SUM(discount)         AS total_discount,
+                SUM(tax_amount)       AS tax_collected,
+                SUM(final_total)      AS net_revenue,
+                COUNT(*)              AS invoice_count
+            ")
+            ->groupByRaw($dateExpr)
+            ->orderByRaw($dateExpr)
+            ->get()
+            ->map(fn($r) => [
+                'period'        => $r->period,
+                'gross_revenue' => round((float) $r->gross_revenue, 2),
+                'total_discount'=> round((float) $r->total_discount, 2),
+                'tax_collected' => round((float) $r->tax_collected, 2),
+                'net_revenue'   => round((float) $r->net_revenue, 2),
+                'invoice_count' => (int) $r->invoice_count,
+            ]);
+
+        return response()->json([
+            'start_date'   => $data['start_date'],
+            'end_date'     => $data['end_date'],
+            'group_by'     => $groupBy,
+            'rows'         => $rows->values(),
+            'totals'       => [
+                'gross_revenue'  => round($rows->sum('gross_revenue'), 2),
+                'total_discount' => round($rows->sum('total_discount'), 2),
+                'tax_collected'  => round($rows->sum('tax_collected'), 2),
+                'net_revenue'    => round($rows->sum('net_revenue'), 2),
+                'invoice_count'  => $rows->sum('invoice_count'),
+            ],
         ]);
     }
 }

@@ -377,6 +377,34 @@
                 </div>
             </div>
 
+            {{-- Notes --}}
+            <div class="card" id="notesPanel">
+                <div class="card-body py-2">
+                    <label class="form-label fw-semibold small">{{ app()->getLocale() === 'ar' ? 'ملاحظات الفاتورة' : 'Invoice Notes' }}</label>
+                    <textarea class="form-control form-control-sm" id="invoiceNotes" rows="2" maxlength="500" placeholder="{{ app()->getLocale() === 'ar' ? 'أي ملاحظة خاصة...' : 'Any special notes...' }}"></textarea>
+                </div>
+            </div>
+
+            {{-- Status indicator & auto-save badge --}}
+            <div class="d-flex justify-content-between align-items-center px-1">
+                <span id="autoSaveStatus" class="text-muted small" style="font-size:11px;"></span>
+                <span id="systemStatusBadge" class="badge bg-success" style="font-size:10px;">
+                    <i class="fas fa-circle me-1" style="font-size:8px;"></i>{{ app()->getLocale() === 'ar' ? 'متصل' : 'Online' }}
+                </span>
+            </div>
+
+            {{-- Offline queue banner --}}
+            <div id="offlineQueueBanner" class="d-none rounded p-2 d-flex align-items-center gap-2" style="background:rgba(234,179,8,.15);border:1px solid rgba(234,179,8,.4);font-size:12px;">
+                <i class="fas fa-clock-rotate-left text-warning"></i>
+                <span class="flex-grow-1">
+                    <strong id="offlineQueueCount">0</strong>
+                    {{ app()->getLocale() === 'ar' ? 'فاتورة معلقة للمزامنة' : 'pending invoice(s) to sync' }}
+                </span>
+                <button class="btn btn-sm btn-warning py-0 px-2" onclick="syncOfflineQueue()" style="font-size:11px;">
+                    {{ app()->getLocale() === 'ar' ? 'مزامنة' : 'Sync' }}
+                </button>
+            </div>
+
             {{-- Complete Sale --}}
             <button class="btn btn-success btn-lg py-3 fw-bold" id="completeSaleBtn" disabled>
                 <i class="fas fa-circle-check me-2"></i>{{ __('pos.complete_sale') }}
@@ -486,6 +514,8 @@
 @endsection
 
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+    <script src="{{ asset('js/pos-offline.js') }}?v={{ filemtime(public_path('js/pos-offline.js')) }}"></script>
     <script @nonce>
         // Settings passed from controller
         const POS_SETTINGS = {
@@ -503,6 +533,7 @@
             defaultPayment: '{{ $settings['default_payment'] ?? 'cash' }}',
             autoPrint: {{ $settings['auto_print'] ? 'true' : 'false' }},
             currencySymbol: '{{ $settings['currency_symbol'] ?? 'ج.م' }}',
+            allowPriceChange: {{ \App\Models\Setting::get('allow_cashier_price_change', true) ? 'true' : 'false' }},
         };
 
         let cart = [];
@@ -554,6 +585,21 @@
             closeSearch();
             if (searchAbort) searchAbort.abort();
             searchAbort = new AbortController();
+
+            // Offline: search local IndexedDB cache
+            if (!navigator.onLine) {
+                const product = await PosDB.findExact(query);
+                if (product) {
+                    addToCart(product);
+                    document.getElementById('searchInput').value = '';
+                    if (POS_SETTINGS.posSound) beep();
+                } else {
+                    showToast('{{ __('pos.product_not_found') }}', 'danger');
+                    document.getElementById('searchInput').value = '';
+                }
+                return;
+            }
+
             try {
                 const url = `{{ route('products.search') }}?query=${encodeURIComponent(query)}&exact=${isScanner ? 1 : 0}`;
                 const response = await fetch(url, {
@@ -568,20 +614,48 @@
                     return;
                 }
                 if (res.single) {
+                    PosDB.cacheProducts([res.product]).catch(() => {});
                     addToCart(res.product);
                     document.getElementById('searchInput').value = '';
                     if (POS_SETTINGS.posSound) beep();
                 } else {
+                    PosDB.cacheProducts(res.products).catch(() => {});
                     renderSearchDropdown(res.products);
                 }
             } catch (e) {
-                if (e.name !== 'AbortError') showToast('{{ __('pos.product_not_found') }}', 'danger');
+                if (e.name === 'AbortError') return;
+                // Network error — try offline cache
+                const product = await PosDB.findExact(query).catch(() => null);
+                if (product) {
+                    addToCart(product);
+                    document.getElementById('searchInput').value = '';
+                    if (POS_SETTINGS.posSound) beep();
+                } else {
+                    showToast('{{ __('pos.product_not_found') }}', 'danger');
+                }
             }
         }
 
         async function showSearchResults(query) {
             if (searchAbort) searchAbort.abort();
             searchAbort = new AbortController();
+
+            // Offline: search local IndexedDB cache
+            if (!navigator.onLine) {
+                const results = await PosDB.searchProducts(query).catch(() => []);
+                if (results.length === 1) {
+                    addToCart(results[0]);
+                    document.getElementById('searchInput').value = '';
+                    closeSearch();
+                    if (POS_SETTINGS.posSound) beep();
+                } else if (results.length > 1) {
+                    renderSearchDropdown(results);
+                } else {
+                    closeSearch();
+                }
+                return;
+            }
+
             try {
                 const response = await fetch(`{{ route('products.search') }}?query=${encodeURIComponent(query)}&exact=0`, {
                     credentials: 'same-origin',
@@ -591,15 +665,21 @@
                 const res = await response.json();
                 if (!res.success) { closeSearch(); return; }
                 if (res.single) {
+                    PosDB.cacheProducts([res.product]).catch(() => {});
                     addToCart(res.product);
                     document.getElementById('searchInput').value = '';
                     closeSearch();
                     if (POS_SETTINGS.posSound) beep();
                 } else if (res.products?.length) {
+                    PosDB.cacheProducts(res.products).catch(() => {});
                     renderSearchDropdown(res.products);
                 }
             } catch (e) {
-                if (e.name !== 'AbortError') closeSearch();
+                if (e.name === 'AbortError') return;
+                // Network error — fall back to IndexedDB
+                const results = await PosDB.searchProducts(query).catch(() => []);
+                if (results.length) renderSearchDropdown(results);
+                else closeSearch();
             }
         }
 
@@ -672,11 +752,7 @@
             return `<tr class="cart-row" data-cart-idx="${idx}" data-product-id="${item.product_id}">
             <td class="text-muted small">${idx + 1}</td>
             <td><div class="fw-semibold">${escapeHtml(item.product_name)}${item.unit_abbreviation ? ` <span class="badge bg-secondary ms-1" style="font-size:.7rem">${escapeHtml(item.unit_abbreviation)}</span>` : ''}</div></td>
-            <td class="text-end">
-                <input type="number" class="form-control form-control-sm text-center p-1"
-                    style="width:80px" value="${item.price}" step="0.01" min="0"
-                    data-action="set-price" data-idx="${idx}">
-            </td>
+            <td class="text-end fw-semibold text-success" data-cell="price">${formatCurrency(item.price)}</td>
             <td class="text-center">
                 <div class="d-flex align-items-center gap-1">
                     <button class="btn btn-sm btn-outline-secondary qty-btn" data-action="dec-qty" data-idx="${idx}">−</button>
@@ -729,12 +805,12 @@
                     if (idxAttr !== idx || existing.dataset.productId !== String(item.product_id)) {
                         existing.outerHTML = newHTML;
                     } else {
-                        // Update only quantity input, price input, and total cell
-                        const qtyInput   = existing.querySelector('[data-action="set-qty"]');
-                        const priceInput = existing.querySelector('[data-action="set-price"]');
-                        const totalCell  = existing.querySelector('[data-cell="total"]');
-                        if (document.activeElement !== qtyInput)   qtyInput.value   = item.quantity;
-                        if (document.activeElement !== priceInput) priceInput.value = item.price;
+                        // Update quantity input, price display, and total cell
+                        const qtyInput  = existing.querySelector('[data-action="set-qty"]');
+                        const priceCell = existing.querySelector('[data-cell="price"]');
+                        const totalCell = existing.querySelector('[data-cell="total"]');
+                        if (document.activeElement !== qtyInput) qtyInput.value = item.quantity;
+                        if (priceCell) priceCell.textContent = formatCurrency(item.price);
                         totalCell.textContent = formatCurrency(item.price * item.quantity);
                     }
                 }
@@ -787,6 +863,11 @@
             });
             if (!confirmed) return;
             cart = [];
+            autoSaveDraftId = null;
+            clearTimeout(autoSaveTimer);
+            const notesEl = document.getElementById('invoiceNotes');
+            if (notesEl) notesEl.value = '';
+            document.getElementById('autoSaveStatus').textContent = '';
             renderCart();
         }
 
@@ -957,26 +1038,40 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>{{ __('pos.loading') }}';
 
-            const discount = parseFloat(document.getElementById('discountInput').value) || 0;
-
-            // إرسال المبلغ المستلم للكاش فقط
+            const discount     = parseFloat(document.getElementById('discountInput').value) || 0;
             const cashReceived = paymentMethod === 'cash'
                 ? (parseFloat(document.getElementById('cashReceived').value) || 0)
                 : null;
+            const notes = (document.getElementById('invoiceNotes')?.value || '').trim();
+
+            const invoicePayload = {
+                items: cart.map(i => ({
+                    product_id:   i.product_id,
+                    product_name: i.product_name,
+                    quantity:     i.quantity,
+                    price:        i.price,
+                })),
+                discount,
+                payment_method: paymentMethod,
+                cash_received:  cashReceived,
+                customer_id:    selectedCustomerId || null,
+                notes:          notes || null,
+            };
+
+            // If offline — queue immediately without a network attempt
+            if (!navigator.onLine) {
+                await PosDB.queueInvoice({ payload: invoicePayload });
+                await updateOfflineQueueBadge();
+                const isRTL = document.documentElement.dir === 'rtl';
+                showToast(isRTL ? 'تم حفظ الفاتورة — ستُرسل عند الاتصال' : 'Invoice saved — will sync when online', 'warning');
+                newSale();
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-circle-check me-2"></i>{{ __('pos.complete_sale') }}';
+                return;
+            }
 
             try {
-                const res = await apiCall('{{ route('invoices.create') }}', 'POST', {
-                    items: cart.map(i => ({
-                        product_id: i.product_id,
-                        product_name: i.product_name,
-                        quantity: i.quantity,
-                        price: i.price,
-                    })),
-                    discount,
-                    payment_method: paymentMethod,
-                    cash_received: cashReceived,
-                    customer_id: selectedCustomerId || null,
-                });
+                const res = await apiCall('{{ route('invoices.create') }}', 'POST', invoicePayload);
 
                 if (res.success) {
                     currentInvoice = res.invoice;
@@ -987,8 +1082,17 @@
                     showToast(res.message, 'danger');
                 }
             } catch (e) {
-                console.error(e);
-                showToast('{{ __('pos.error') }}', 'danger');
+                // Network error mid-request — queue offline
+                if (e instanceof TypeError || !navigator.onLine) {
+                    await PosDB.queueInvoice({ payload: invoicePayload });
+                    await updateOfflineQueueBadge();
+                    const isRTL = document.documentElement.dir === 'rtl';
+                    showToast(isRTL ? 'انقطع الاتصال — تم حفظ الفاتورة للمزامنة' : 'Connection lost — invoice queued for sync', 'warning');
+                    newSale();
+                } else {
+                    console.error(e);
+                    showToast('{{ __('pos.error') }}', 'danger');
+                }
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-circle-check me-2"></i>{{ __('pos.complete_sale') }}';
@@ -1013,11 +1117,13 @@
                 changeColor:  isDark ? '#fcd34d'  : '#856404',
             };
 
+            const showLineTax = POS_SETTINGS.taxEnabled && invoice.items.some(i => i.tax_rate > 0);
             const itemsHtml = invoice.items.map(i => `
         <tr>
             <td style="padding: 8px; text-align: ${alignment};">${escapeHtml(i.product_name)}</td>
             <td style="padding: 8px; text-align: center;">${i.quantity}${i.unit_abbreviation ? ` <small style="color:#6c757d">${escapeHtml(i.unit_abbreviation)}</small>` : ''}</td>
             <td style="padding: 8px; text-align: right;">${formatCurrency(i.price)}</td>
+            ${showLineTax ? `<td style="padding:8px;text-align:right;font-size:11px;color:#6c757d;">${i.tax_rate > 0 ? i.tax_rate + '%' : '—'}</td>` : ''}
             <td style="padding: 8px; text-align: right;">${formatCurrency(i.subtotal)}</td>
         </tr>`).join('');
 
@@ -1061,6 +1167,7 @@
                     <th style="padding:8px;text-align:${alignment};border-bottom:2px solid ${C.border};color:${C.theadColor};">{{ __('pos.product_name') }}</th>
                     <th style="padding:8px;text-align:center;border-bottom:2px solid ${C.border};color:${C.theadColor};">{{ __('pos.quantity') }}</th>
                     <th style="padding:8px;text-align:right;border-bottom:2px solid ${C.border};color:${C.theadColor};">{{ __('pos.unit_price') }}</th>
+                    ${showLineTax ? `<th style="padding:8px;text-align:right;border-bottom:2px solid ${C.border};color:${C.theadColor};font-size:11px;">{{ app()->getLocale() === 'ar' ? 'ض.ق.م' : 'VAT%' }}</th>` : ''}
                     <th style="padding:8px;text-align:right;border-bottom:2px solid ${C.border};color:${C.theadColor};">{{ __('pos.subtotal') }}</th>
                 </tr>
             </thead>
@@ -1095,12 +1202,31 @@
             ` : ''}
         </div>
         ${POS_SETTINGS.invoiceFooter ? `<div style="text-align: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 11px;">${escapeHtml(POS_SETTINGS.invoiceFooter)}</div>` : ''}
+        <div style="text-align:center;margin-top:12px;padding-top:10px;border-top:1px solid #dee2e6;">
+            <canvas id="invoiceQrCanvas" style="max-width:110px;max-height:110px;"></canvas>
+            <div style="font-size:10px;color:#6c757d;margin-top:4px;">{{ app()->getLocale() === 'ar' ? 'امسح للتحقق' : 'Scan to verify' }}</div>
+        </div>
         <div style="text-align: center; margin-top: 10px; font-size: 11px;">
             <small>{{ __('pos.thank_you') }}</small>
         </div>
     `;
 
             document.getElementById('invoiceBody').innerHTML = invoiceHtml;
+
+            // Generate QR code encoding key invoice data for verification
+            if (typeof QRCode !== 'undefined') {
+                const qrData = [
+                    POS_SETTINGS.storeName,
+                    invoice.invoice_number,
+                    invoice.created_at || new Date().toISOString(),
+                    String(invoice.final_total),
+                    String(invoice.tax_amount || 0),
+                ].join('\n');
+                const canvas = document.getElementById('invoiceQrCanvas');
+                if (canvas) {
+                    QRCode.toCanvas(canvas, qrData, { width: 110, margin: 1, errorCorrectionLevel: 'M' }, function() {});
+                }
+            }
 
             const waBtn = document.getElementById('waInvoiceBtn');
             if (waBtn) {
@@ -1420,6 +1546,10 @@
             clearCustomer();
             document.getElementById('discountInput').value = 0;
             document.getElementById('cashReceived').value = '';
+            const notesEl = document.getElementById('invoiceNotes');
+            if (notesEl) notesEl.value = '';
+            autoSaveDraftId = null;
+            document.getElementById('autoSaveStatus').textContent = '';
             renderCart();
             const modal = bootstrap.Modal.getInstance(document.getElementById('invoiceModal'));
             if (modal) modal.hide();
@@ -1651,9 +1781,7 @@
             const el = e.target.closest('[data-action]');
             if (!el) return;
             const idx = parseInt(el.dataset.idx);
-            const action = el.dataset.action;
-            if (action === 'set-price') setPrice(idx, el.value);
-            else if (action === 'set-qty') setQty(idx, el.value);
+            if (el.dataset.action === 'set-qty') setQty(idx, el.value);
         });
 
         // ─── EVENT DELEGATION: search dropdown ───────────────────────────────────
@@ -1678,11 +1806,215 @@
         const waInvoiceBtn = document.getElementById('waInvoiceBtn');
         if (waInvoiceBtn) waInvoiceBtn.addEventListener('click', sendInvoiceWhatsApp);
 
+        // ─── AUTO-SAVE DRAFT ──────────────────────────────────────────────────────
+        let autoSaveDraftId = null;
+        let autoSaveTimer = null;
+
+        async function autoSaveDraft() {
+            if (!cart.length) return;
+            try {
+                const notes = (document.getElementById('invoiceNotes')?.value || '').trim();
+                const payload = {
+                    items: cart.map(i => ({
+                        product_id:   i.product_id,
+                        product_name: i.product_name,
+                        quantity:     i.quantity,
+                        price:        i.price,
+                    })),
+                    discount:       parseFloat(document.getElementById('discountInput').value) || 0,
+                    payment_method: paymentMethod,
+                    notes:          notes || null,
+                };
+                const res = await fetch('{{ route('held-invoices.store') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    autoSaveDraftId = data.id ?? autoSaveDraftId;
+                    const ts = new Date().toLocaleTimeString(document.documentElement.dir === 'rtl' ? 'ar-EG' : 'en-EG', { hour: '2-digit', minute: '2-digit' });
+                    document.getElementById('autoSaveStatus').textContent = (document.documentElement.dir === 'rtl' ? 'حُفظ تلقائياً ' : 'Auto-saved ') + ts;
+                }
+            } catch (_) {}
+        }
+
+        function scheduleAutoSave() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(autoSaveDraft, 3000);
+        }
+
+        // Trigger auto-save whenever cart changes (patch renderCart)
+        const _origRenderCart = renderCart;
+        renderCart = function() {
+            _origRenderCart.apply(this, arguments);
+            if (cart.length) scheduleAutoSave();
+        };
+
+        // ─── KEYBOARD SHORTCUTS ───────────────────────────────────────────────────
+        document.addEventListener('keydown', function(e) {
+            const tag = document.activeElement?.tagName;
+            const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+
+            // F1 or /  → focus search
+            if (e.key === 'F1' || (!inInput && e.key === '/')) {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+            // F9 or F3 → complete sale
+            if ((e.key === 'F9' || e.key === 'F3') && !inInput) {
+                e.preventDefault();
+                if (!document.getElementById('completeSaleBtn').disabled) completeSale();
+            }
+            // F2 → focus discount
+            if (e.key === 'F2') {
+                e.preventDefault();
+                document.getElementById('discountInput').focus();
+            }
+            // Escape → clear search dropdown (or close modals handled by Bootstrap)
+            if (e.key === 'Escape' && !inInput) {
+                closeSearch();
+            }
+            // Backspace / Delete → clear cart (only when not in input and cart not empty)
+            if ((e.key === 'Delete') && !inInput && cart.length) {
+                e.preventDefault();
+                if (confirm(document.documentElement.dir === 'rtl' ? 'مسح الفاتورة؟' : 'Clear cart?')) clearCart();
+            }
+        });
+
+        // ─── ONLINE/OFFLINE STATUS ────────────────────────────────────────────────
+        function updateOnlineStatus() {
+            const badge = document.getElementById('systemStatusBadge');
+            if (!badge) return;
+            if (navigator.onLine) {
+                badge.className = 'badge bg-success';
+                badge.innerHTML = '<i class="fas fa-circle me-1" style="font-size:8px;"></i>' + (document.documentElement.dir === 'rtl' ? 'متصل' : 'Online');
+            } else {
+                badge.className = 'badge bg-danger';
+                badge.innerHTML = '<i class="fas fa-circle me-1" style="font-size:8px;"></i>' + (document.documentElement.dir === 'rtl' ? 'غير متصل' : 'Offline');
+            }
+        }
+        window.addEventListener('online', () => {
+            updateOnlineStatus();
+            syncOfflineQueue();
+        });
+        window.addEventListener('offline', () => {
+            updateOnlineStatus();
+        });
+        updateOnlineStatus();
+
+        // ─── OFFLINE QUEUE ────────────────────────────────────────────────────────
+        async function updateOfflineQueueBadge() {
+            const queue   = await PosDB.getQueue().catch(() => []);
+            const banner  = document.getElementById('offlineQueueBanner');
+            const counter = document.getElementById('offlineQueueCount');
+            if (queue.length > 0) {
+                counter.textContent = queue.length;
+                banner.classList.remove('d-none');
+            } else {
+                banner.classList.add('d-none');
+            }
+        }
+
+        async function syncOfflineQueue() {
+            if (!navigator.onLine) return;
+            const queue = await PosDB.getQueue().catch(() => []);
+            if (!queue.length) return;
+
+            const isRTL = document.documentElement.dir === 'rtl';
+
+            // Batch all pending invoices into one request
+            const invoices = queue.map(item => item.payload);
+
+            let json;
+            try {
+                const res = await fetch('{{ route('offline.sync') }}', {
+                    method:      'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept':       'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                    },
+                    body: JSON.stringify({ invoices }),
+                });
+                json = await res.json();
+            } catch {
+                // Still offline — leave queue intact
+                return;
+            }
+
+            if (!json.success) {
+                showToast(isRTL ? 'فشلت المزامنة' : 'Sync failed', 'danger');
+                return;
+            }
+
+            // Remove successfully synced/skipped items from local queue
+            const syncedUuids = new Set(
+                (json.results || [])
+                    .filter(r => r.status === 'synced' || r.status === 'already_synced')
+                    .map(r => r.offline_uuid)
+            );
+            for (const item of queue) {
+                if (syncedUuids.has(item.offline_uuid)) {
+                    await PosDB.removeFromQueue(item.id);
+                }
+            }
+
+            await updateOfflineQueueBadge();
+
+            const synced  = json.synced  ?? 0;
+            const skipped = json.skipped ?? 0;
+            const failed  = json.failed  ?? 0;
+
+            if (synced + skipped > 0) {
+                showToast(
+                    isRTL ? `تمت مزامنة ${synced + skipped} فاتورة` : `${synced + skipped} invoice(s) synced`,
+                    'success'
+                );
+            }
+            if (failed > 0) {
+                showToast(
+                    isRTL ? `فشلت مزامنة ${failed} فاتورة` : `${failed} invoice(s) failed to sync`,
+                    'danger'
+                );
+            }
+        }
+
+        // ─── PRODUCT CACHE WARM-UP ────────────────────────────────────────────────
+        async function warmProductCache() {
+            if (!navigator.onLine) return;
+            try {
+                const res = await fetch('{{ route('products.for-cache') }}', {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+                });
+                const json = await res.json();
+                if (json.success && json.products?.length) {
+                    await PosDB.cacheProducts(json.products);
+                }
+            } catch { /* silent — cache is best-effort */ }
+        }
+
+        // ─── SERVICE WORKER REGISTRATION ─────────────────────────────────────────
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+
+        // ─── PRICE LOCK FOR CASHIER ───────────────────────────────────────────────
+        if (!POS_SETTINGS.allowPriceChange) {
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('.price-override-input').forEach(el => el.setAttribute('readonly', true));
+            });
+        }
+
         // ─── INIT ─────────────────────────────────────────────────────────────────
         setPayment(POS_SETTINGS.defaultPayment);
         document.addEventListener('click', e => {
             if (!e.target.closest('.product-search')) closeSearch();
         });
         document.getElementById('searchInput').focus();
+        warmProductCache();
+        updateOfflineQueueBadge();
     </script>
 @endpush

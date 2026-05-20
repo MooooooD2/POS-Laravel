@@ -23,18 +23,36 @@ class PurchaseOrderService
     {
         return DB::transaction(function () use ($data) {
             $poNumber    = SequenceService::next('purchase');
-            $totalAmount = collect($data['items'])->sum(fn($i) => $i['cost_price'] * $i['quantity']);
             $discount    = $data['discount'] ?? 0;
-            $finalAmount = $totalAmount - $discount;
+
+            // Compute per-item subtotals and tax (Input Tax for Net Tax Payable report)
+            $totalAmount = 0.0;
+            $totalTax    = 0.0;
+            $itemLines   = [];
+            foreach ($data['items'] as $item) {
+                $subtotal  = round((float) $item['cost_price'] * (int) $item['quantity'], 2);
+                $taxRate   = (float) ($item['tax_rate'] ?? 0);
+                $taxAmount = round($subtotal * $taxRate / 100, 2);
+                $totalAmount += $subtotal;
+                $totalTax    += $taxAmount;
+                $itemLines[] = array_merge($item, [
+                    'subtotal'   => $subtotal,
+                    'tax_rate'   => $taxRate,
+                    'tax_amount' => $taxAmount,
+                ]);
+            }
+
+            $finalAmount = $totalAmount + $totalTax - $discount;
             $supplier    = $this->supplierRepo->findOrFail($data['supplier_id']);
 
             $po = $this->poRepo->create([
                 'po_number'       => $poNumber,
                 'supplier_id'     => $data['supplier_id'],
                 'supplier_name'   => $supplier->name,
-                'total_amount'    => $totalAmount,
+                'total_amount'    => round($totalAmount, 2),
                 'discount'        => $discount,
-                'final_amount'    => $finalAmount,
+                'tax_amount'      => round($totalTax, 2),
+                'final_amount'    => round($finalAmount, 2),
                 'status'          => 'draft',
                 'order_date'      => $data['order_date'],
                 'expected_date'   => $data['expected_date'] ?? null,
@@ -43,7 +61,7 @@ class PurchaseOrderService
                 'created_by_name' => Auth::user()->full_name,
             ]);
 
-            foreach ($data['items'] as $item) {
+            foreach ($itemLines as $item) {
                 $this->poRepo->createItem([
                     'po_id'         => $po->id,
                     'product_id'    => $item['product_id'],
@@ -51,7 +69,9 @@ class PurchaseOrderService
                     'quantity'      => $item['quantity'],
                     'cost_price'    => $item['cost_price'],
                     'selling_price' => $item['selling_price'] ?? null,
-                    'subtotal'      => $item['cost_price'] * $item['quantity'],
+                    'subtotal'      => $item['subtotal'],
+                    'tax_rate'      => $item['tax_rate'],
+                    'tax_amount'    => $item['tax_amount'],
                 ]);
             }
 

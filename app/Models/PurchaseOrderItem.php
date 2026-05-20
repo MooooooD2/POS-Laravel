@@ -8,8 +8,8 @@ class PurchaseOrderItem extends Model
     protected $fillable = [
         'po_id', 'product_id', 'product_name',
         'quantity', 'cost_price', 'selling_price',
-        'subtotal', 'received_quantity',
-        'rejected_qty', 'quality_status',
+        'subtotal', 'tax_rate', 'tax_amount',
+        'received_quantity', 'rejected_qty', 'quality_status',
         'discrepancy', 'discrepancy_notes',
     ];
     protected $casts = [
@@ -20,6 +20,8 @@ class PurchaseOrderItem extends Model
         'cost_price'        => 'float',
         'selling_price'     => 'float',
         'subtotal'          => 'float',
+        'tax_rate'          => 'float',
+        'tax_amount'        => 'float',
     ];
 
     public function purchaseOrder() { return $this->belongsTo(PurchaseOrder::class, 'po_id'); }

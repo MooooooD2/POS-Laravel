@@ -5,11 +5,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Warehouse extends Model
 {
-    protected $fillable = ['branch_id', 'name', 'code', 'address', 'keeper_name', 'is_default', 'is_active'];
+    protected $fillable = ['branch_id', 'name', 'code', 'address', 'keeper_name', 'is_default', 'is_active', 'is_locked'];
 
     protected $casts = [
         'is_default' => 'boolean',
         'is_active'  => 'boolean',
+        'is_locked'  => 'boolean',
+        'locked_at'  => 'datetime',
     ];
 
     public function branch()        { return $this->belongsTo(Branch::class); }

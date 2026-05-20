@@ -21,10 +21,18 @@ class InvoiceService
         private SettingRepositoryInterface $settingRepo,
         private CustomerService            $customerService,
         private TaxService                 $taxService,
+        private RecipeService              $recipeService,
     ) {}
 
     public function createInvoice(array $data): Invoice
     {
+        // Idempotency guard for offline-created invoices.
+        // If the same UUID arrives again (network retry after timeout), return the existing row.
+        if (!empty($data['offline_uuid'])) {
+            $existing = Invoice::where('offline_uuid', $data['offline_uuid'])->first();
+            if ($existing) return $existing;
+        }
+
         /** @var Invoice $invoice */
         $invoice = DB::transaction(function () use ($data) {
             $invoiceNumber = SequenceService::next('invoice', $this->settingRepo->get('invoice_prefix', 'INV'));
@@ -159,8 +167,16 @@ class InvoiceService
 
             $warehouseId = $data['warehouse_id'] ?? \App\Models\Warehouse::where('is_default', true)->value('id');
 
+            if ($warehouseId) {
+                $warehouse = \App\Models\Warehouse::find($warehouseId);
+                if ($warehouse?->is_locked) {
+                    throw new \Exception(__('pos.warehouse_locked'));
+                }
+            }
+
             $invoice = Invoice::create([
                 'invoice_number'      => $invoiceNumber,
+                'offline_uuid'        => $data['offline_uuid'] ?? null,
                 'total'               => round($total, 2),
                 'discount'            => round($discount, 2),
                 'loyalty_points_used' => $loyaltyPointsUsed,
@@ -261,6 +277,16 @@ class InvoiceService
 
             return $invoice->load(['items.product.unit', 'customer']);
         });
+
+        // Deduct recipe ingredients for products that have a BOM/recipe
+        foreach ($invoice->items as $item) {
+            $this->recipeService->deductIngredients(
+                $item->product_id,
+                (float) $item->quantity,
+                $invoice->id,
+                $invoice->warehouse_id
+            );
+        }
 
         // Earn loyalty points on the final paid amount (after all discounts)
         if (!empty($invoice->customer_id)) {
