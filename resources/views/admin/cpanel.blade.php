@@ -60,7 +60,7 @@
                 <i class="fas fa-layer-group me-1"></i>
                 {{ $isAr ? 'إدارة الاشتراكات' : 'Manage Subscriptions' }}
             </a>
-            <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+            <button class="btn btn-outline-secondary btn-sm" data-action="refresh-page">
                 <i class="fas fa-rotate-right me-1"></i>
                 {{ $isAr ? 'تحديث' : 'Refresh' }}
             </button>
@@ -172,7 +172,7 @@
                             <i class="fas fa-tags"></i>
                             {{ $isAr ? 'الخطط والأسعار' : 'Plans & Pricing' }}
                         </a>
-                        <button class="quick-btn btn btn-outline-success" onclick="openNewTenantModal()">
+                        <button class="quick-btn btn btn-outline-success" data-action="open-new-tenant">
                             <i class="fas fa-plus"></i>
                             {{ $isAr ? 'متجر جديد' : 'New Store' }}
                         </button>
@@ -312,7 +312,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
-                <button type="button" class="btn btn-primary btn-sm" id="cpSaveBtn" onclick="saveCpTenant()">
+                <button type="button" class="btn btn-primary btn-sm" id="cpSaveBtn" data-action="save-cp-tenant">
                     <span id="cpSaveText">{{ $isAr ? 'إنشاء' : 'Create' }}</span>
                     <span class="spinner-border spinner-border-sm d-none ms-1" id="cpSpinner"></span>
                 </button>
@@ -332,6 +332,15 @@ document.addEventListener('DOMContentLoaded', () => {
     cpModal = new bootstrap.Modal(document.getElementById('cpanelTenantModal'));
     buildGrowthChart();
     buildStatusChart();
+});
+
+document.addEventListener('click', e => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    if (action === 'refresh-page')    location.reload();
+    if (action === 'open-new-tenant') openNewTenantModal();
+    if (action === 'save-cp-tenant')  saveCpTenant();
 });
 
 // ── Charts ───────────────────────────────────────────────────────────────
