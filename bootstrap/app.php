@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\SessionSecurity::class,
             \App\Http\Middleware\AnomalyDetection::class,
+            \App\Http\Middleware\CheckUserIsActive::class,
         ]);
 
         // API routes share session-based auth — prepend cookie+session+tenancy
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
                 \Illuminate\Session\Middleware\StartSession::class,
                 \App\Http\Middleware\InitializeTenancyBySession::class,
+                \App\Http\Middleware\CheckUserIsActive::class,
             ]
         );
 

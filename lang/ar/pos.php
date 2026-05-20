@@ -206,6 +206,8 @@ return [
     // User Management
     'cannot_delete_self'           => 'لا يمكنك حذف حسابك الخاص.',
     'cannot_delete_last_admin'     => 'لا يمكن حذف المدير الأخير في النظام.',
+    'cannot_delete_admin'          => 'لا يمكن حذف حسابات المدير.',
+    'cannot_deactivate_admin'      => 'لا يمكن تعطيل حسابات المدير.',
     'cannot_disable_self'          => 'لا يمكنك تعطيل حسابك الخاص.',
 
     // Role Management messages
@@ -540,7 +542,11 @@ return [
     'no_tenants'                      => 'لا يوجد مستأجرون.',
     'plan'                            => 'الخطة',
     'master_tenant_only'              => 'فقط المستأجر الرئيسي يمكنه إدارة المستأجرين الآخرين.',
-    'cannot_delete_master_tenant'     => 'لا يمكن حذف المستأجر الرئيسي.',
+    'cannot_delete_master_tenant'        => 'لا يمكن حذف المستأجر الرئيسي.',
+    'subscription_expired_message'       => 'انتهى اشتراكك. تواصل مع المسؤول لتجديده.',
+    'invalid_plan_price'                 => 'سعر الخطة غير صالح. يرجى اختيار خطة صحيحة.',
+    'payment_error'                      => 'فشلت عملية الدفع. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.',
+    'payment_failed'                     => 'لم تكتمل عملية الدفع. يرجى المحاولة مرة أخرى.',
     'master_tenant_not_set'           => 'MASTER_TENANT_ID غير مضبوط في .env — حماية إنشاء المستأجرين معطّلة.',
     'delete_tenant_confirm'           => 'حذف المستأجر نهائياً',
     'delete_tenant_warning'           => 'سيتم حذف قاعدة البيانات بالكامل. هذا الإجراء لا يمكن التراجع عنه.',
@@ -613,4 +619,10 @@ return [
     'from_date'                  => 'من',
     'to_date'                    => 'إلى',
     'select_supplier'            => 'اختر مورداً',
+
+    // Plans & Pricing
+    'plan_created'    => 'تم إنشاء الخطة بنجاح.',
+    'plan_updated'    => 'تم تحديث الخطة بنجاح.',
+    'plan_deleted'    => 'تم حذف الخطة بنجاح.',
+    'plan_has_tenants'=> 'لا يمكن حذف هذه الخطة — يوجد متاجر مشتركة بها حالياً.',
 ];

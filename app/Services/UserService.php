@@ -45,14 +45,17 @@ class UserService
         if ((int) $user->id === (int) Auth::id()) {
             throw new \Exception(__('pos.cannot_delete_self'));
         }
-        if ($user->hasRole('admin') && $this->userRepo->activeAdminCount() <= 1) {
-            throw new \Exception(__('pos.cannot_delete_last_admin'));
+        if ($user->hasRole('admin')) {
+            throw new \Exception(__('pos.cannot_delete_admin'));
         }
         $this->userRepo->delete($user);
     }
 
     public function toggleActive(User $user): User
     {
+        if ($user->hasRole('admin')) {
+            throw new \Exception(__('pos.cannot_deactivate_admin'));
+        }
         return $this->userRepo->toggleActive($user);
     }
 }

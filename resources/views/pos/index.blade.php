@@ -39,7 +39,7 @@
             top: 100%;
             left: 0;
             right: 0;
-            z-index: 200;
+            z-index: 1030;
             background: #fff;
             border: 1px solid #dee2e6;
             border-radius: 0.5rem;
@@ -63,7 +63,7 @@
         }
 
         .search-item:hover {
-            background: #f0f9ff;
+            background: var(--primary-light, #E8F0FC);
         }
 
         .search-item .barcode-badge {
@@ -73,6 +73,10 @@
             padding: 2px 6px;
             border-radius: 4px;
             color: #64748b;
+        }
+
+        #cartTable thead.sticky-top {
+            z-index: 1;
         }
 
         .cart-row td {
@@ -89,7 +93,7 @@
         }
 
         .total-section {
-            background: #1e293b;
+            background: var(--primary, #12244E);
             color: #fff;
             border-radius: 0.75rem;
             padding: 1rem;
@@ -271,7 +275,7 @@
                             <div class="text-muted" style="font-size:0.78rem" id="selectedCustomerPhone"></div>
                         </div>
                         <button class="btn btn-sm btn-outline-danger py-0 px-1" id="clearCustomerBtn">
-                            <i class="fas fa-times"></i>
+                            <i class="fas fa-xmark"></i>
                         </button>
                     </div>
                     {{-- Search input --}}
@@ -355,7 +359,7 @@
                             <i class="fas fa-credit-card d-block mb-1"></i>{{ __('pos.card') }}
                         </button>
                         <button class="payment-btn btn btn-outline-secondary" id="btnTransfer">
-                            <i class="fas fa-exchange-alt d-block mb-1"></i>{{ __('pos.transfer') }}
+                            <i class="fas fa-right-left d-block mb-1"></i>{{ __('pos.transfer') }}
                         </button>
                     </div>
                 </div>
@@ -375,7 +379,7 @@
 
             {{-- Complete Sale --}}
             <button class="btn btn-success btn-lg py-3 fw-bold" id="completeSaleBtn" disabled>
-                <i class="fas fa-check-circle me-2"></i>{{ __('pos.complete_sale') }}
+                <i class="fas fa-circle-check me-2"></i>{{ __('pos.complete_sale') }}
             </button>
         </div>
     </div>
@@ -430,20 +434,20 @@
                     transition:border-color 0.3s,box-shadow 0.3s;
                 ">
                         <div
-                            style="position:absolute;top:-2px;left:-2px;width:22px;height:22px;border-top:4px solid #3b82f6;border-left:4px solid #3b82f6;border-radius:3px 0 0 0">
+                            style="position:absolute;top:-2px;left:-2px;width:22px;height:22px;border-top:4px solid #00B04E;border-left:4px solid #00B04E;border-radius:3px 0 0 0">
                         </div>
                         <div
-                            style="position:absolute;top:-2px;right:-2px;width:22px;height:22px;border-top:4px solid #3b82f6;border-right:4px solid #3b82f6;border-radius:0 3px 0 0">
+                            style="position:absolute;top:-2px;right:-2px;width:22px;height:22px;border-top:4px solid #00B04E;border-right:4px solid #00B04E;border-radius:0 3px 0 0">
                         </div>
                         <div
-                            style="position:absolute;bottom:-2px;left:-2px;width:22px;height:22px;border-bottom:4px solid #3b82f6;border-left:4px solid #3b82f6;border-radius:0 0 0 3px">
+                            style="position:absolute;bottom:-2px;left:-2px;width:22px;height:22px;border-bottom:4px solid #00B04E;border-left:4px solid #00B04E;border-radius:0 0 0 3px">
                         </div>
                         <div
-                            style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-bottom:4px solid #3b82f6;border-right:4px solid #3b82f6;border-radius:0 0 3px 0">
+                            style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-bottom:4px solid #00B04E;border-right:4px solid #00B04E;border-radius:0 0 3px 0">
                         </div>
                         {{-- Scan line animation --}}
                         <div
-                            style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#3b82f6,transparent);animation:scanLine 2s linear infinite">
+                            style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#00B04E,transparent);animation:scanLine 2s linear infinite">
                         </div>
                     </div>
                 </div>
@@ -453,7 +457,7 @@
                         {{ app()->getLocale() === 'ar' ? 'جاري التحميل...' : 'Loading...' }}
                     </span>
                     <button id="switchCameraBtn" class="btn btn-sm btn-outline-light" style="display:none">
-                        <i class="fas fa-sync-alt me-1"></i>
+                        <i class="fas fa-rotate me-1"></i>
                         {{ app()->getLocale() === 'ar' ? 'تبديل الكاميرا' : 'Switch Camera' }}
                     </button>
                 </div>
@@ -685,7 +689,7 @@
             <td class="fw-semibold text-success text-end" data-cell="total">${formatCurrency(item.price * item.quantity)}</td>
             <td class="text-center">
                 <button class="btn btn-sm btn-outline-danger qty-btn" data-action="remove" data-idx="${idx}">
-                    <i class="fas fa-times"></i>
+                    <i class="fas fa-xmark"></i>
                 </button>
             </td>
         </tr>`;
@@ -772,7 +776,16 @@
             renderCart();
         }
 
-        function clearCart() {
+        async function clearCart() {
+            const isAr = LOCALE === 'ar';
+            const confirmed = await confirmAction({
+                title: isAr ? 'إلغاء الفاتورة؟' : 'Clear cart?',
+                text: isAr ? 'سيتم حذف جميع المنتجات من الفاتورة الحالية.' : 'All items in the current sale will be removed.',
+                confirmText: isAr ? 'نعم، امسح' : 'Yes, clear',
+                confirmColor: '#ef4444',
+                icon: 'warning',
+            });
+            if (!confirmed) return;
             cart = [];
             renderCart();
         }
@@ -978,7 +991,7 @@
                 showToast('{{ __('pos.error') }}', 'danger');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check-circle me-2"></i>{{ __('pos.complete_sale') }}';
+                btn.innerHTML = '<i class="fas fa-circle-check me-2"></i>{{ __('pos.complete_sale') }}';
             }
         }
 
@@ -992,7 +1005,7 @@
                 theadColor:   isDark ? '#e2e8f0'  : '#212529',
                 border:       isDark ? '#334155'  : '#dee2e6',
                 mutedColor:   isDark ? '#94a3b8'  : '#6c757d',
-                sectionBg:    isDark ? '#1e293b'  : '#f8f9fa',
+                sectionBg:    isDark ? '#0B1830'  : '#f8f9fa',
                 sectionColor: isDark ? '#e2e8f0'  : '#212529',
                 taxBg:        isDark ? '#1e2d1a'  : '#fef9ee',
                 taxColor:     isDark ? '#6ee7b7'  : '#856404',
@@ -1059,7 +1072,7 @@
                 </tr>
                 ${discRow}
                 ${taxRow}
-                <tr style="background-color:#1e293b;color:#fff;font-weight:bold;">
+                <tr style="background-color:#12244E;color:#fff;font-weight:bold;">
                     <td colspan="3" style="padding:10px;text-align:right;">{{ __('pos.total') }}</td>
                     <td style="padding:10px;text-align:right;">${formatCurrency(invoice.final_total)}</td>
                 </tr>
@@ -1459,23 +1472,6 @@
             return await response.json();
         }
 
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            const bgColor = type === 'success' ? '#28a745' : (type === 'danger' ? '#dc3545' : '#ffc107');
-            toast.className = `position-fixed bottom-0 end-0 m-3`;
-            toast.style.zIndex = '9999';
-            toast.style.minWidth = '200px';
-            toast.style.backgroundColor = bgColor;
-            toast.style.color = 'white';
-            toast.style.padding = '12px 20px';
-            toast.style.borderRadius = '8px';
-            toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-            toast.innerHTML =
-                `<i class="fas fa-${type === 'success' ? 'check-circle' : (type === 'danger' ? 'exclamation-triangle' : 'info-circle')} me-2"></i>${message}`;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-
         // ─── CAMERA BARCODE SCANNER ───────────────────────────────────────────────
         let cameraStream = null;
         let scannerActive = false;
@@ -1549,7 +1545,7 @@
         window._cameraDevices[window._currentCamIdx];
 
     statusEl.innerHTML =
-        '<i class="fas fa-sync-alt fa-spin me-1"></i>' +
+        '<i class="fas fa-rotate fa-spin me-1"></i>' +
         '{{ app()->getLocale() === 'ar' ? 'جاري تبديل الكاميرا...' : 'Switching camera...' }}';
 
     await startDecode(nextDevice.deviceId);

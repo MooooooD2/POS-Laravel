@@ -41,8 +41,9 @@ class AuthController extends Controller
         Tenancy::initialize($tenant);
 
         if (Auth::guard('web')->attempt([
-            'username' => $credentials['username'],
-            'password' => $credentials['password'],
+            'username'  => $credentials['username'],
+            'password'  => $credentials['password'],
+            'is_active' => true,
         ])) {
             $request->session()->put('tenant_id', $tenant->id);
             $request->session()->regenerate();

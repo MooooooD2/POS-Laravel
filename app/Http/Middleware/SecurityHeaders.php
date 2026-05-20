@@ -47,7 +47,7 @@ class SecurityHeaders
             "style-src-attr 'unsafe-inline'; " .
             "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
             "img-src 'self' data: blob:; " .
-            "connect-src 'self' https://cdn.jsdelivr.net; " .
+            "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
             "object-src 'none'; " .
             "base-uri 'self'; " .
             "form-action 'self';"

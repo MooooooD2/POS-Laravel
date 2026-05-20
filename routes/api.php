@@ -31,7 +31,7 @@ use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 
 // #12 Rate Limiting: 60 طلب/دقيقة على كل APIs
-Route::middleware(['auth', 'throttle:60,1'])->group(function () {
+Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\CheckSubscriptionActive::class])->group(function () {
 
     Route::get('/dashboard-data', [DashboardController::class, 'data'])->name('api.dashboard.data');
 

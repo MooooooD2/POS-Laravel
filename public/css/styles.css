@@ -1,12 +1,15 @@
-/* styles.css */
+/* styles.css — Nuqtah brand: navy #12244E + green #00B04E */
 
 :root {
-    --primary: #2563eb;
-    --primary-dark: #1d4ed8;
+    --primary: #12244E;
+    --primary-dark: #0D1B3A;
+    --primary-light: #E8F0FC;
+    --accent: #00B04E;
+    --accent-dark: #008A3C;
     --sidebar-width: 260px;
-    --sidebar-bg: #1e293b;
-    --sidebar-text: #cbd5e1;
-    --sidebar-active: #3b82f6;
+    --sidebar-bg: #0B1830;
+    --sidebar-text: #8BAFD0;
+    --sidebar-active: #00B04E;
 
     /* Light theme tokens */
     --body-bg: #f8fafc;
@@ -289,11 +292,11 @@ body {
     color: #e2e8f0;
 }
 [data-theme="dark"] .btn-outline-primary {
-    color: #60a5fa;
-    border-color: #3b82f6;
+    color: #8BAFD0;
+    border-color: #4A7FB5;
 }
 [data-theme="dark"] .btn-outline-primary:hover {
-    background: #1d4ed8;
+    background: #12244E;
     color: #fff;
 }
 
@@ -621,15 +624,26 @@ body.rtl #sidebar {
     margin: 0.15rem 0.5rem;
 }
 
-.sidebar-menu a:hover,
+.sidebar-menu a:hover {
+    background: rgba(0, 176, 78, 0.14);
+    color: #fff;
+}
 .sidebar-menu a.active {
     background: var(--sidebar-active);
     color: #fff;
+    font-weight: 600;
 }
 
 .sidebar-menu a i {
-    width: 20px;
+    width: 22px;
     text-align: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    opacity: .85;
+}
+.sidebar-menu a.active i,
+.sidebar-menu a:hover i {
+    opacity: 1;
 }
 
 /* Main content - LTR (default) */
@@ -654,7 +668,7 @@ body.rtl #main-content {
     z-index: 999;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: end;
 }
 
 /* Page header title bar */
@@ -717,7 +731,7 @@ body.rtl #main-content {
 }
 
 .stat-card.blue {
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    background: linear-gradient(135deg, #1a3166, #12244E);
 }
 
 .stat-card.green {
@@ -824,3 +838,56 @@ body.rtl .toast-container {
     color: inherit;
     pointer-events: none;
 }
+
+/* ── Nuqtah Sidebar Brand Logo ─────────────────────────────────────────── */
+.brand-logo {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, #00B04E, #008A3C);
+    border-radius: .55rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: .95rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0,176,78,.35);
+}
+.sidebar-brand .brand-text { font-weight: 800; letter-spacing: -.01em; }
+
+/* ── Bootstrap primary — Nuqtah navy override ──────────────────────────── */
+.btn-primary {
+    --bs-btn-bg: #12244E;
+    --bs-btn-border-color: #12244E;
+    --bs-btn-hover-bg: #0D1B3A;
+    --bs-btn-hover-border-color: #0D1B3A;
+    --bs-btn-active-bg: #0D1B3A;
+    --bs-btn-active-border-color: #0D1B3A;
+    --bs-btn-disabled-bg: #12244E;
+    --bs-btn-focus-shadow-rgb: 18, 36, 78;
+}
+.btn-outline-primary {
+    --bs-btn-color: #12244E;
+    --bs-btn-border-color: #12244E;
+    --bs-btn-hover-bg: #12244E;
+    --bs-btn-hover-border-color: #12244E;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: #0D1B3A;
+    --bs-btn-active-color: #fff;
+    --bs-btn-focus-shadow-rgb: 18, 36, 78;
+}
+.text-primary { color: #12244E !important; }
+.bg-primary   { background-color: #12244E !important; }
+.border-primary { border-color: #12244E !important; }
+.badge.bg-primary { background-color: #12244E !important; }
+.nav-pills .nav-link.active,
+.nav-pills .show > .nav-link { background-color: #12244E !important; }
+
+/* ── SweetAlert2 Nuqtah theme tweaks ─────────────────────────────────── */
+.swal2-confirm { background: #12244E !important; }
+.swal2-confirm:hover { background: #0D1B3A !important; }
+.swal2-styled:focus { box-shadow: 0 0 0 3px rgba(18,36,78,.3) !important; }
+.swal2-popup { border-radius: 1rem !important; }
+.swal2-toast { border-radius: .75rem !important; }
+.swal2-title { font-family: 'Cairo','Tajawal',sans-serif !important; }
+.swal2-html-container { font-family: 'Cairo','Tajawal',sans-serif !important; }

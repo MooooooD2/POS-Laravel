@@ -200,7 +200,9 @@ async function boot() {
 // ── USERS ─────────────────────────────────────────────────────────────────────
 function renderUsers() {
     document.getElementById('usersBody').innerHTML = allUsers.length
-        ? allUsers.map((u, i) => `
+        ? allUsers.map((u, i) => {
+            const isAdmin = (u.role === 'admin') || (Array.isArray(u.roles) && u.roles.includes('admin'));
+            return `
             <tr class="${u.is_active ? '' : 'table-secondary opacity-75'}">
                 <td class="text-muted small">${i + 1}</td>
                 <td class="fw-semibold font-monospace">${escapeHtml(u.username)}</td>
@@ -217,15 +219,20 @@ function renderUsers() {
                         <button class="btn btn-primary" data-action="edit-user" data-user-idx="${i}" title="{{ __('pos.edit') }}">
                             <i class="fas fa-edit"></i>
                         </button>
+                        ${isAdmin ? `
+                        <span class="btn btn-sm btn-outline-secondary disabled px-2" title="{{ app()->getLocale() === 'ar' ? 'حساب المدير محمي' : 'Admin account is protected' }}">
+                            <i class="fas fa-lock"></i>
+                        </span>` : `
                         <button class="btn ${u.is_active ? 'btn-warning' : 'btn-success'}" data-action="toggle-user" data-id="${u.id}" title="{{ app()->getLocale() === 'ar' ? 'تفعيل/تعطيل' : 'Toggle Active' }}">
                             <i class="fas fa-${u.is_active ? 'ban' : 'check'}"></i>
                         </button>
                         <button class="btn btn-danger" data-action="delete-user" data-id="${u.id}" title="{{ __('pos.delete') }}">
                             <i class="fas fa-trash"></i>
-                        </button>
+                        </button>`}
                     </div>
                 </td>
-            </tr>`).join('')
+            </tr>`;
+        }).join('')
         : '<tr><td colspan="7" class="text-center text-muted py-4">{{ __("pos.no_data") }}</td></tr>';
 }
 
@@ -302,9 +309,13 @@ async function saveUser() {
 }
 
 async function toggleUser(id) {
+    const u = allUsers.find(x => x.id === id);
+    if (u && ((u.role === 'admin') || (Array.isArray(u.roles) && u.roles.includes('admin')))) {
+        showToast('{{ app()->getLocale() === "ar" ? "لا يمكن تعطيل حسابات المدير" : "Admin accounts cannot be deactivated" }}', 'danger');
+        return;
+    }
     const res = await apiCall(`/api/users/${id}/toggle-active`, 'POST');
     if (res.success) {
-        const u = allUsers.find(x => x.id === id);
         if (u) u.is_active = res.is_active;
         renderUsers();
     } else {
@@ -313,6 +324,11 @@ async function toggleUser(id) {
 }
 
 async function deleteUser(id) {
+    const u = allUsers.find(x => x.id === id);
+    if (u && ((u.role === 'admin') || (Array.isArray(u.roles) && u.roles.includes('admin')))) {
+        showToast('{{ app()->getLocale() === "ar" ? "لا يمكن حذف حسابات المدير" : "Admin accounts cannot be deleted" }}', 'danger');
+        return;
+    }
     if (!confirm('{{ __("pos.confirm_delete") }}')) return;
     const res = await apiCall(`/api/users/${id}`, 'DELETE');
     if (res.success) { showToast('{{ __("pos.success") }}'); await boot(); }

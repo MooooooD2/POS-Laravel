@@ -1,6 +1,9 @@
 <?php
 use Illuminate\Support\Facades\Schedule;
 
+// Mark expired trials and subscriptions
+Schedule::command('subscription:expire')->daily()->at('00:05');
+
 // #48 تنبيه المخزون المنخفض يومياً
 Schedule::command('stock:alert')->daily()->at('08:00');
 

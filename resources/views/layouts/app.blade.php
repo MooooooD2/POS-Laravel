@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csp-nonce" content="{{ app('csp-nonce') ?? '' }}">
     <title>@yield('title', __('pos.app_name'))</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
     {{-- Remove default favicon / No icon --}}
@@ -21,6 +22,8 @@
 
     {{-- Icons --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {{-- SweetAlert2 --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
     {{-- Arabic Font --}}
     {{-- Arabic Font - Cairo (Most Reliable) --}}
@@ -47,19 +50,31 @@
     {{-- Sidebar --}}
     <nav id="sidebar">
         <div class="sidebar-brand">
-            <i class="fas fa-cash-register me-2"></i>
-            {{ __('pos.app_name') }}
-              <button class="btn btn-sm d-md-none ms-auto" data-fn="toggleSidebar"
-            style="background:none; border:none; color:inherit; opacity:0.7; padding:0; line-height:1;">
-        <i class="fas fa-times fa-lg"></i>
-    </button>
+            <div class="brand-logo me-2">
+                <i class="fas fa-crosshairs"></i>
+            </div>
+            <span class="brand-text">{{ __('pos.app_name') }}</span>
+            <button class="btn btn-sm d-md-none ms-auto" data-fn="toggleSidebar"
+                style="background:none; border:none; color:inherit; opacity:0.7; padding:0; line-height:1;">
+                <i class="fas fa-xmark fa-lg"></i>
+            </button>
         </div>
        {{-- Update the sidebar menu section --}}
+@php $isMasterTenant = config('tenancy.master_tenant') && tenancy()->tenant?->id === config('tenancy.master_tenant'); @endphp
 <div class="sidebar-menu mt-2">
-    {{-- Dashboard - All authenticated users --}}
-    <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
-        <i class="fas fa-tachometer-alt"></i> {{ __('pos.dashboard') }}
-    </a>
+    {{-- Dashboard - links differ for master tenant owner vs store users --}}
+    @if($isMasterTenant)
+        <a href="{{ route('admin.cpanel') }}" class="{{ request()->routeIs('admin.cpanel') ? 'active' : '' }}">
+            <i class="fas fa-gauge-high"></i> {{ __('pos.dashboard') }}
+        </a>
+    @else
+        <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard', 'home') ? 'active' : '' }}">
+            <i class="fas fa-gauge-high"></i> {{ __('pos.dashboard') }}
+        </a>
+    @endif
+
+    {{-- Store modules — subscription tenant users only (hidden for master tenant owner) --}}
+    @if(!$isMasterTenant)
 
     {{-- POS - Check permission instead of role --}}
     @permission('view_pos')
@@ -68,42 +83,39 @@
         </a>
     @endpermission
 
-    {{-- Returns - Check permission --}}
     @permission('view_returns')
         <a href="{{ route('returns') }}" class="{{ request()->routeIs('returns') ? 'active' : '' }}">
-            <i class="fas fa-undo"></i> {{ __('pos.returns') }}
+            <i class="fas fa-rotate-left"></i> {{ __('pos.returns') }}
         </a>
     @endpermission
 
-    {{-- Warehouse & Products - Check permission --}}
     @permission('view_warehouse')
         <a href="{{ route('warehouse') }}" class="{{ request()->routeIs('warehouse') ? 'active' : '' }}">
-            <i class="fas fa-boxes"></i> {{ __('pos.warehouse') }}
+            <i class="fas fa-boxes-stacked"></i> {{ __('pos.warehouse') }}
         </a>
     @endpermission
 
     @permission('view_suppliers')
         <a href="{{ route('suppliers') }}" class="{{ request()->routeIs('suppliers') ? 'active' : '' }}">
-            <i class="fas fa-truck"></i> {{ __('pos.suppliers') }}
+            <i class="fas fa-truck-fast"></i> {{ __('pos.suppliers') }}
         </a>
     @endpermission
 
     @permission('view_purchase_orders')
         <a href="{{ route('purchase-orders') }}" class="{{ request()->routeIs('purchase-orders') ? 'active' : '' }}">
-            <i class="fas fa-file-invoice"></i> {{ __('pos.purchase_orders') }}
+            <i class="fas fa-file-invoice-dollar"></i> {{ __('pos.purchase_orders') }}
         </a>
         <a href="{{ route('purchase-returns') }}" class="{{ request()->routeIs('purchase-returns') ? 'active' : '' }}">
-            <i class="fas fa-undo-alt"></i> {{ __('pos.purchase_returns') }}
+            <i class="fas fa-arrow-rotate-left"></i> {{ __('pos.purchase_returns') }}
         </a>
     @endpermission
 
     @permission('view_supplier_payments')
         <a href="{{ route('supplier-payments') }}" class="{{ request()->routeIs('supplier-payments') ? 'active' : '' }}">
-            <i class="fas fa-money-bill-wave"></i> {{ __('pos.supplier_payments') }}
+            <i class="fas fa-money-bill-transfer"></i> {{ __('pos.supplier_payments') }}
         </a>
-
         <a href="{{ route('supplier-accounts') }}" class="{{ request()->routeIs('supplier-accounts') ? 'active' : '' }}">
-            <i class="fas fa-balance-scale"></i> {{ __('pos.supplier_accounts') }}
+            <i class="fas fa-scale-balanced"></i> {{ __('pos.supplier_accounts') }}
         </a>
     @endpermission
 
@@ -115,10 +127,10 @@
             <i class="fas fa-users"></i> {{ __('pos.customers') }}
         </a>
         <a href="{{ route('customer-groups') }}" class="{{ request()->routeIs('customer-groups') ? 'active' : '' }}">
-            <i class="fas fa-layer-group"></i> {{ app()->getLocale()==='ar' ? 'مجموعات العملاء' : 'Customer Groups' }}
+            <i class="fas fa-people-group"></i> {{ app()->getLocale()==='ar' ? 'مجموعات العملاء' : 'Customer Groups' }}
         </a>
         <a href="{{ route('promotions') }}" class="{{ request()->routeIs('promotions') ? 'active' : '' }}">
-            <i class="fas fa-tags"></i> {{ app()->getLocale()==='ar' ? 'العروض الترويجية' : 'Promotions' }}
+            <i class="fas fa-percent"></i> {{ app()->getLocale()==='ar' ? 'العروض الترويجية' : 'Promotions' }}
         </a>
     @endpermission
 
@@ -128,71 +140,76 @@
         </a>
     @endpermission
 
-@permission('view_reports')
-    <a href="{{ route('reports') }}" class="{{ request()->routeIs('reports') ? 'active' : '' }}">
-        <i class="fas fa-chart-bar"></i> {{ __('pos.reports') }}
-    </a>
-    <a href="{{ route('profit-reports') }}" class="{{ request()->routeIs('profit-reports') ? 'active' : '' }}">
-        <i class="fas fa-percentage"></i> {{ __('pos.profit_reports') }}
-    </a>
-    <a href="{{ route('reports.budget') }}" class="{{ request()->routeIs('reports.budget') ? 'active' : '' }}">
-        <i class="fas fa-balance-scale"></i> {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}
-    </a>
-@endpermission
+    @permission('view_reports')
+        <a href="{{ route('reports') }}" class="{{ request()->routeIs('reports') ? 'active' : '' }}">
+            <i class="fas fa-chart-column"></i> {{ __('pos.reports') }}
+        </a>
+        <a href="{{ route('profit-reports') }}" class="{{ request()->routeIs('profit-reports') ? 'active' : '' }}">
+            <i class="fas fa-chart-line"></i> {{ __('pos.profit_reports') }}
+        </a>
+        <a href="{{ route('reports.budget') }}" class="{{ request()->routeIs('reports.budget') ? 'active' : '' }}">
+            <i class="fas fa-scale-unbalanced"></i> {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}
+        </a>
+    @endpermission
 
-@permission('view_pos')
-    <a href="{{ route('cash-register') }}" class="{{ request()->routeIs('cash-register') ? 'active' : '' }}">
-        <i class="fas fa-cash-register"></i> {{ __('pos.cash_register_settlement') }}
-    </a>
-@endpermission
+    @permission('view_pos')
+        <a href="{{ route('cash-register') }}" class="{{ request()->routeIs('cash-register') ? 'active' : '' }}">
+            <i class="fas fa-cash-register"></i> {{ __('pos.cash_register_settlement') }}
+        </a>
+    @endpermission
 
-    {{-- Accounting & Financial Reports - Check permission --}}
     @permission('view_accounting')
         <a href="{{ route('accounting') }}" class="{{ request()->routeIs('accounting') ? 'active' : '' }}">
-            <i class="fas fa-book"></i> {{ __('pos.accounting') }}
+            <i class="fas fa-book-open"></i> {{ __('pos.accounting') }}
         </a>
     @endpermission
 
     @permission('view_financial_reports')
         <a href="{{ route('financial-reports') }}" class="{{ request()->routeIs('financial-reports') ? 'active' : '' }}">
-            <i class="fas fa-file-alt"></i> {{ __('pos.financial_reports') }}
+            <i class="fas fa-chart-area"></i> {{ __('pos.financial_reports') }}
         </a>
     @endpermission
 
     @permission('manage_roles')
         <a href="{{ route('branches') }}" class="{{ request()->routeIs('branches') ? 'active' : '' }}">
-            <i class="fas fa-code-branch"></i> {{ __('pos.branches') }}
+            <i class="fas fa-sitemap"></i> {{ __('pos.branches') }}
         </a>
         <a href="{{ route('whatsapp') }}" class="{{ request()->routeIs('whatsapp') ? 'active' : '' }}">
             <i class="fab fa-whatsapp"></i> {{ __('pos.whatsapp') }}
         </a>
     @endpermission
 
-    {{-- Settings - Check permission --}}
     @permission('view_settings')
         <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
-            <i class="fas fa-cog"></i> {{ __('pos.settings') }}
+            <i class="fas fa-gear"></i> {{ __('pos.settings') }}
         </a>
     @endpermission
 
-    {{-- SaaS Owner panel — master tenant only --}}
-    @php $isMasterTenant = config('tenancy.master_tenant') && tenancy()->tenant?->id === config('tenancy.master_tenant'); @endphp
-    @if($isMasterTenant)
-        <div class="sidebar-divider"></div>
-        <div class="sidebar-section-label">{{ app()->getLocale()==='ar' ? 'لوحة المالك' : 'Owner Panel' }}</div>
-        <a href="{{ route('admin.cpanel') }}"
-           class="{{ request()->routeIs('admin.cpanel') ? 'active' : '' }}">
-            <i class="fas fa-gauge-high"></i>
-            {{ app()->getLocale()==='ar' ? 'لوحة التحكم' : 'cPanel' }}
-        </a>
+    @else {{-- Master tenant owner: SaaS management links only --}}
         <a href="{{ route('admin.tenants') }}"
            class="{{ request()->routeIs('admin.tenants') ? 'active' : '' }}">
-            <i class="fas fa-layer-group"></i>
+            <i class="fas fa-building-columns"></i>
             {{ app()->getLocale()==='ar' ? 'الاشتراكات' : 'Subscriptions' }}
+        </a>
+        <a href="{{ route('admin.plans') }}"
+           class="{{ request()->routeIs('admin.plans') ? 'active' : '' }}">
+            <i class="fas fa-tag"></i>
+            {{ app()->getLocale()==='ar' ? 'الخطط والأسعار' : 'Plans & Pricing' }}
+        </a>
+        <a href="{{ route('admin.payment-accounts.page') }}"
+           class="{{ request()->routeIs('admin.payment-accounts.page') ? 'active' : '' }}">
+            <i class="fas fa-wallet"></i>
+            {{ app()->getLocale()==='ar' ? 'وسائل الدفع' : 'Payment Methods' }}
         </a>
         <a href="{{ route('roles') }}"
            class="{{ request()->routeIs('roles') ? 'active' : '' }}">
-            <i class="fas fa-user-shield"></i> {{ __('pos.roles') }}
+            <i class="fas fa-shield-halved"></i>
+            {{ app()->getLocale()==='ar' ? 'الأدوار والصلاحيات' : 'Roles & Permissions' }}
+        </a>
+        <a href="{{ route('settings') }}"
+           class="{{ request()->routeIs('settings') ? 'active' : '' }}">
+            <i class="fas fa-gear"></i>
+            {{ app()->getLocale()==='ar' ? 'إعدادات النظام' : 'System Settings' }}
         </a>
     @endif
 </div>
@@ -221,6 +238,54 @@
     <style @nonce>#sidebar, #main-content { margin-top: 36px; }</style>
     @endif
 
+    {{-- Subscription Banner (expired / trial ending soon) --}}
+    @php
+        $__tenant     = tenancy()->tenant;
+        $__masterId   = config('tenancy.master_tenant');
+        $__isMaster   = $__masterId && $__tenant?->id === $__masterId;
+        $__subStatus  = $__tenant?->subscription_status;
+        $__trialEnds  = $__tenant?->trial_ends_at;
+        $__trialDays  = $__trialEnds ? (int) now()->diffInDays($__trialEnds, false) : null;
+        $__showExpiredBanner = !$__isMaster && in_array($__subStatus, ['expired','suspended','cancelled']);
+        $__showTrialBanner   = !$__isMaster && $__subStatus === 'trial' && $__trialDays !== null && $__trialDays <= 7 && $__trialDays >= 0;
+    @endphp
+
+    @if($__showExpiredBanner)
+    <div id="sub-banner-expired" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#dc2626,#b91c1c);color:#fff;padding:.55rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;font-size:.84rem;font-weight:600;box-shadow:0 2px 12px rgba(220,38,38,.4);">
+        <span>
+            <i class="fas fa-exclamation-circle me-2"></i>
+            @if(app()->getLocale() === 'ar')
+                {{ $__subStatus === 'suspended' ? 'حسابك موقوف مؤقتاً.' : ($__subStatus === 'cancelled' ? 'اشتراكك ملغى.' : 'انتهى اشتراكك.') }}
+                جدّد الآن للاستمرار في استخدام النظام.
+            @else
+                {{ $__subStatus === 'suspended' ? 'Your account is suspended.' : ($__subStatus === 'cancelled' ? 'Your subscription is cancelled.' : 'Your subscription has expired.') }}
+                Renew now to keep using the system.
+            @endif
+        </span>
+        <a href="{{ route('subscribe') }}" style="background:#fff;color:#dc2626;padding:.3rem 1rem;border-radius:.5rem;font-weight:800;text-decoration:none;white-space:nowrap;font-size:.82rem;flex-shrink:0">
+            <i class="fas fa-redo me-1"></i>
+            {{ app()->getLocale() === 'ar' ? 'جدّد الاشتراك' : 'Renew Now' }}
+        </a>
+    </div>
+    <style @nonce>#sidebar, #main-content { margin-top: 38px; }</style>
+    @elseif($__showTrialBanner)
+    <div id="sub-banner-trial" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#d97706,#b45309);color:#fff;padding:.55rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;font-size:.84rem;font-weight:600;box-shadow:0 2px 12px rgba(217,119,6,.4);">
+        <span>
+            <i class="fas fa-hourglass-half me-2"></i>
+            @if(app()->getLocale() === 'ar')
+                تبقّى <strong>{{ $__trialDays }} {{ $__trialDays === 1 ? 'يوم' : 'أيام' }}</strong> على انتهاء فترة التجربة المجانية.
+            @else
+                <strong>{{ $__trialDays }} {{ $__trialDays === 1 ? 'day' : 'days' }}</strong> left on your free trial.
+            @endif
+        </span>
+        <a href="{{ route('subscribe') }}" style="background:#fff;color:#b45309;padding:.3rem 1rem;border-radius:.5rem;font-weight:800;text-decoration:none;white-space:nowrap;font-size:.82rem;flex-shrink:0">
+            <i class="fas fa-tags me-1"></i>
+            {{ app()->getLocale() === 'ar' ? 'اشترك الآن' : 'Subscribe Now' }}
+        </a>
+    </div>
+    <style @nonce>#sidebar, #main-content { margin-top: 38px; }</style>
+    @endif
+
     {{-- Main Content --}}
     <div id="main-content">
         {{-- Topbar --}}
@@ -229,7 +294,7 @@
                 <button class="btn btn-sm btn-outline-secondary d-md-none" data-fn="toggleSidebar">
                     <i class="fas fa-bars"></i>
                 </button>
-                <h6 class="mb-0 fw-semibold d-none d-md-block">@yield('page-title', __('pos.dashboard'))</h6>
+                {{-- <h6 class="mb-0 fw-semibold d-none d-md-block">@yield('page-title', __('pos.dashboard'))</h6> --}}
            
                 {{-- Low Stock Notification Bell --}}
                 <div class="dropdown" id="stockNotifDropdown">
@@ -340,30 +405,56 @@
 
     {{-- Bootstrap JS --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {{-- SweetAlert2 --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 
     <script @nonce>
         // CSRF token for AJAX - رمز CSRF لطلبات AJAX
         const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const LOCALE = '{{ app()->getLocale() }}';
 
-        // Helper: Show toast notification - عرض إشعار
+        // Helper: Show toast notification (SweetAlert2)
+        const _swalToast = Swal.mixin({
+            toast: true,
+            position: LOCALE === 'ar' ? 'top-start' : 'top-end',
+            showConfirmButton: false,
+            timer: 3500,
+            timerProgressBar: true,
+            showClass: { popup: 'swal2-show' },
+            hideClass: { popup: 'swal2-hide' },
+        });
         function showToast(message, type = 'success') {
-            const colorMap = { success: 'success', error: 'danger', warning: 'warning text-dark' };
-            const bgClass = colorMap[type] || 'success';
-            const toastEl = document.createElement('div');
-            toastEl.className = `toast align-items-center text-white bg-${bgClass} border-0`;
-            toastEl.setAttribute('role', 'alert');
-            toastEl.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">${message}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>`;
-            document.getElementById('toastContainer').appendChild(toastEl);
-            const toast = new bootstrap.Toast(toastEl, {
-                delay: 3000
+            const iconMap = { success: 'success', danger: 'error', warning: 'warning', info: 'info', error: 'error' };
+            _swalToast.fire({ icon: iconMap[type] || 'success', title: message });
+        }
+
+        // Helper: Confirm dialog (SweetAlert2) — returns Promise<boolean>
+        async function confirmAction({ title, text, confirmText, cancelText, icon = 'warning', confirmColor = '#ef4444' } = {}) {
+            const isAr = LOCALE === 'ar';
+            const result = await Swal.fire({
+                title: title || (isAr ? 'هل أنت متأكد؟' : 'Are you sure?'),
+                text: text || '',
+                icon,
+                showCancelButton: true,
+                confirmButtonColor: confirmColor,
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: confirmText || (isAr ? 'تأكيد' : 'Confirm'),
+                cancelButtonText: cancelText || (isAr ? 'إلغاء' : 'Cancel'),
+                reverseButtons: !isAr,
+                customClass: { popup: 'swal2-popup' },
             });
-            toast.show();
-            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+            return result.isConfirmed;
+        }
+
+        // Helper: Delete confirm shortcut
+        async function confirmDelete(message) {
+            const isAr = LOCALE === 'ar';
+            return confirmAction({
+                title: isAr ? 'تأكيد الحذف' : 'Confirm Delete',
+                text: message || (isAr ? 'لا يمكن التراجع عن هذا الإجراء.' : 'This action cannot be undone.'),
+                confirmText: isAr ? 'نعم، احذف' : 'Yes, delete',
+                confirmColor: '#ef4444',
+            });
         }
 
         // Helper: API call - طلب API

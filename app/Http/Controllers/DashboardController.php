@@ -13,6 +13,11 @@ class DashboardController extends Controller
 
     public function index()
     {
+        $masterId = config('tenancy.master_tenant');
+        if ($masterId && tenancy()->tenant?->id === $masterId) {
+            return redirect()->route('admin.cpanel');
+        }
+
         return view('dashboard.index');
     }
 

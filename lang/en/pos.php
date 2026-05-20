@@ -255,6 +255,8 @@ return [
     // User Management
     'cannot_delete_self'            => 'You cannot delete your own account.',
     'cannot_delete_last_admin'      => 'Cannot delete the last admin in the system.',
+    'cannot_delete_admin'           => 'Admin accounts cannot be deleted.',
+    'cannot_deactivate_admin'       => 'Admin accounts cannot be deactivated.',
     'cannot_disable_self'           => 'You cannot disable your own account.',
     // Role Management messages
     'role_protected'                => 'This role is protected and cannot be modified.',
@@ -535,7 +537,11 @@ return [
     'no_tenants'                      => 'No tenants found.',
     'plan'                            => 'Plan',
     'master_tenant_only'              => 'Only the master tenant can manage other tenants.',
-    'cannot_delete_master_tenant'     => 'The master tenant cannot be deleted.',
+    'cannot_delete_master_tenant'        => 'The master tenant cannot be deleted.',
+    'subscription_expired_message'       => 'Your subscription has expired. Please contact the administrator to renew.',
+    'invalid_plan_price'                 => 'Invalid plan price. Please select a valid plan.',
+    'payment_error'                      => 'Payment failed. Please try again or contact support.',
+    'payment_failed'                     => 'Payment was not completed. Please try again.',
     'master_tenant_not_set'           => 'MASTER_TENANT_ID is not set in .env — tenant creation guards are disabled.',
     'delete_tenant_confirm'           => 'Permanently delete tenant',
     'delete_tenant_warning'           => 'This will DROP the entire database. This action cannot be undone.',
@@ -608,4 +614,10 @@ return [
     'from_date'                  => 'From',
     'to_date'                    => 'To',
     'select_supplier'            => 'Select a supplier',
+
+    // Plans & Pricing
+    'plan_created'    => 'Plan created successfully.',
+    'plan_updated'    => 'Plan updated successfully.',
+    'plan_deleted'    => 'Plan deleted successfully.',
+    'plan_has_tenants'=> 'Cannot delete this plan — stores are currently subscribed to it.',
 ];

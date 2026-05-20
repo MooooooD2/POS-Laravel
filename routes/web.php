@@ -3,6 +3,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
@@ -15,8 +16,16 @@ use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
-// ── Landing page ──────────────────────────────────────────────────────────
-Route::get('/welcome', fn() => view('welcome'))->name('welcome');
+// ── Landing page (default root) ───────────────────────────────────────────
+Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    $plans = \App\Models\Plan::where('is_active', true)->orderBy('sort_order')->get();
+    return view('welcome', compact('plans'));
+})->name('welcome');
+
+Route::redirect('/home', '/');
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
@@ -38,10 +47,22 @@ Route::middleware(['auth'])->prefix('2fa')->name('2fa.')->group(function () {
 Route::get('/lang/{locale}', [LanguageController::class, 'switch'])->where('locale', 'ar|en')->name('lang.switch');
 Route::get('/lang/{locale}/translations', [LanguageController::class, 'getTranslations'])->where('locale', 'ar|en')->name('lang.translations');
 
+
+// ── Subscribe (auth + tenancy, no subscription-check to avoid loop) ──────
+Route::middleware(['auth', 'tenancy'])->group(function () {
+    Route::get('/subscribe', function () {
+        $tenant    = tenancy()->tenant;
+        $plans     = \App\Models\Plan::where('is_active', true)->orderBy('sort_order')->get();
+        $methods   = \App\Models\PaymentAccount::configured();
+        $waAccount = \App\Models\PaymentAccount::where('method', 'whatsapp')->where('is_active', true)->first();
+        $whatsapp  = $waAccount?->account_number ?? '201000000000';
+        return view('subscription.subscribe', compact('tenant', 'plans', 'methods', 'whatsapp'));
+    })->name('subscribe');
+});
+
 // ── Authenticated web views ───────────────────────────────────────────────
-Route::middleware(['auth', 'tenancy', '2fa'])->group(function () {
+Route::middleware(['auth', 'tenancy', '2fa', \App\Http\Middleware\CheckSubscriptionActive::class])->group(function () {
     Route::get('/session-info', [AuthController::class, 'sessionInfo'])->name('session.info');
-    Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashboard.data');
     Route::get('/dashboard/low-stock', [DashboardController::class, 'lowStock'])->name('dashboard.low-stock');
@@ -102,6 +123,18 @@ Route::middleware(['auth', 'tenancy', '2fa'])->group(function () {
         Route::patch('/tenants/{id}/cancel',             [TenantController::class, 'cancelSubscription'])->name('tenants.cancel');
         Route::get('/tenants/{id}/users',                [TenantController::class, 'tenantUsers'])->name('tenants.users');
         Route::patch('/tenants/{id}/users/{userId}/toggle', [TenantController::class, 'toggleTenantUser'])->name('tenants.users.toggle');
+
+        // ── Plans & Pricing ───────────────────────────────────────────────
+        Route::get('/plans',              [PlanController::class, 'index'])->name('plans');
+        Route::post('/plans',             [PlanController::class, 'store'])->name('plans.store');
+        Route::put('/plans/{id}',         [PlanController::class, 'update'])->name('plans.update');
+        Route::patch('/plans/{id}/toggle',[PlanController::class, 'toggle'])->name('plans.toggle');
+        Route::delete('/plans/{id}',      [PlanController::class, 'destroy'])->name('plans.destroy');
+
+        // ── Payment Accounts (wallet numbers) ─────────────────────────────
+        Route::get('/payment-accounts',         [\App\Http\Controllers\PaymentAccountController::class, 'index'])->name('payment-accounts.index');
+        Route::get('/payment-accounts/page',    [\App\Http\Controllers\PaymentAccountController::class, 'page'])->name('payment-accounts.page');
+        Route::put('/payment-accounts/{id}',    [\App\Http\Controllers\PaymentAccountController::class, 'update'])->name('payment-accounts.update');
     });
 });
 

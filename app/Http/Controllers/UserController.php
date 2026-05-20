@@ -52,7 +52,11 @@ class UserController extends Controller
     public function toggleActive(User $user)
     {
         $this->authorize('toggleActive', $user);
-        $updated = $this->userService->toggleActive($user);
+        try {
+            $updated = $this->userService->toggleActive($user);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 403);
+        }
         $this->audit('user.toggled', User::class, (int) $user->id, ['is_active' => $updated->is_active]);
         return $this->success(['is_active' => $updated->is_active]);
     }

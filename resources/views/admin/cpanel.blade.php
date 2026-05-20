@@ -31,8 +31,12 @@
 @php
     $isAr = app()->getLocale() === 'ar';
     $total = $tenants->count();
-    $planPrices = ['basic'=>49,'pro'=>99,'enterprise'=>199];
-    $planColors = ['basic'=>'#6b7280','pro'=>'#0ea5e9','enterprise'=>'#8b5cf6'];
+    // Colors cycle for dynamic plans
+    $colorPalette = ['#6b7280','#0ea5e9','#8b5cf6','#f59e0b','#10b981','#ef4444'];
+    $planColors   = [];
+    foreach ($planModels->values() as $i => $p) {
+        $planColors[$p->id] = $colorPalette[$i % count($colorPalette)];
+    }
     $statusColors = ['trial'=>'#f59e0b','active'=>'#10b981','expired'=>'#ef4444','suspended'=>'#1f2937','cancelled'=>'#d1d5db'];
     $statusLabels = ['trial'=>($isAr?'تجريبي':'Trial'),'active'=>($isAr?'نشط':'Active'),'expired'=>($isAr?'منتهي':'Expired'),'suspended'=>($isAr?'معلق':'Suspended'),'cancelled'=>($isAr?'ملغي':'Cancelled')];
 @endphp
@@ -144,15 +148,15 @@
             <div class="card shadow-sm h-100">
                 <div class="card-body">
                     <div class="section-head">{{ $isAr ? 'توزيع الخطط' : 'Plan Distribution' }}</div>
-                    @foreach(['basic','pro','enterprise'] as $plan)
-                    @php $cnt = $tenants->where('plan',$plan)->count(); $pct = $total>0?round($cnt/$total*100):0; @endphp
+                    @foreach($planModels as $plan)
+                    @php $cnt = $tenants->where('plan',$plan->id)->count(); $pct = $total>0?round($cnt/$total*100):0; @endphp
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="fw-semibold small text-capitalize">{{ $plan }}</span>
-                            <span class="small text-muted">{{ $cnt }} &middot; ${{ number_format($activeByPlan[$plan] * $planPrices[$plan]) }}/mo</span>
+                            <span class="fw-semibold small text-capitalize">{{ $plan->name }}</span>
+                            <span class="small text-muted">{{ $cnt }} &middot; ${{ number_format(($activeByPlan[$plan->id] ?? 0) * $plan->monthly_price) }}/mo</span>
                         </div>
                         <div class="progress" style="height:6px;border-radius:3px">
-                            <div class="progress-bar" style="width:{{ $pct }}%;background:{{ $planColors[$plan] }}"></div>
+                            <div class="progress-bar" style="width:{{ $pct }}%;background:{{ $planColors[$plan->id] ?? '#6b7280' }}"></div>
                         </div>
                     </div>
                     @endforeach
@@ -163,6 +167,10 @@
                         <a href="{{ route('admin.tenants') }}" class="quick-btn btn btn-outline-primary">
                             <i class="fas fa-layer-group"></i>
                             {{ $isAr ? 'كل الاشتراكات' : 'All Subscriptions' }}
+                        </a>
+                        <a href="{{ route('admin.plans') }}" class="quick-btn btn btn-outline-info">
+                            <i class="fas fa-tags"></i>
+                            {{ $isAr ? 'الخطط والأسعار' : 'Plans & Pricing' }}
                         </a>
                         <button class="quick-btn btn btn-outline-success" onclick="openNewTenantModal()">
                             <i class="fas fa-plus"></i>
@@ -408,6 +416,7 @@ function showCpAlert(msg, type) {
     const el = document.getElementById('cpAlertBox');
     el.className = `alert alert-${type} py-2 small`; el.textContent = msg; el.classList.remove('d-none');
 }
+
 </script>
 @endpush
 @endsection

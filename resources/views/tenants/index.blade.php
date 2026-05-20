@@ -44,7 +44,7 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex align-items-center gap-3">
                     <div class="rounded-3 p-3 bg-primary bg-opacity-10">
-                        <i class="fas fa-building fa-lg text-primary"></i>
+                        <i class="fas fa-building fa-lg text-white"></i>
                     </div>
                     <div>
                         <div class="fs-3 fw-bold lh-1">{{ $stats['total'] }}</div>
@@ -183,7 +183,8 @@
                                     <input class="form-check-input tenant-toggle" type="checkbox" role="switch"
                                         id="toggle-{{ $tenant->id }}"
                                         data-id="{{ $tenant->id }}"
-                                        {{ $tenant->is_active ? 'checked' : '' }}>
+                                        {{ $tenant->is_active ? 'checked' : '' }}
+                                        @if($tenant->id === $masterId) disabled title="{{ app()->getLocale()==='ar' ? 'لا يمكن تعطيل المتجر الرئيسي' : 'Cannot deactivate master tenant' }}" @endif>
                                 </div>
                             </td>
                             <td class="text-muted small">{{ $tenant->created_at?->format('Y-m-d') }}</td>
@@ -223,7 +224,7 @@
                                                     <i class="fas fa-database me-2 text-info"></i>{{ __('pos.seed_tenant') }}
                                                 </button>
                                             </li>
-                                            @if($subStatus !== 'suspended')
+                                            @if($subStatus !== 'suspended' && $tenant->id !== $masterId)
                                             <li>
                                                 <button class="dropdown-item text-warning"
                                                     data-action="suspend"
@@ -233,7 +234,7 @@
                                                 </button>
                                             </li>
                                             @endif
-                                            @if(in_array($subStatus, ['active','trial','suspended']))
+                                            @if(in_array($subStatus, ['active','trial','suspended']) && $tenant->id !== $masterId)
                                             <li>
                                                 <button class="dropdown-item text-secondary"
                                                     data-action="cancel"
@@ -393,9 +394,10 @@
 
 @push('scripts')
 <script @nonce>
-const BASE_URL  = "{{ url('admin/tenants') }}";
-const STORE_URL = "{{ route('admin.tenants.store') }}";
-const isAr      = {{ app()->getLocale()==='ar' ? 'true' : 'false' }};
+const BASE_URL   = "{{ url('admin/tenants') }}";
+const STORE_URL  = "{{ route('admin.tenants.store') }}";
+const MASTER_ID  = "{{ config('tenancy.master_tenant') }}";
+const isAr       = {{ app()->getLocale()==='ar' ? 'true' : 'false' }};
 const MSG = {
     fillRequired:    "{{ __('pos.fill_required_fields') }}",
     serverError:     "{{ __('pos.server_error') }}",
@@ -560,6 +562,10 @@ async function seedTenant(id, name) {
 }
 
 async function deleteTenant(id, name) {
+    if (id === MASTER_ID) {
+        showToast(isAr ? 'لا يمكن حذف المتجر الرئيسي' : 'Cannot delete the master tenant', 'danger');
+        return;
+    }
     if (!confirm(`${MSG.deleteConfirm} "${name}"?\n${MSG.deleteWarning}`)) return;
     const res = await apiCall(`${BASE_URL}/${id}`, 'DELETE');
     if (res.success) { document.getElementById(`tenant-row-${id}`)?.remove(); showToast(res.message, 'success'); }

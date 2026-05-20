@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Plan;
 use App\Models\Tenant;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
@@ -44,16 +45,20 @@ class TenantController extends Controller
     {
         $this->guardMasterTenant();
 
-        $tenants = Tenant::orderBy('created_at')->get();
-        $planPrices = ['basic' => 49, 'pro' => 99, 'enterprise' => 199];
+        $tenants    = Tenant::orderBy('created_at')->get();
+        $planModels = Plan::orderBy('sort_order')->get()->keyBy('id');
+        // Fall back to 0 for any plan not yet in the DB
+        $planPrices = $planModels->mapWithKeys(fn($p) => [$p->id => $p->monthly_price])->toArray();
 
         // ── Revenue ──────────────────────────────────────────────────────
-        $activeByPlan = [
-            'basic'      => $tenants->where('subscription_status', 'active')->where('plan', 'basic')->count(),
-            'pro'        => $tenants->where('subscription_status', 'active')->where('plan', 'pro')->count(),
-            'enterprise' => $tenants->where('subscription_status', 'active')->where('plan', 'enterprise')->count(),
-        ];
-        $mrr = array_sum(array_map(fn($plan, $count) => $planPrices[$plan] * $count, array_keys($activeByPlan), $activeByPlan));
+        $activeByPlan = $planModels->mapWithKeys(fn($p) => [
+            $p->id => $tenants->where('subscription_status', 'active')->where('plan', $p->id)->count(),
+        ])->toArray();
+
+        $mrr = array_sum(array_map(
+            fn($planId, $count) => ($planPrices[$planId] ?? 0) * $count,
+            array_keys($activeByPlan), $activeByPlan
+        ));
         $arr = $mrr * 12;
 
         // ── Status breakdown ─────────────────────────────────────────────
@@ -89,7 +94,7 @@ class TenantController extends Controller
 
         return view('admin.cpanel', compact(
             'tenants', 'mrr', 'arr',
-            'activeByPlan', 'statusCounts',
+            'planModels', 'planPrices', 'activeByPlan', 'statusCounts',
             'monthlyGrowth', 'expiringSoon', 'recentTenants'
         ));
     }
@@ -171,6 +176,10 @@ class TenantController extends Controller
     {
         $this->guardMasterTenant();
 
+        if ($id === config('tenancy.master_tenant')) {
+            return $this->error(__('pos.cannot_delete_master_tenant'), 422);
+        }
+
         $tenant = Tenant::findOrFail($id);
         $tenant->update(['subscription_status' => 'cancelled']);
         return $this->success([], __('pos.subscription_cancelled'));
@@ -206,6 +215,10 @@ class TenantController extends Controller
     public function toggle(string $id)
     {
         $this->guardMasterTenant();
+
+        if ($id === config('tenancy.master_tenant')) {
+            return $this->error(__('pos.cannot_delete_master_tenant'), 422);
+        }
 
         $tenant = Tenant::findOrFail($id);
         $tenant->update(['is_active' => !$tenant->is_active]);
@@ -256,14 +269,13 @@ class TenantController extends Controller
         tenancy()->initialize($tenant);
 
         $users = \DB::table('users')
-            ->select('id', 'name', 'username', 'email', 'is_active', 'created_at')
+            ->select('id', 'full_name', 'username', 'is_active', 'created_at')
             ->orderBy('id')
             ->get()
             ->map(fn($u) => [
                 'id'         => $u->id,
-                'name'       => $u->name,
+                'name'       => $u->full_name ?? '',
                 'username'   => $u->username ?? '',
-                'email'      => $u->email ?? '',
                 'is_active'  => (bool) $u->is_active,
                 'created_at' => $u->created_at,
             ]);
