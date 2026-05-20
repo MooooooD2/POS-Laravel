@@ -434,6 +434,25 @@
             .footer-heading { font-size: .75rem; }
             .newsletter-input { font-size: .8rem; }
         }
+
+        /* ── AOS: softer mobile animations (override 100px default translate) ── */
+        @media (max-width: 767.98px) {
+            [data-aos="fade-up"] {
+                transform: translate3d(0, 24px, 0);
+            }
+            [data-aos] {
+                transition-duration: 450ms !important;
+                transition-delay: 0ms !important;
+            }
+        }
+        @media (max-width: 575.98px) {
+            [data-aos="fade-up"] {
+                transform: translate3d(0, 16px, 0);
+            }
+            [data-aos] {
+                transition-duration: 350ms !important;
+            }
+        }
     </style>
 </head>
 
@@ -991,10 +1010,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
 <script nonce="{{ app('csp-nonce') }}">
     AOS.init({
-        once: true,
-        offset: window.innerWidth < 576 ? 20 : 60,
-        duration: window.innerWidth < 576 ? 400 : 600,
-        disable: function () { return window.innerWidth < 480; },
+        once     : true,
+        easing   : 'ease-out-cubic',
+        offset   : window.innerWidth < 576 ? 30 : 80,
+        duration : window.innerWidth < 576 ? 450 : 700,
+        delay    : 0,
     });
 
     const navbar = document.getElementById('navbar');
