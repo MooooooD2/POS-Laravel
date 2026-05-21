@@ -56,11 +56,11 @@
         {{-- ── Stock ── --}}
         <div class="tab-pane fade" id="tabStock">
             <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
-                <select class="form-select form-select-sm" style="max-width:200px" id="stockWhSelect"
+                <select class="form-select form-select-sm" class="u-mw-200" id="stockWhSelect"
                     data-on-change="loadStock">
                     <option value="">{{ app()->getLocale() === 'ar' ? 'اختر مستودعاً' : 'Select warehouse' }}</option>
                 </select>
-                <input type="text" class="form-control form-control-sm" style="max-width:200px"
+                <input type="text" class="form-control form-control-sm" class="u-mw-200"
                     id="stockSearch" placeholder="{{ app()->getLocale() === 'ar' ? 'بحث...' : 'Search...' }}"
                     data-on-input="filterStock">
                 <button class="btn btn-sm btn-outline-success ms-auto" id="syncStockBtn"

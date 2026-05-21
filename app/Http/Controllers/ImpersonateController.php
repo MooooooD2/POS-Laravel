@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ImpersonateController extends Controller
 {
@@ -16,7 +17,21 @@ class ImpersonateController extends Controller
             return back()->withErrors(['impersonate' => __('pos.impersonate_self_error')]);
         }
 
+        // Prevent impersonating a user who has admin-level privileges — privilege escalation guard.
+        if ($user->hasPermissionTo('manage_roles')) {
+            return back()->withErrors(['impersonate' => __('pos.impersonate_admin_error')]);
+        }
+
         $request->session()->put('impersonator_id', $admin->id);
+
+        Log::channel('audit')->info('impersonate.start', [
+            'admin_id'    => $admin->id,
+            'admin_name'  => $admin->username,
+            'target_id'   => $user->id,
+            'target_name' => $user->username,
+            'ip'          => $request->ip(),
+            'timestamp'   => now()->toIso8601String(),
+        ]);
 
         Auth::login($user);
 

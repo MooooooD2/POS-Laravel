@@ -38,7 +38,6 @@ class InvoiceFlowTest extends TestCase
             'cost_price' => 60.00,
             'quantity'   => 50,
             'min_stock'  => 5,
-            'tax_rate'   => 0,
         ]);
     }
 
@@ -118,6 +117,7 @@ class InvoiceFlowTest extends TestCase
     public function invoice_linked_to_customer(): void
     {
         $customer = Customer::create([
+            'code'     => 'CUST-001',
             'name'     => 'أحمد محمد',
             'phone'    => '01000000001',
             'is_active' => true,

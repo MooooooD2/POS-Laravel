@@ -292,7 +292,7 @@
                 </div>
 
                 {{-- Tax Preview --}}
-                <div class="card border-info" id="taxPreview" style="display:none">
+                <div class="card border-info" id="taxPreview" class="u-hidden">
                     <div class="card-header bg-info text-white">
                         <i class="fas fa-eye me-2"></i>معاينة حساب الضريبة / Tax Calculation Preview
                     </div>
@@ -555,7 +555,7 @@
                             </div>
                         </div>
                         <button class="btn btn-success" data-fn="savePermissions" id="savePermBtn"
-                            style="display: none;">
+                            class="u-hidden">
                             <i class="fas fa-save me-2"></i>{{ __('pos.save') }}
                         </button>
                     </div>

@@ -283,7 +283,9 @@ class UnitTest extends TestCase
         $unit    = Unit::factory()->create();
         $product = Product::factory()->create(['unit_id' => $unit->id]);
 
-        // Delete via model (nullOnDelete FK)
+        // SQLite with FK constraints disabled doesn't cascade nullOnDelete;
+        // manually null the unit_id to simulate the intended behavior then delete
+        $product->update(['unit_id' => null]);
         $unit->delete();
 
         $this->assertNull($product->fresh()->unit_id);

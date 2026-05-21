@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ asset('css/styles.css?v=' . filemtime(public_path('css/styles.css'))) }}">
 </head>
 <body class="auth-body">
-<div class="auth-card" style="max-width:480px">
+<div class="auth-card" class="u-mw-480">
     <h2 class="auth-title">🔐 إعداد التحقق بخطوتين</h2>
 
     <p>1. افتح تطبيق Google Authenticator أو Authy</p>

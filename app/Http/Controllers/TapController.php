@@ -129,7 +129,22 @@ class TapController extends Controller
 
     public function webhook(Request $request)
     {
-        $charge = $request->json()->all();
+        $chargeId = $request->json('id');
+
+        if (!$chargeId) {
+            return response('OK', 200);
+        }
+
+        // Verify the charge status directly via the Tap API instead of trusting
+        // the webhook payload — prevents subscription activation via forged requests.
+        $apiResponse = Http::withHeaders($this->headers())->get("{$this->baseUrl}/charges/{$chargeId}");
+
+        if (!$apiResponse->successful()) {
+            Log::warning('Tap webhook: failed to verify charge', ['charge_id' => $chargeId]);
+            return response('OK', 200);
+        }
+
+        $charge = $apiResponse->json();
 
         if (($charge['status'] ?? '') !== 'CAPTURED') {
             return response('OK', 200);

@@ -42,25 +42,27 @@ class PurchaseReturnTest extends TestCase
 
         // Create a received purchase order
         $this->purchaseOrderId = DB::table('purchase_orders')->insertGetId([
-            'order_number'  => 'PO-TEST-001',
-            'supplier_id'   => $supplier->id,
-            'supplier_name' => $supplier->name,
-            'status'        => 'received',
-            'total_amount'  => 1000.00,
-            'notes'         => null,
-            'created_by'    => $this->admin->id,
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'po_number'       => 'PO-TEST-' . uniqid(),
+            'supplier_id'     => $supplier->id,
+            'supplier_name'   => $supplier->name,
+            'status'          => 'received',
+            'total_amount'    => 1000.00,
+            'final_amount'    => 1000.00,
+            'created_by'      => $this->admin->id,
+            'created_by_name' => $this->admin->full_name,
+            'order_date'      => now()->toDateString(),
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
 
         DB::table('purchase_order_items')->insert([
-            'purchase_order_id' => $this->purchaseOrderId,
+            'po_id'             => $this->purchaseOrderId,
             'product_id'        => $this->product->id,
             'product_name'      => $this->product->name,
             'quantity'          => 10,
             'received_quantity' => 10,
             'cost_price'        => 100.00,
-            'total_price'       => 1000.00,
+            'subtotal'          => 1000.00,
             'created_at'        => now(),
             'updated_at'        => now(),
         ]);
@@ -193,7 +195,7 @@ class PurchaseReturnTest extends TestCase
     public function admin_can_query_returnable_items_for_purchase_order(): void
     {
         $response = $this->actingAs($this->admin)->getJson(
-            "/api/purchase-returns/returnable-items/{$this->purchaseOrderId}"
+            "/api/purchase-orders/{$this->purchaseOrderId}/returnable-items"
         );
 
         // May vary by route — accept 200 or 404

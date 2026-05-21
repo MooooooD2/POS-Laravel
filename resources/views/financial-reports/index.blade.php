@@ -46,7 +46,7 @@
             </div>
         </div>
 
-        <div id="incomeResult" style="display:none">
+        <div id="incomeResult" class="u-hidden">
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="card">
@@ -161,7 +161,7 @@
             </div>
         </div>
 
-        <div class="card" id="stmtResult" style="display:none">
+        <div class="card" id="stmtResult" class="u-hidden">
             <div class="card-header" id="stmtHeader"></div>
             <div class="card-body p-0">
                 <table class="table table-hover mb-0">

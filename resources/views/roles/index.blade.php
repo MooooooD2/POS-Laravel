@@ -341,7 +341,7 @@ function renderRolesList() {
         ? allRoles.map(r => `
             <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center
                         ${selectedRoleId === r.id ? 'active' : ''}"
-                 style="cursor:pointer" data-action="select-role" data-id="${r.id}">
+                 class="u-cursor-pointer" data-action="select-role" data-id="${r.id}">
                 <span class="fw-semibold">${escapeHtml(r.name)}</span>
                 <div class="d-flex gap-1 align-items-center">
                     <span class="badge ${selectedRoleId === r.id ? 'bg-light text-dark' : 'bg-primary'}">

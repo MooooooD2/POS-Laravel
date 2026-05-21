@@ -121,7 +121,7 @@
                 </button>
             </form>
 
-            <p class="text-center text-muted mt-3 mb-0" style="font-size:.9rem">
+            <p class="text-center text-muted mt-3 mb-0" class="u-font-sm">
                 {{ __('pos.no_account_yet') }}
                 <a href="{{ route('register') }}" class="text-decoration-none fw-semibold">{{ __('pos.create_store') }}</a>
             </p>

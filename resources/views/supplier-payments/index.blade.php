@@ -300,7 +300,7 @@ async function savePayment() {
 function showReceipt(p, supp) {
     const st = suppStats[p.supplier_id] || {};
     document.getElementById('receiptBody').innerHTML = `
-        <div id="printableReceipt" style="font-family:'Cairo',sans-serif;">
+        <div id="printableReceipt" class="u-font-cairo">
             <div class="text-center mb-3">
                 <h5 class="fw-bold">إيصال دفع للمورد</h5>
                 <hr>

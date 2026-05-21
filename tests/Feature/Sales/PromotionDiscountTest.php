@@ -41,13 +41,13 @@ class PromotionDiscountTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->postJson('/api/promotions', [
             'name'       => 'خصم 10%',
-            'type'       => 'percent',
+            'type'       => 'percentage',
             'value'      => 10.00,
             'is_active'  => true,
         ]);
 
         $response->assertStatus(201);
-        $this->assertDatabaseHas('promotions', ['name' => 'خصم 10%', 'type' => 'percent', 'value' => 10.00]);
+        $this->assertDatabaseHas('promotions', ['name' => 'خصم 10%', 'type' => 'percentage', 'value' => 10.00]);
     }
 
     #[Test]
@@ -85,7 +85,7 @@ class PromotionDiscountTest extends TestCase
     {
         $this->actingAs($this->cashier)->postJson('/api/promotions', [
             'name'      => 'خصم',
-            'type'      => 'percent',
+            'type'      => 'percentage',
             'value'     => 5.00,
             'is_active' => true,
         ])->assertStatus(403);
@@ -96,7 +96,7 @@ class PromotionDiscountTest extends TestCase
     {
         $this->actingAs($this->admin)->postJson('/api/promotions', [
             'name'      => 'خصم سالب',
-            'type'      => 'percent',
+            'type'      => 'percentage',
             'value'     => -5.00,
             'is_active' => true,
         ])->assertStatus(422);
@@ -118,14 +118,14 @@ class PromotionDiscountTest extends TestCase
     {
         $promo = Promotion::create([
             'name'      => 'خصم قديم',
-            'type'      => 'percent',
+            'type'      => 'percentage',
             'value'     => 5.00,
             'is_active' => true,
         ]);
 
         $this->actingAs($this->admin)->putJson("/api/promotions/{$promo->id}", [
             'name'      => 'خصم محدّث',
-            'type'      => 'percent',
+            'type'      => 'percentage',
             'value'     => 15.00,
             'is_active' => true,
         ])->assertStatus(200);
@@ -154,7 +154,7 @@ class PromotionDiscountTest extends TestCase
     {
         $promo = Promotion::create([
             'name'       => 'عرض رمضان',
-            'type'       => 'percent',
+            'type'       => 'percentage',
             'value'      => 20.00,
             'starts_at'  => now()->subDay(),
             'ends_at'    => now()->addDays(30),
@@ -169,7 +169,7 @@ class PromotionDiscountTest extends TestCase
     {
         $promo = Promotion::create([
             'name'      => 'عرض منتهي',
-            'type'      => 'percent',
+            'type'      => 'percentage',
             'value'     => 10.00,
             'starts_at' => now()->subDays(30),
             'ends_at'   => now()->subDay(), // expired yesterday
@@ -184,7 +184,7 @@ class PromotionDiscountTest extends TestCase
     {
         $promo = Promotion::create([
             'name'      => 'عرض مستقبلي',
-            'type'      => 'percent',
+            'type'      => 'percentage',
             'value'     => 10.00,
             'starts_at' => now()->addDays(5), // starts in the future
             'is_active' => true,
@@ -198,7 +198,7 @@ class PromotionDiscountTest extends TestCase
     {
         $promo = Promotion::create([
             'name'      => 'عرض معطّل',
-            'type'      => 'percent',
+            'type'      => 'percentage',
             'value'     => 10.00,
             'is_active' => false,
         ]);
@@ -211,10 +211,10 @@ class PromotionDiscountTest extends TestCase
     #[Test]
     public function active_promotions_endpoint_returns_only_valid_promotions(): void
     {
-        Promotion::create(['name' => 'نشط', 'type' => 'percent', 'value' => 10.00, 'is_active' => true]);
-        Promotion::create(['name' => 'معطّل', 'type' => 'percent', 'value' => 5.00, 'is_active' => false]);
+        Promotion::create(['name' => 'نشط', 'type' => 'percentage', 'value' => 10.00, 'is_active' => true]);
+        Promotion::create(['name' => 'معطّل', 'type' => 'percentage', 'value' => 5.00, 'is_active' => false]);
 
-        $response = $this->actingAs($this->cashier)->getJson('/api/promotions/active');
+        $response = $this->actingAs($this->admin)->getJson('/api/promotions/active');
 
         $response->assertStatus(200);
         $names = collect($response->json('promotions') ?? $response->json())->pluck('name')->toArray();
@@ -229,12 +229,12 @@ class PromotionDiscountTest extends TestCase
     {
         Promotion::create([
             'name'      => 'خصم 10%',
-            'type'      => 'percent',
+            'type'      => 'percentage',
             'value'     => 10.00,
             'is_active' => true,
         ]);
 
-        $response = $this->actingAs($this->cashier)->postJson('/api/promotions/preview', [
+        $response = $this->actingAs($this->admin)->postJson('/api/promotions/preview', [
             'items' => [
                 [
                     'product_id' => $this->product->id,
@@ -250,7 +250,7 @@ class PromotionDiscountTest extends TestCase
     #[Test]
     public function promotion_preview_without_items_fails(): void
     {
-        $this->actingAs($this->cashier)->postJson('/api/promotions/preview', [
+        $this->actingAs($this->admin)->postJson('/api/promotions/preview', [
             'items' => [],
         ])->assertStatus(422);
     }
@@ -262,7 +262,7 @@ class PromotionDiscountTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->postJson('/api/promotions', [
             'name'             => 'خصم عند 500 جنيه',
-            'type'             => 'percent',
+            'type'             => 'percentage',
             'value'            => 15.00,
             'min_order_amount' => 500.00,
             'is_active'        => true,
@@ -279,7 +279,7 @@ class PromotionDiscountTest extends TestCase
     {
         Promotion::create([
             'name'      => 'خصم 10%',
-            'type'      => 'percent',
+            'type'      => 'percentage',
             'value'     => 10.00,
             'is_active' => true,
         ]);

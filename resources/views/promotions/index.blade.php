@@ -100,7 +100,7 @@
                         </label>
                         <input type="number" class="form-control" id="promoValue" value="0" min="0" step="0.01">
                     </div>
-                    <div class="col-md-4" id="promoBuyGetGroup" style="display:none">
+                    <div class="col-md-4" id="promoBuyGetGroup" class="u-hidden">
                         <label class="form-label fw-semibold">{{ app()->getLocale()==='ar' ? 'اشترِ / احصل على' : 'Buy / Get' }}</label>
                         <div class="input-group">
                             <input type="number" class="form-control" id="promoBuyQty" value="2" min="1" placeholder="{{ app()->getLocale()==='ar' ? 'شراء' : 'Buy' }}">

@@ -620,7 +620,7 @@ function printBarcode() {
     <div class="label">
         <div class="prod-name">${name}</div>
         <div class="prod-price">${price}</div>
-        <img src="${svgBase64}" style="max-width:260px">
+        <img src="${svgBase64}" class="u-mw-260">
     </div>
     <script>window.onload=()=>{window.print();window.close();}<\/script>
     </body></html>`);

@@ -630,6 +630,7 @@ return [
     // Impersonation
     'login_as'                => 'تسجيل الدخول بوصفك',
     'impersonate_self_error'  => 'لا يمكنك تمثيل حسابك الخاص.',
+    'impersonate_admin_error' => 'لا يمكن انتحال صفة مستخدم يمتلك صلاحيات إدارية.',
 
     // Supplier Accounts
     'no_phone'                   => 'لا يوجد تليفون',

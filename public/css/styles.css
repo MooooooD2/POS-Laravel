@@ -890,4 +890,17 @@ body.rtl .toast-container {
 .swal2-popup { border-radius: 1rem !important; }
 .swal2-toast { border-radius: .75rem !important; }
 .swal2-title { font-family: 'Cairo','Tajawal',sans-serif !important; }
+
+/* ── CSP inline-style migration utilities ───────────────────────────────────
+   Extracted from Blade templates as part of removing style-src-attr unsafe-inline.
+   Use these classes instead of inline style="" attributes.                    */
+.u-hidden          { display: none; }
+.u-hidden-imp      { display: none !important; }
+.u-mw-200          { max-width: 200px; }
+.u-mw-260          { max-width: 260px; }
+.u-mw-480          { max-width: 480px; }
+.u-cursor-pointer  { cursor: pointer; }
+.u-font-cairo      { font-family: 'Cairo', sans-serif; }
+.u-font-sm         { font-size: .9rem; }
+.u-empty-state     { text-align: center; color: #94a3b8; padding: 12px; }
 .swal2-html-container { font-family: 'Cairo','Tajawal',sans-serif !important; }

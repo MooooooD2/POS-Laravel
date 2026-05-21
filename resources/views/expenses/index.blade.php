@@ -62,7 +62,7 @@
     </div>
 
     {{-- Summary cards --}}
-    <div class="row g-3 mb-3" id="summaryCards" style="display:none!important"></div>
+    <div class="row g-3 mb-3" id="summaryCards" class="u-hidden-imp"></div>
 
     {{-- Table --}}
     <div class="card shadow-sm">

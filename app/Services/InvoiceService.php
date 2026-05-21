@@ -10,6 +10,7 @@ use App\Models\InvoiceItem;
 use App\Models\InvoicePayment;
 use App\Models\ReturnItem;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -303,6 +304,9 @@ class InvoiceService
         app(\App\Services\WhatsAppService::class)->sendInvoice($invoice);
         app(\App\Services\WhatsAppService::class)->sendLargeInvoiceAlert($invoice);
 
+        Cache::forget('dashboard_total_revenue');
+        \App\Services\DashboardService::forgetCache();
+
         return $invoice;
     }
 
@@ -375,6 +379,9 @@ class InvoiceService
                 'user_id'        => Auth::id(),
                 'timestamp'      => now()->toIso8601String(),
             ]);
+
+            Cache::forget('dashboard_total_revenue');
+            \App\Services\DashboardService::forgetCache();
 
             return $locked->fresh();
         });

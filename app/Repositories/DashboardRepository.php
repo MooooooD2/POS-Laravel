@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\StockMovement;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardRepository extends BaseRepository implements DashboardRepositoryInterface
@@ -55,7 +56,9 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
 
     public function recentMovements(int $limit): Collection
     {
-        return StockMovement::latest()->limit($limit)->get();
+        return StockMovement::latest()
+            ->limit($limit)
+            ->get(['id', 'product_id', 'movement_type', 'quantity', 'reason', 'created_at']);
     }
 
     public function productStats(): object
@@ -69,11 +72,17 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
 
     public function totalRevenue(): float
     {
-        return (float) Invoice::where('status', 'completed')->sum('final_total');
+        // Cache for 10 minutes — full-table SUM is expensive on large invoice sets.
+        // Invalidated automatically after each new invoice via InvoiceService.
+        return (float) Cache::remember('dashboard_total_revenue', 600, function () {
+            return Invoice::where('status', 'completed')->sum('final_total');
+        });
     }
 
     public function totalSuppliers(): int
     {
-        return DB::table('suppliers')->whereNull('deleted_at')->count();
+        return Cache::remember('dashboard_total_suppliers', 600, function () {
+            return DB::table('suppliers')->whereNull('deleted_at')->count();
+        });
     }
 }

@@ -4,14 +4,29 @@ namespace App\Http\Middleware;
 use App\Models\AuditLog;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class AnomalyDetection
 {
+    // How many anomaly strikes before a temporary block is issued.
+    private const BLOCK_THRESHOLD   = 5;
+    // How long (seconds) the temporary block lasts.
+    private const BLOCK_DURATION    = 300; // 5 minutes
+
     public function handle(Request $request, Closure $next): Response
     {
+        // Check if user is already temporarily blocked before processing the request.
+        if (auth()->check() && $this->isBlocked(auth()->id())) {
+            $this->writeAnomalyLog('anomaly.blocked_request_rejected', $request, [
+                'blocked_until' => Cache::get($this->blockKey(auth()->id()) . '_until'),
+            ]);
+
+            abort(429, 'تم تعليق حسابك مؤقتاً بسبب نشاط مشبوه. يرجى المحاولة لاحقاً.');
+        }
+
         $response = $next($request);
 
         try {
@@ -31,6 +46,49 @@ class AnomalyDetection
         return $response;
     }
 
+    // ── Strike / block helpers ───────────────────────────────────────────────
+
+    private function blockKey(int|string $userId): string
+    {
+        return 'anomaly_block_' . $userId;
+    }
+
+    private function isBlocked(int|string $userId): bool
+    {
+        return (bool) Cache::get($this->blockKey($userId));
+    }
+
+    /**
+     * Increment the anomaly strike counter for this user.
+     * If the threshold is reached, issue a temporary block and log it.
+     */
+    private function strike(Request $request, string $reason): void
+    {
+        if (!auth()->check()) return;
+
+        $userId     = auth()->id();
+        $strikeKey  = 'anomaly_strikes_' . $userId;
+
+        Cache::add($strikeKey, 0, 3600);
+        $strikes = Cache::increment($strikeKey);
+
+        if ($strikes >= self::BLOCK_THRESHOLD) {
+            $blockedUntil = now()->addSeconds(self::BLOCK_DURATION)->toIso8601String();
+
+            Cache::put($this->blockKey($userId), true, self::BLOCK_DURATION);
+            Cache::put($this->blockKey($userId) . '_until', $blockedUntil, self::BLOCK_DURATION);
+            Cache::forget($strikeKey);
+
+            $this->writeAnomalyLog('anomaly.user_temporarily_blocked', $request, [
+                'reason'        => $reason,
+                'blocked_until' => $blockedUntil,
+                'duration_sec'  => self::BLOCK_DURATION,
+            ]);
+        }
+    }
+
+    // ── Detectors ────────────────────────────────────────────────────────────
+
     private function detectRapidRequests(Request $request): void
     {
         if (!auth()->check()) return;
@@ -47,6 +105,7 @@ class AnomalyDetection
                 'threshold' => $threshold,
                 'url'       => $request->path(),
             ]);
+            $this->strike($request, 'rapid_requests');
         }
     }
 
@@ -62,6 +121,7 @@ class AnomalyDetection
                 'threshold'      => $threshold,
                 'payment_method' => $request->input('payment_method'),
             ]);
+            // Large invoice is informational only — no strike (may be legitimate).
         }
     }
 
@@ -69,8 +129,8 @@ class AnomalyDetection
     {
         if (!auth()->check()) return;
 
-        $start = (int) config('security.anomaly.off_hours_start', 22); // 10 PM
-        $end   = (int) config('security.anomaly.off_hours_end', 6);    // 6 AM
+        $start = (int) config('security.anomaly.off_hours_start', 22);
+        $end   = (int) config('security.anomaly.off_hours_end', 6);
         $hour  = (int) now()->format('G');
 
         $isOffHours = $hour >= $start || $hour < $end;
@@ -80,45 +140,43 @@ class AnomalyDetection
         $total = $body['invoice']['final_total'] ?? 0;
 
         $this->writeAnomalyLog('anomaly.off_hours_transaction', $request, [
-            'hour'           => $hour,
-            'invoice_total'  => $total,
-            'payment_method' => $request->input('payment_method'),
+            'hour'             => $hour,
+            'invoice_total'    => $total,
+            'payment_method'   => $request->input('payment_method'),
             'off_hours_window' => "{$start}:00–{$end}:00",
         ]);
+        // Off-hours is informational only — no strike (night shifts are legitimate).
     }
 
     private function detectDiscountCapViolation(Request $request, Response $response): void
     {
         if (!auth()->check()) return;
         if (!$request->is('api/invoices') || !$request->isMethod('POST')) return;
+        if ($response->getStatusCode() !== 422) return;
 
-        if ($response->getStatusCode() === 422) {
-            $body    = json_decode($response->getContent(), true);
-            $message = $body['message'] ?? '';
+        $body    = json_decode($response->getContent(), true);
+        $message = $body['message'] ?? '';
 
-            if (str_contains($message, 'discount') || str_contains($message, 'خصم')) {
-                $discountKey  = 'discount_attempt_' . auth()->id();
-                $attemptCount = Cache::increment($discountKey, 1);
-                Cache::expire($discountKey, 3600);
+        if (!str_contains($message, 'discount') && !str_contains($message, 'خصم')) return;
 
-                if ($attemptCount >= 3) {
-                    $this->writeAnomalyLog('anomaly.repeated_discount_attempts', $request, [
-                        'attempts' => $attemptCount,
-                    ]);
-                }
-            }
+        $discountKey  = 'discount_attempt_' . auth()->id();
+        $attemptCount = Cache::increment($discountKey, 1);
+        Cache::expire($discountKey, 3600);
+
+        if ($attemptCount >= 3) {
+            $this->writeAnomalyLog('anomaly.repeated_discount_attempts', $request, [
+                'attempts' => $attemptCount,
+            ]);
+            $this->strike($request, 'repeated_discount_violations');
         }
     }
 
-    /**
-     * Dual-write: structured file log + audit_logs DB row.
-     * The DB row makes anomalies queryable from the fraud detection API.
-     * Failures are silently swallowed so anomaly tracking never breaks business ops.
-     */
+    // ── Logging ──────────────────────────────────────────────────────────────
+
     private function writeAnomalyLog(string $action, Request $request, array $context = []): void
     {
-        $userId   = auth()->id();
-        $username = auth()->user()?->username ?? 'unknown';
+        $userId   = Auth::id();
+        $username = Auth::user()?->username ?? 'unknown';
 
         $payload = array_merge($context, [
             'ip'        => $request->ip(),

@@ -114,7 +114,7 @@ class ExpenseTest extends TestCase
                 'payment_method' => $method,
                 'expense_date'   => now()->toDateString(),
             ]);
-            $response->assertStatus(201, "Payment method '{$method}' should be accepted");
+            $response->assertStatus(201);
         }
     }
 
@@ -136,14 +136,16 @@ class ExpenseTest extends TestCase
     public function admin_can_update_expense(): void
     {
         $id = DB::table('expenses')->insertGetId([
-            'category_id'    => $this->categoryId,
-            'title'          => 'مصروف قديم',
-            'amount'         => 300.00,
-            'payment_method' => 'cash',
-            'expense_date'   => now()->toDateString(),
-            'created_by'     => $this->admin->id,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'expense_number'  => 'EXP-UPD-' . uniqid(),
+            'category_id'     => $this->categoryId,
+            'title'           => 'مصروف قديم',
+            'amount'          => 300.00,
+            'payment_method'  => 'cash',
+            'expense_date'    => now()->toDateString(),
+            'created_by'      => $this->admin->id,
+            'created_by_name' => $this->admin->full_name,
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
 
         $this->actingAs($this->admin)->putJson("/api/expenses/{$id}", [
@@ -161,14 +163,16 @@ class ExpenseTest extends TestCase
     public function admin_can_delete_expense(): void
     {
         $id = DB::table('expenses')->insertGetId([
-            'category_id'    => $this->categoryId,
-            'title'          => 'مصروف للحذف',
-            'amount'         => 100.00,
-            'payment_method' => 'cash',
-            'expense_date'   => now()->toDateString(),
-            'created_by'     => $this->admin->id,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'expense_number'  => 'EXP-DEL-' . uniqid(),
+            'category_id'     => $this->categoryId,
+            'title'           => 'مصروف للحذف',
+            'amount'          => 100.00,
+            'payment_method'  => 'cash',
+            'expense_date'    => now()->toDateString(),
+            'created_by'      => $this->admin->id,
+            'created_by_name' => $this->admin->full_name,
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
 
         $this->actingAs($this->admin)->deleteJson("/api/expenses/{$id}")
@@ -183,17 +187,17 @@ class ExpenseTest extends TestCase
     public function expense_summary_returns_correct_total_for_period(): void
     {
         DB::table('expenses')->insert([
-            ['category_id' => $this->categoryId, 'title' => 'مصروف 1', 'amount' => 200.00, 'payment_method' => 'cash', 'expense_date' => now()->toDateString(), 'created_by' => $this->admin->id, 'created_at' => now(), 'updated_at' => now()],
-            ['category_id' => $this->categoryId, 'title' => 'مصروف 2', 'amount' => 300.00, 'payment_method' => 'card', 'expense_date' => now()->toDateString(), 'created_by' => $this->admin->id, 'created_at' => now(), 'updated_at' => now()],
+            ['expense_number' => 'EXP-S1-' . uniqid(), 'category_id' => $this->categoryId, 'title' => 'مصروف 1', 'amount' => 200.00, 'payment_method' => 'cash', 'expense_date' => now()->toDateString(), 'created_by' => $this->admin->id, 'created_by_name' => $this->admin->full_name, 'created_at' => now(), 'updated_at' => now()],
+            ['expense_number' => 'EXP-S2-' . uniqid(), 'category_id' => $this->categoryId, 'title' => 'مصروف 2', 'amount' => 300.00, 'payment_method' => 'card', 'expense_date' => now()->toDateString(), 'created_by' => $this->admin->id, 'created_by_name' => $this->admin->full_name, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         $response = $this->actingAs($this->admin)->postJson('/api/expenses/summary', [
-            'start_date' => now()->startOfMonth()->toDateString(),
-            'end_date'   => now()->endOfMonth()->toDateString(),
+            'date_from' => now()->startOfMonth()->toDateString(),
+            'date_to'   => now()->endOfMonth()->toDateString(),
         ]);
 
         $response->assertStatus(200);
-        $total = $response->json('total') ?? $response->json('summary.total') ?? 0;
+        $total = $response->json('grand_total') ?? $response->json('total') ?? 0;
         $this->assertGreaterThanOrEqual(500.00, $total);
     }
 }

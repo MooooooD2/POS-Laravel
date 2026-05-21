@@ -165,7 +165,7 @@ class WarehouseTransferTest extends TestCase
     public function receiving_transfer_updates_stock(): void
     {
         // Create transfer
-        $createResponse = $this->actingAs($this->warehouse)->postJson('/api/warehouses/transfers', [
+        $createResponse = $this->actingAs($this->warehouse)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
             'to_warehouse_id'   => $this->warehouseB->id,
             'items'             => [['product_id' => $this->product->id, 'quantity' => 10]],
@@ -175,7 +175,7 @@ class WarehouseTransferTest extends TestCase
         $transferId = $createResponse->json('transfer.id');
 
         // Receive transfer
-        $receiveResponse = $this->actingAs($this->warehouse)->postJson("/api/warehouses/transfers/{$transferId}/receive");
+        $receiveResponse = $this->actingAs($this->warehouse)->postJson("/api/warehouse-transfers/{$transferId}/receive");
         $receiveResponse->assertStatus(200);
 
         // Destination stock should increase
@@ -189,7 +189,7 @@ class WarehouseTransferTest extends TestCase
     #[Test]
     public function transfer_status_changes_to_received_after_receive(): void
     {
-        $createResponse = $this->actingAs($this->warehouse)->postJson('/api/warehouses/transfers', [
+        $createResponse = $this->actingAs($this->warehouse)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
             'to_warehouse_id'   => $this->warehouseB->id,
             'items'             => [['product_id' => $this->product->id, 'quantity' => 5]],
@@ -197,7 +197,7 @@ class WarehouseTransferTest extends TestCase
 
         $transferId = $createResponse->json('transfer.id');
 
-        $this->actingAs($this->warehouse)->postJson("/api/warehouses/transfers/{$transferId}/receive");
+        $this->actingAs($this->warehouse)->postJson("/api/warehouse-transfers/{$transferId}/receive");
 
         $this->assertDatabaseHas('warehouse_transfers', [
             'id'     => $transferId,

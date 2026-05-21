@@ -625,6 +625,7 @@ return [
     // Impersonation
     'login_as'                => 'Login as',
     'impersonate_self_error'  => 'You cannot impersonate yourself.',
+    'impersonate_admin_error' => 'You cannot impersonate a user with admin-level privileges.',
 
     // Supplier Accounts
     'no_phone'                   => 'No phone',

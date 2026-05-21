@@ -63,7 +63,7 @@
                 <td>{{ $inv->created_at->format('Y-m-d H:i') }}</td>
             </tr>
             @empty
-            <tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:12px">No data</td></tr>
+            <tr><td colspan="6" class="u-empty-state">No data</td></tr>
             @endforelse
         </tbody>
     </table>

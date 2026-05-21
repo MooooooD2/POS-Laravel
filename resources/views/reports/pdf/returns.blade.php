@@ -66,7 +66,7 @@
                 <td>{{ $ret->return_date }}</td>
             </tr>
             @empty
-            <tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:12px">No data</td></tr>
+            <tr><td colspan="7" class="u-empty-state">No data</td></tr>
             @endforelse
         </tbody>
     </table>
