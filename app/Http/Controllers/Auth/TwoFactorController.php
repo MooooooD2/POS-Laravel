@@ -98,6 +98,52 @@ class TwoFactorController extends Controller
         return view('auth.2fa.recovery-codes', compact('recoveryCodes'));
     }
 
+    public function showRecover()
+    {
+        if (!Auth::check() || !Auth::user()->google2fa_enabled) {
+            return redirect()->route('dashboard');
+        }
+
+        return view('auth.2fa.recover');
+    }
+
+    public function recoverWithCode(Request $request)
+    {
+        $key = '2fa_recover:' . Auth::id();
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $seconds = RateLimiter::availableIn($key);
+            return back()->withErrors(['recovery_code' => __('pos.too_many_2fa_attempts', ['seconds' => $seconds])]);
+        }
+
+        $request->validate(['recovery_code' => 'required|string']);
+
+        $user          = Auth::user();
+        $hashedCodes   = $user->google2fa_recovery_codes ?? [];
+        $matchedIndex  = null;
+
+        foreach ($hashedCodes as $index => $hashed) {
+            if (Hash::check($request->recovery_code, $hashed)) {
+                $matchedIndex = $index;
+                break;
+            }
+        }
+
+        if ($matchedIndex === null) {
+            RateLimiter::hit($key, 300);
+            return back()->withErrors(['recovery_code' => 'رمز الاسترداد غير صحيح أو تم استخدامه مسبقاً.']);
+        }
+
+        // Consume the code — remove it so it cannot be reused
+        array_splice($hashedCodes, $matchedIndex, 1);
+        $user->update(['google2fa_recovery_codes' => $hashedCodes]);
+
+        RateLimiter::clear($key);
+        $request->session()->put('2fa_passed', true);
+
+        return redirect()->intended(route('dashboard'));
+    }
+
     public function disable(Request $request)
     {
         $request->validate(['password' => 'required']);

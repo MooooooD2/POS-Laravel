@@ -43,6 +43,8 @@ Route::middleware(['auth'])->prefix('2fa')->name('2fa.')->group(function () {
     Route::get('/setup',           [TwoFactorController::class, 'showSetup'])->name('setup');
     Route::post('/setup/confirm',  [TwoFactorController::class, 'confirmSetup'])->name('setup.confirm');
     Route::post('/disable',        [TwoFactorController::class, 'disable'])->name('disable');
+    Route::get('/recover',         [TwoFactorController::class, 'showRecover'])->name('recover');
+    Route::post('/recover',        [TwoFactorController::class, 'recoverWithCode'])->middleware('throttle:5,1')->name('recover.post');
 });
 Route::get('/lang/{locale}', [LanguageController::class, 'switch'])->where('locale', 'ar|en')->name('lang.switch');
 Route::get('/lang/{locale}/translations', [LanguageController::class, 'getTranslations'])->where('locale', 'ar|en')->name('lang.translations');
