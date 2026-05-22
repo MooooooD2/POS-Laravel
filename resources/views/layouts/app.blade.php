@@ -58,8 +58,7 @@
                 <i class="fas fa-crosshairs"></i>
             </div>
             <span class="brand-text">{{ __('pos.app_name') }}</span>
-            <button class="btn btn-sm d-md-none ms-auto" data-fn="toggleSidebar"
-                style="background:none; border:none; color:inherit; opacity:0.7; padding:0; line-height:1;">
+            <button class="btn btn-sm d-md-none ms-auto sidebar-close-btn" data-fn="toggleSidebar">
                 <i class="fas fa-xmark fa-lg"></i>
             </button>
         </div>
@@ -227,7 +226,7 @@
 
     {{-- Impersonation Banner --}}
     @if(session('impersonator_id'))
-    <div id="impersonation-banner" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#f59e0b;color:#1c1917;padding:0.4rem 1rem;display:flex;align-items:center;justify-content:space-between;font-size:0.85rem;font-weight:600;">
+    <div id="impersonation-banner" class="system-banner system-banner--impersonate">
         <span>
             <i class="fas fa-user-secret me-2"></i>
             {{ app()->getLocale() === 'ar'
@@ -255,7 +254,7 @@
     @endphp
 
     @if($__showExpiredBanner)
-    <div id="sub-banner-expired" style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#dc2626,#b91c1c);color:#fff;padding:.55rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;font-size:.84rem;font-weight:600;box-shadow:0 2px 12px rgba(220,38,38,.4);">
+    <div id="sub-banner-expired" class="system-banner system-banner--expired">
         <span>
             <i class="fas fa-exclamation-circle me-2"></i>
             @if(app()->getLocale() === 'ar')
@@ -266,7 +265,7 @@
                 Renew now to keep using the system.
             @endif
         </span>
-        <a href="{{ route('subscribe') }}" style="background:#fff;color:#dc2626;padding:.3rem 1rem;border-radius:.5rem;font-weight:800;text-decoration:none;white-space:nowrap;font-size:.82rem;flex-shrink:0">
+        <a href="{{ route('subscribe') }}" class="banner-cta banner-cta--expired">
             <i class="fas fa-redo me-1"></i>
             {{ app()->getLocale() === 'ar' ? 'جدّد الاشتراك' : 'Renew Now' }}
         </a>

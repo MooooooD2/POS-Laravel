@@ -73,7 +73,7 @@ DESCRIPTION: Product management with search, CRUD, stock management
 
 {{-- Add/Edit Product Modal --}}
 <div class="modal fade" id="addProductModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="productModalTitle">{{ __('pos.add_product') }}</h5>
@@ -138,7 +138,7 @@ DESCRIPTION: Product management with search, CRUD, stock management
 
 {{-- Add Stock Modal --}}
 <div class="modal fade" id="addStockModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
+    <div class="modal-dialog modal-sm modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">{{ __('pos.add_stock') }}</h5>
@@ -182,7 +182,7 @@ DESCRIPTION: Product management with search, CRUD, stock management
                 <p id="barcodeProductName" class="fw-bold mb-1"></p>
                 <p id="barcodeProductPrice" class="text-success mb-3"></p>
                 <div id="barcodeContainer" class="d-flex justify-content-center mb-2">
-                    <svg id="barcodeSvg"></svg>
+                    <canvas id="barcodeCanvas"></canvas>
                 </div>
                 <p id="barcodeValue" class="text-muted small font-monospace mb-3"></p>
                 <div id="barcodeGenerateSection" class="d-none">
@@ -206,7 +206,7 @@ DESCRIPTION: Product management with search, CRUD, stock management
 
 {{-- Units Management Modal --}}
 <div class="modal fade" id="unitsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-ruler me-2"></i>{{ __('pos.manage_units') }}</h5>
@@ -218,15 +218,15 @@ DESCRIPTION: Product management with search, CRUD, stock management
                     <div class="card-body">
                         <input type="hidden" id="unitId">
                         <div class="row g-2 align-items-end">
-                            <div class="col-md-5">
+                            <div class="col-12 col-sm-5">
                                 <label class="form-label">{{ __('pos.unit_name') }} *</label>
                                 <input type="text" class="form-control" id="unitName" placeholder="{{ __('pos.unit_name') }}">
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-12 col-sm-4">
                                 <label class="form-label">{{ __('pos.unit_abbreviation') }}</label>
                                 <input type="text" class="form-control" id="unitAbbreviation" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: كجم، لتر' : 'e.g. kg, L' }}">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-12 col-sm-3">
                                 <button class="btn btn-primary w-100" data-fn="saveUnit">
                                     <i class="fas fa-save me-1"></i>{{ __('pos.save') }}
                                 </button>
@@ -563,7 +563,8 @@ async function showBarcode(id, name, barcode, price) {
         document.getElementById('barcodeGenerateSection').classList.add('d-none');
         renderBarcode(barcode);
     } else {
-        document.getElementById('barcodeSvg').innerHTML = '';
+        const cv = document.getElementById('barcodeCanvas');
+        cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
         document.getElementById('barcodeValue').textContent = '';
         document.getElementById('barcodeGenerateSection').classList.remove('d-none');
     }
@@ -573,7 +574,7 @@ async function showBarcode(id, name, barcode, price) {
 
 function renderBarcode(value) {
     try {
-        JsBarcode('#barcodeSvg', value, {
+        JsBarcode('#barcodeCanvas', value, {
             format: 'CODE128',
             width: 2,
             height: 80,
@@ -603,11 +604,9 @@ async function generateBarcode() {
 }
 
 function printBarcode() {
-    const name = document.getElementById('barcodeProductName').textContent;
+    const name  = document.getElementById('barcodeProductName').textContent;
     const price = document.getElementById('barcodeProductPrice').textContent;
-    const svgEl = document.getElementById('barcodeSvg');
-    const svgData = new XMLSerializer().serializeToString(svgEl);
-    const svgBase64 = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    const img   = document.getElementById('barcodeCanvas').toDataURL('image/png');
 
     const win = window.open('', '_blank', 'width=400,height=300');
     win.document.write(`<!DOCTYPE html><html><head><title>Barcode</title>
@@ -620,7 +619,7 @@ function printBarcode() {
     <div class="label">
         <div class="prod-name">${name}</div>
         <div class="prod-price">${price}</div>
-        <img src="${svgBase64}" class="u-mw-260">
+        <img src="${img}" style="max-width:260px;">
     </div>
     <script>window.onload=()=>{window.print();window.close();}<\/script>
     </body></html>`);
@@ -628,12 +627,9 @@ function printBarcode() {
 }
 
 function downloadBarcode() {
-    const svgEl = document.getElementById('barcodeSvg');
-    const svgData = new XMLSerializer().serializeToString(svgEl);
-    const blob = new Blob([svgData], { type: 'image/svg+xml' });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `barcode-${_currentBarcodeValue || 'product'}.svg`;
+    a.href = document.getElementById('barcodeCanvas').toDataURL('image/png');
+    a.download = `barcode-${_currentBarcodeValue || 'product'}.png`;
     a.click();
 }
 
