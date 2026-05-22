@@ -58,164 +58,156 @@
                 <i class="fas fa-crosshairs"></i>
             </div>
             <span class="brand-text">{{ __('pos.app_name') }}</span>
+            {{-- Compact toggle: desktop only --}}
+            <button class="btn btn-sm d-none d-md-flex ms-auto sidebar-compact-btn" data-fn="toggleSidebarCompact"
+                title="{{ app()->getLocale() === 'ar' ? 'تصغير القائمة' : 'Compact menu' }}">
+                <i class="fas fa-chevron-left sidebar-compact-icon"></i>
+            </button>
+            {{-- Close button: mobile only --}}
             <button class="btn btn-sm d-md-none ms-auto sidebar-close-btn" data-fn="toggleSidebar">
                 <i class="fas fa-xmark fa-lg"></i>
             </button>
         </div>
-       {{-- Update the sidebar menu section --}}
 @php $isMasterTenant = config('tenancy.master_tenant') && tenancy()->tenant?->id === config('tenancy.master_tenant'); @endphp
 <div class="sidebar-menu mt-2">
-    {{-- Dashboard - links differ for master tenant owner vs store users --}}
     @if($isMasterTenant)
         <a href="{{ route('admin.cpanel') }}" class="{{ request()->routeIs('admin.cpanel') ? 'active' : '' }}">
-            <i class="fas fa-gauge-high"></i> {{ __('pos.dashboard') }}
+            <i class="fas fa-gauge-high"></i><span class="nav-label"> {{ __('pos.dashboard') }}</span>
         </a>
     @else
         <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard', 'home') ? 'active' : '' }}">
-            <i class="fas fa-gauge-high"></i> {{ __('pos.dashboard') }}
+            <i class="fas fa-gauge-high"></i><span class="nav-label"> {{ __('pos.dashboard') }}</span>
         </a>
     @endif
 
-    {{-- Store modules — subscription tenant users only (hidden for master tenant owner) --}}
     @if(!$isMasterTenant)
 
-    {{-- POS - Check permission instead of role --}}
     @permission('view_pos')
         <a href="{{ route('pos') }}" class="{{ request()->routeIs('pos') ? 'active' : '' }}">
-            <i class="fas fa-cash-register"></i> {{ __('pos.pos') }}
+            <i class="fas fa-cash-register"></i><span class="nav-label"> {{ __('pos.pos') }}</span>
         </a>
     @endpermission
 
     @permission('view_returns')
         <a href="{{ route('returns') }}" class="{{ request()->routeIs('returns') ? 'active' : '' }}">
-            <i class="fas fa-rotate-left"></i> {{ __('pos.returns') }}
+            <i class="fas fa-rotate-left"></i><span class="nav-label"> {{ __('pos.returns') }}</span>
         </a>
     @endpermission
 
     @permission('view_warehouse')
         <a href="{{ route('warehouse') }}" class="{{ request()->routeIs('warehouse') ? 'active' : '' }}">
-            <i class="fas fa-boxes-stacked"></i> {{ __('pos.warehouse') }}
+            <i class="fas fa-boxes-stacked"></i><span class="nav-label"> {{ __('pos.warehouse') }}</span>
         </a>
     @endpermission
 
     @permission('view_suppliers')
         <a href="{{ route('suppliers') }}" class="{{ request()->routeIs('suppliers') ? 'active' : '' }}">
-            <i class="fas fa-truck-fast"></i> {{ __('pos.suppliers') }}
+            <i class="fas fa-truck-fast"></i><span class="nav-label"> {{ __('pos.suppliers') }}</span>
         </a>
     @endpermission
 
     @permission('view_purchase_orders')
         <a href="{{ route('purchase-orders') }}" class="{{ request()->routeIs('purchase-orders') ? 'active' : '' }}">
-            <i class="fas fa-file-invoice-dollar"></i> {{ __('pos.purchase_orders') }}
+            <i class="fas fa-file-invoice-dollar"></i><span class="nav-label"> {{ __('pos.purchase_orders') }}</span>
         </a>
         <a href="{{ route('purchase-returns') }}" class="{{ request()->routeIs('purchase-returns') ? 'active' : '' }}">
-            <i class="fas fa-arrow-rotate-left"></i> {{ __('pos.purchase_returns') }}
+            <i class="fas fa-arrow-rotate-left"></i><span class="nav-label"> {{ __('pos.purchase_returns') }}</span>
         </a>
     @endpermission
 
     @permission('view_supplier_payments')
         <a href="{{ route('supplier-payments') }}" class="{{ request()->routeIs('supplier-payments') ? 'active' : '' }}">
-            <i class="fas fa-money-bill-transfer"></i> {{ __('pos.supplier_payments') }}
+            <i class="fas fa-money-bill-transfer"></i><span class="nav-label"> {{ __('pos.supplier_payments') }}</span>
         </a>
         <a href="{{ route('supplier-accounts') }}" class="{{ request()->routeIs('supplier-accounts') ? 'active' : '' }}">
-            <i class="fas fa-scale-balanced"></i> {{ __('pos.supplier_accounts') }}
+            <i class="fas fa-scale-balanced"></i><span class="nav-label"> {{ __('pos.supplier_accounts') }}</span>
         </a>
     @endpermission
 
     @permission('view_warehouse')
         <a href="{{ route('warehouses') }}" class="{{ request()->routeIs('warehouses') ? 'active' : '' }}">
-            <i class="fas fa-warehouse"></i> {{ app()->getLocale() === 'ar' ? 'المستودعات' : 'Warehouses' }}
+            <i class="fas fa-warehouse"></i><span class="nav-label"> {{ app()->getLocale() === 'ar' ? 'المستودعات' : 'Warehouses' }}</span>
         </a>
         <a href="{{ route('customers') }}" class="{{ request()->routeIs('customers') ? 'active' : '' }}">
-            <i class="fas fa-users"></i> {{ __('pos.customers') }}
+            <i class="fas fa-users"></i><span class="nav-label"> {{ __('pos.customers') }}</span>
         </a>
         <a href="{{ route('customer-groups') }}" class="{{ request()->routeIs('customer-groups') ? 'active' : '' }}">
-            <i class="fas fa-people-group"></i> {{ app()->getLocale()==='ar' ? 'مجموعات العملاء' : 'Customer Groups' }}
+            <i class="fas fa-people-group"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'مجموعات العملاء' : 'Customer Groups' }}</span>
         </a>
         <a href="{{ route('promotions') }}" class="{{ request()->routeIs('promotions') ? 'active' : '' }}">
-            <i class="fas fa-percent"></i> {{ app()->getLocale()==='ar' ? 'العروض الترويجية' : 'Promotions' }}
+            <i class="fas fa-percent"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'العروض الترويجية' : 'Promotions' }}</span>
         </a>
         <a href="{{ route('waste') }}" class="{{ request()->routeIs('waste') ? 'active' : '' }}">
-            <i class="fas fa-trash-alt"></i> {{ __('pos.waste_recording') }}
+            <i class="fas fa-trash-alt"></i><span class="nav-label"> {{ __('pos.waste_recording') }}</span>
         </a>
     @endpermission
 
     @permission('view_pos')
         <a href="{{ route('expenses') }}" class="{{ request()->routeIs('expenses') ? 'active' : '' }}">
-            <i class="fas fa-receipt"></i> {{ __('pos.expenses') }}
+            <i class="fas fa-receipt"></i><span class="nav-label"> {{ __('pos.expenses') }}</span>
         </a>
     @endpermission
 
     @permission('view_reports')
         <a href="{{ route('reports') }}" class="{{ request()->routeIs('reports') ? 'active' : '' }}">
-            <i class="fas fa-chart-column"></i> {{ __('pos.reports') }}
+            <i class="fas fa-chart-column"></i><span class="nav-label"> {{ __('pos.reports') }}</span>
         </a>
         <a href="{{ route('profit-reports') }}" class="{{ request()->routeIs('profit-reports') ? 'active' : '' }}">
-            <i class="fas fa-chart-line"></i> {{ __('pos.profit_reports') }}
+            <i class="fas fa-chart-line"></i><span class="nav-label"> {{ __('pos.profit_reports') }}</span>
         </a>
         <a href="{{ route('reports.budget') }}" class="{{ request()->routeIs('reports.budget') ? 'active' : '' }}">
-            <i class="fas fa-scale-unbalanced"></i> {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}
+            <i class="fas fa-scale-unbalanced"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}</span>
         </a>
     @endpermission
 
     @permission('view_pos')
         <a href="{{ route('cash-register') }}" class="{{ request()->routeIs('cash-register') ? 'active' : '' }}">
-            <i class="fas fa-cash-register"></i> {{ __('pos.cash_register_settlement') }}
+            <i class="fas fa-cash-register"></i><span class="nav-label"> {{ __('pos.cash_register_settlement') }}</span>
         </a>
     @endpermission
 
     @permission('view_accounting')
         <a href="{{ route('accounting') }}" class="{{ request()->routeIs('accounting') ? 'active' : '' }}">
-            <i class="fas fa-book-open"></i> {{ __('pos.accounting') }}
+            <i class="fas fa-book-open"></i><span class="nav-label"> {{ __('pos.accounting') }}</span>
         </a>
     @endpermission
 
     @permission('view_financial_reports')
         <a href="{{ route('financial-reports') }}" class="{{ request()->routeIs('financial-reports') ? 'active' : '' }}">
-            <i class="fas fa-chart-area"></i> {{ __('pos.financial_reports') }}
+            <i class="fas fa-chart-area"></i><span class="nav-label"> {{ __('pos.financial_reports') }}</span>
         </a>
     @endpermission
 
     @permission('manage_roles')
         <a href="{{ route('branches') }}" class="{{ request()->routeIs('branches') ? 'active' : '' }}">
-            <i class="fas fa-sitemap"></i> {{ __('pos.branches') }}
+            <i class="fas fa-sitemap"></i><span class="nav-label"> {{ __('pos.branches') }}</span>
         </a>
         <a href="{{ route('whatsapp') }}" class="{{ request()->routeIs('whatsapp') ? 'active' : '' }}">
-            <i class="fab fa-whatsapp"></i> {{ __('pos.whatsapp') }}
+            <i class="fab fa-whatsapp"></i><span class="nav-label"> {{ __('pos.whatsapp') }}</span>
         </a>
     @endpermission
 
     @permission('view_settings')
         <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
-            <i class="fas fa-gear"></i> {{ __('pos.settings') }}
+            <i class="fas fa-gear"></i><span class="nav-label"> {{ __('pos.settings') }}</span>
         </a>
     @endpermission
 
-    @else {{-- Master tenant owner: SaaS management links only --}}
-        <a href="{{ route('admin.tenants') }}"
-           class="{{ request()->routeIs('admin.tenants') ? 'active' : '' }}">
-            <i class="fas fa-building-columns"></i>
-            {{ app()->getLocale()==='ar' ? 'الاشتراكات' : 'Subscriptions' }}
+    @else {{-- Master tenant owner --}}
+        <a href="{{ route('admin.tenants') }}" class="{{ request()->routeIs('admin.tenants') ? 'active' : '' }}">
+            <i class="fas fa-building-columns"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الاشتراكات' : 'Subscriptions' }}</span>
         </a>
-        <a href="{{ route('admin.plans') }}"
-           class="{{ request()->routeIs('admin.plans') ? 'active' : '' }}">
-            <i class="fas fa-tag"></i>
-            {{ app()->getLocale()==='ar' ? 'الخطط والأسعار' : 'Plans & Pricing' }}
+        <a href="{{ route('admin.plans') }}" class="{{ request()->routeIs('admin.plans') ? 'active' : '' }}">
+            <i class="fas fa-tag"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الخطط والأسعار' : 'Plans & Pricing' }}</span>
         </a>
-        <a href="{{ route('admin.payment-accounts.page') }}"
-           class="{{ request()->routeIs('admin.payment-accounts.page') ? 'active' : '' }}">
-            <i class="fas fa-wallet"></i>
-            {{ app()->getLocale()==='ar' ? 'وسائل الدفع' : 'Payment Methods' }}
+        <a href="{{ route('admin.payment-accounts.page') }}" class="{{ request()->routeIs('admin.payment-accounts.page') ? 'active' : '' }}">
+            <i class="fas fa-wallet"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'وسائل الدفع' : 'Payment Methods' }}</span>
         </a>
-        <a href="{{ route('roles') }}"
-           class="{{ request()->routeIs('roles') ? 'active' : '' }}">
-            <i class="fas fa-shield-halved"></i>
-            {{ app()->getLocale()==='ar' ? 'الأدوار والصلاحيات' : 'Roles & Permissions' }}
+        <a href="{{ route('roles') }}" class="{{ request()->routeIs('roles') ? 'active' : '' }}">
+            <i class="fas fa-shield-halved"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الأدوار والصلاحيات' : 'Roles & Permissions' }}</span>
         </a>
-        <a href="{{ route('settings') }}"
-           class="{{ request()->routeIs('settings') ? 'active' : '' }}">
-            <i class="fas fa-gear"></i>
-            {{ app()->getLocale()==='ar' ? 'إعدادات النظام' : 'System Settings' }}
+        <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
+            <i class="fas fa-gear"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'إعدادات النظام' : 'System Settings' }}</span>
         </a>
     @endif
 </div>
@@ -505,6 +497,59 @@ window.addEventListener('resize', function() {
         document.body.style.overflow = '';
     }
 });
+
+// ── Compact sidebar (icon-only mode) ─────────────────────────────────────────
+const _isRTL = () => document.body.classList.contains('rtl');
+
+function _applyCompact(compact) {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+
+    if (compact) {
+        sidebar.classList.add('compact');
+        document.body.classList.add('sidebar-compact');
+
+        // Init a Bootstrap tooltip on every nav link (appended to <body> → never clipped)
+        sidebar.querySelectorAll('.sidebar-menu a').forEach(function(link) {
+            const label = link.querySelector('.nav-label');
+            if (!label) return;
+            const text = label.textContent.trim();
+            if (!text) return;
+            // Avoid double-init
+            if (bootstrap.Tooltip.getInstance(link)) return;
+            new bootstrap.Tooltip(link, {
+                title:       text,
+                placement:   _isRTL() ? 'left' : 'right',
+                trigger:     'hover',
+                customClass: 'sidebar-nav-tooltip',
+                boundary:    'viewport',
+            });
+        });
+    } else {
+        sidebar.classList.remove('compact');
+        document.body.classList.remove('sidebar-compact');
+
+        // Destroy all nav tooltips so they don't fire in expanded mode
+        sidebar.querySelectorAll('.sidebar-menu a').forEach(function(link) {
+            const tip = bootstrap.Tooltip.getInstance(link);
+            if (tip) tip.dispose();
+        });
+    }
+}
+
+function toggleSidebarCompact() {
+    const isCompact = document.getElementById('sidebar').classList.contains('compact');
+    const next = !isCompact;
+    localStorage.setItem('sidebarCompact', next ? '1' : '0');
+    _applyCompact(next);
+}
+
+// Restore compact state on every page load (desktop only)
+(function() {
+    if (window.innerWidth > 768 && localStorage.getItem('sidebarCompact') === '1') {
+        _applyCompact(true);
+    }
+})();
         // Format currency - تنسيق العملة
         function formatCurrency(amount) {
             return new Intl.NumberFormat(LOCALE === 'ar' ? 'ar-EG' : 'en-US', {

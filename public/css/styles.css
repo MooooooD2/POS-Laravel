@@ -7,6 +7,7 @@
     --accent: #00B04E;
     --accent-dark: #008A3C;
     --sidebar-width: 260px;
+    --sidebar-compact-width: 68px;
     --sidebar-bg: #0B1830;
     --sidebar-text: #8BAFD0;
     --sidebar-active: #00B04E;
@@ -550,9 +551,84 @@ i,
     display: flex;
     flex-direction: column;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.25s ease,
                 box-shadow 0.3s ease;
     -webkit-transition: -webkit-transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* ── Compact sidebar (icon-only mode, desktop) ──────────────────────────────── */
+#sidebar.compact {
+    width: var(--sidebar-compact-width);
+    /* Keep sidebar itself hidden-overflow so it doesn't spill on desktop layout.
+       Bootstrap tooltips are appended to <body> so they are never clipped. */
+    overflow: hidden;
+}
+/* Brand: center the logo, hide text */
+#sidebar.compact .sidebar-brand {
+    justify-content: center;
+    padding: 1.1rem 0.5rem;
+    gap: 0;
+}
+#sidebar.compact .sidebar-brand .brand-logo { margin: 0; }
+#sidebar.compact .brand-text              { display: none; }
+
+/* Compact button stays at bottom of brand row, centered */
+#sidebar.compact .sidebar-compact-btn { margin: 0; }
+
+/* Menu links: icon only, centered */
+#sidebar.compact .sidebar-menu a {
+    justify-content: center;
+    padding: 0.78rem 0;
+    margin: 0.15rem 0.5rem;
+}
+#sidebar.compact .sidebar-menu a i  { width: auto; margin: 0; }
+#sidebar.compact .sidebar-menu a .nav-label { display: none; }
+
+/* Bootstrap tooltip skin for compact sidebar — dark navy to match sidebar theme */
+.sidebar-nav-tooltip .tooltip-inner {
+    background: #0B1830;
+    color: #e2e8f0;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    white-space: nowrap;
+}
+.sidebar-nav-tooltip .tooltip-arrow::before {
+    border-right-color: #0B1830 !important; /* LTR — arrow from left side */
+}
+body.rtl .sidebar-nav-tooltip .tooltip-arrow::before {
+    border-left-color:  #0B1830 !important; /* RTL — arrow from right side */
+    border-right-color: transparent !important;
+}
+
+/* Compact button chevron rotation */
+.sidebar-compact-icon {
+    transition: transform 0.25s ease;
+    display: inline-block;
+    color: rgba(255,255,255,0.55);
+}
+/* LTR expanded → chevron points left; compact → flip right */
+#sidebar.compact .sidebar-compact-icon       { transform: rotate(180deg); }
+/* RTL expanded → chevron points right (flip); compact → back to normal */
+body.rtl .sidebar-compact-icon               { transform: rotate(180deg); }
+body.rtl #sidebar.compact .sidebar-compact-icon { transform: rotate(0deg); }
+
+/* Compact button hover style */
+.sidebar-compact-btn {
+    color: rgba(255,255,255,0.55);
+    border: none !important;
+    background: none !important;
+    padding: 0.25rem 0.4rem;
+    line-height: 1;
+}
+.sidebar-compact-btn:hover { color: #fff !important; background: rgba(255,255,255,0.08) !important; }
+
+/* Main content adjusts when sidebar is compact */
+body.sidebar-compact #main-content            { margin-left:  var(--sidebar-compact-width); }
+body.rtl.sidebar-compact #main-content        { margin-left: 0; margin-right: var(--sidebar-compact-width); }
+#main-content { transition: margin 0.25s ease; }
 
 /* Sidebar - RTL */
 body.rtl #sidebar {
