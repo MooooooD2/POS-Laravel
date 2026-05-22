@@ -3,7 +3,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreReturnRequest;
 use App\Models\SalesReturn;
+use App\Services\Printing\ThermalPrinterService;
 use App\Services\ReturnService;
+use App\Services\SettingService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
 use Illuminate\Http\Request;
@@ -14,7 +16,11 @@ class ReturnController extends Controller
 {
     use ApiResponse, AuditLog;
 
-    public function __construct(private ReturnService $returnService) {}
+    public function __construct(
+        private ReturnService         $returnService,
+        private ThermalPrinterService $printerService,
+        private SettingService        $settingService,
+    ) {}
 
     public function index() { return view('returns.index'); }
 
@@ -57,7 +63,24 @@ class ReturnController extends Controller
                 'invoice_id'     => $return->invoice_id,
                 'invoice_number' => $return->invoice_number,
             ]);
-            return $this->success(['return' => $return], '', 201);
+
+            $printResult = null;
+            if ($this->settingService->get('print_on_return', false)) {
+                try {
+                    $printResult = $this->printerService->printReturnReceipt($return);
+                } catch (\Throwable $e) {
+                    Log::warning('Auto-print failed for return', [
+                        'return_id' => $return->id,
+                        'error'     => $e->getMessage(),
+                    ]);
+                    $printResult = ['success' => false, 'fallback' => 'browser', 'message' => $e->getMessage()];
+                }
+            }
+
+            return $this->success(array_filter([
+                'return'       => $return,
+                'print_result' => $printResult,
+            ]), '', 201);
         } catch (\Illuminate\Database\QueryException $e) {
             Log::error('return.create_db_error', [
                 'error'   => $e->getMessage(),

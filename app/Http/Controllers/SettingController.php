@@ -39,7 +39,7 @@ class SettingController extends Controller
 
     public function group(string $group)
     {
-        $allowed = ['general', 'tax', 'pos', 'invoice', 'stock', 'accounting'];
+        $allowed = ['general', 'tax', 'pos', 'invoice', 'stock', 'accounting', 'printing', 'loyalty', 'inventory'];
         if (!in_array($group, $allowed, true)) {
             return response()->json([], 400);
         }

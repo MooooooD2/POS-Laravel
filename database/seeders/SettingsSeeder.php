@@ -58,6 +58,19 @@ class SettingsSeeder extends Seeder
 
             // Inventory - المخزون
             ['key' => 'inventory_valuation_method', 'value' => 'weighted_average', 'type' => 'string', 'group' => 'inventory', 'label_ar' => 'طريقة تقييم المخزون', 'label_en' => 'Inventory Valuation Method'],
+
+            // Printing - الطباعة الحرارية
+            ['key' => 'print_on_sale',          'value' => '0',       'type' => 'boolean', 'group' => 'printing', 'label_ar' => 'طباعة تلقائية عند البيع',            'label_en' => 'Auto Print on Sale'],
+            ['key' => 'print_on_return',         'value' => '0',       'type' => 'boolean', 'group' => 'printing', 'label_ar' => 'طباعة تلقائية عند المرتجع',          'label_en' => 'Auto Print on Return'],
+            ['key' => 'print_on_shift_close',    'value' => '0',       'type' => 'boolean', 'group' => 'printing', 'label_ar' => 'طباعة تقرير الوردية عند الإغلاق',    'label_en' => 'Print Shift Report on Close'],
+            ['key' => 'receipt_template',        'value' => 'default', 'type' => 'string',  'group' => 'printing', 'label_ar' => 'قالب الإيصال',                       'label_en' => 'Receipt Template'],
+            ['key' => 'receipt_copies',          'value' => '1',       'type' => 'number',  'group' => 'printing', 'label_ar' => 'عدد نسخ الإيصال',                    'label_en' => 'Receipt Copies'],
+            ['key' => 'receipt_show_qr',         'value' => '1',       'type' => 'boolean', 'group' => 'printing', 'label_ar' => 'إظهار QR كود الضريبة',               'label_en' => 'Show ETA QR Code'],
+            ['key' => 'receipt_show_barcode',    'value' => '0',       'type' => 'boolean', 'group' => 'printing', 'label_ar' => 'إظهار الباركود على الإيصال',         'label_en' => 'Show Barcode on Receipt'],
+            ['key' => 'print_fallback_browser',  'value' => '1',       'type' => 'boolean', 'group' => 'printing', 'label_ar' => 'الطباعة عبر المتصفح عند الفشل',      'label_en' => 'Fallback to Browser Print'],
+            ['key' => 'kitchen_printer_id',      'value' => '',        'type' => 'string',  'group' => 'printing', 'label_ar' => 'معرف طابعة المطبخ',                  'label_en' => 'Kitchen Printer ID'],
+            ['key' => 'barcode_printer_id',      'value' => '',        'type' => 'string',  'group' => 'printing', 'label_ar' => 'معرف طابعة الباركود',                'label_en' => 'Barcode Printer ID'],
+            ['key' => 'tax_registration_number', 'value' => '',        'type' => 'string',  'group' => 'printing', 'label_ar' => 'رقم التسجيل الضريبي على الإيصال',   'label_en' => 'Tax Registration Number'],
         ];
 
         foreach ($settings as $s) {

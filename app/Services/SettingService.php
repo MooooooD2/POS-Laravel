@@ -19,6 +19,13 @@ class SettingService
         'loyalty_enabled', 'loyalty_earn_rate', 'loyalty_redeem_value', 'loyalty_min_redeem',
         'inventory_valuation_method',
         'ip_whitelist', 'company_tax_number',
+        // Thermal printing keys
+        'print_on_sale', 'print_on_return', 'print_on_shift_close',
+        'receipt_template', 'receipt_copies',
+        'kitchen_printer_id', 'barcode_printer_id',
+        'print_fallback_browser',
+        'receipt_show_qr', 'receipt_show_barcode',
+        'tax_registration_number',
     ];
 
     public function __construct(private SettingRepositoryInterface $settingRepo) {}

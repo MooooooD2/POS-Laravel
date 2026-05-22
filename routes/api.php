@@ -28,6 +28,7 @@ use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\FraudDetectionController;
 use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\PrintController;
 use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 
@@ -250,6 +251,35 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\CheckSubscripti
         Route::post('/branches', [BranchController::class, 'store'])->name('branches.store');
         Route::put('/branches/{branch}', [BranchController::class, 'update'])->name('branches.update');
         Route::delete('/branches/{branch}', [BranchController::class, 'destroy'])->name('branches.destroy');
+    });
+
+    // ── Thermal Printing ───────────────────────────────────────────────────────
+    Route::prefix('printing')->name('printing.')->group(function () {
+
+        // Print a document (POS users can trigger prints)
+        Route::middleware('permission:view_pos')->group(function () {
+            Route::post('/print',                                   [PrintController::class, 'printReceipt'])->middleware('throttle:30,1')->name('print');
+            Route::post('/invoices/{invoice}/reprint',              [PrintController::class, 'reprintInvoice'])->middleware('throttle:20,1')->name('invoices.reprint');
+        });
+
+        // Printer management (admin)
+        Route::middleware('permission:manage_roles')->group(function () {
+            Route::get('/printers',                                 [PrintController::class, 'indexPrinters'])->name('printers.index');
+            Route::post('/printers',                                [PrintController::class, 'storePrinter'])->middleware('throttle:20,1')->name('printers.store');
+            Route::get('/printers/{printer}',                       [PrintController::class, 'showPrinter'])->name('printers.show');
+            Route::put('/printers/{printer}',                       [PrintController::class, 'updatePrinter'])->name('printers.update');
+            Route::delete('/printers/{printer}',                    [PrintController::class, 'destroyPrinter'])->name('printers.destroy');
+            Route::post('/printers/{printer}/test',                 [PrintController::class, 'testPrinter'])->middleware('throttle:10,1')->name('printers.test');
+            Route::post('/printers/{printer}/set-default',          [PrintController::class, 'setDefaultPrinter'])->name('printers.set-default');
+        });
+
+        // Print job queue (admin)
+        Route::middleware('permission:manage_roles')->group(function () {
+            Route::get('/jobs',                                     [PrintController::class, 'indexJobs'])->name('jobs.index');
+            Route::post('/jobs/{job}/retry',                        [PrintController::class, 'retryJob'])->name('jobs.retry');
+            Route::delete('/jobs/{job}',                            [PrintController::class, 'cancelJob'])->name('jobs.cancel');
+            Route::get('/queue/stats',                              [PrintController::class, 'queueStats'])->name('queue.stats');
+        });
     });
 
     // WhatsApp admin API

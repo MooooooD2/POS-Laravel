@@ -119,6 +119,9 @@
                         <button class="nav-link text-start" data-tab="financial" data-fn="showTab" data-args='["financial"]'>
                             <i class="fas fa-chart-line me-2"></i>{{ app()->getLocale() === 'ar' ? 'الربحية' : 'Profitability' }}
                         </button>
+                        <button class="nav-link text-start" data-tab="printing" data-fn="showTab" data-args='["printing"]'>
+                            <i class="fas fa-print me-2"></i>{{ app()->getLocale() === 'ar' ? 'الطباعة الحرارية' : 'Thermal Printing' }}
+                        </button>
                     </nav>
                 </div>
             </div>
@@ -745,6 +748,321 @@
                 </div>
             </div>
 
+            {{-- ═══════════════════════════════════════════════════════════════
+                 Thermal Printing Tab
+            ════════════════════════════════════════════════════════════════ --}}
+            <div id="tab-printing" class="settings-tab d-none">
+
+                {{-- Auto-Print Triggers --}}
+                <div class="setting-card">
+                    <div class="setting-card-header">
+                        <i class="fas fa-bolt me-2 text-warning"></i>
+                        {{ app()->getLocale() === 'ar' ? 'التشغيل التلقائي' : 'Auto-Print Triggers' }}
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'طباعة تلقائية عند البيع' : 'Auto Print on Sale' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'يُطبع الإيصال فور إتمام أي فاتورة' : 'Automatically print receipt after every sale' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" data-key="print_on_sale" id="s_print_on_sale">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'طباعة تلقائية عند المرتجع' : 'Auto Print on Return' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'يُطبع إشعار المرتجع فور معالجته' : 'Automatically print return receipt after processing' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" data-key="print_on_return" id="s_print_on_return">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'طباعة تقرير الوردية عند الإغلاق' : 'Print Shift Report on Close' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'يُطبع تقرير نهاية الوردية تلقائياً عند إغلاق الجلسة' : 'Automatically print shift report when session is closed' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" data-key="print_on_shift_close" id="s_print_on_shift_close">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Receipt Options --}}
+                <div class="setting-card">
+                    <div class="setting-card-header">
+                        <i class="fas fa-receipt me-2 text-success"></i>
+                        {{ app()->getLocale() === 'ar' ? 'إعدادات الإيصال' : 'Receipt Options' }}
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'عدد نسخ الإيصال' : 'Receipt Copies' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'كم نسخة تُطبع من كل فاتورة' : 'Number of copies printed per receipt' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="number" class="form-control" data-key="receipt_copies" id="s_receipt_copies" min="1" max="10" value="1">
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'قالب الإيصال' : 'Receipt Template' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'تصميم الإيصال المطبوع' : 'Layout design of the printed receipt' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <select class="form-select" data-key="receipt_template" id="s_receipt_template">
+                                <option value="default">{{ app()->getLocale() === 'ar' ? 'افتراضي' : 'Default' }}</option>
+                                <option value="compact">{{ app()->getLocale() === 'ar' ? 'مضغوط' : 'Compact' }}</option>
+                                <option value="detailed">{{ app()->getLocale() === 'ar' ? 'تفصيلي' : 'Detailed' }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'إظهار QR كود الضريبة' : 'Show ETA QR Code' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'طباعة QR كود منظومة الفاتورة الإلكترونية المصرية' : 'Print Egyptian Tax Authority QR code on receipt' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" data-key="receipt_show_qr" id="s_receipt_show_qr">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'إظهار باركود على الإيصال' : 'Show Barcode on Receipt' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'طباعة باركود رقم الفاتورة أسفل الإيصال' : 'Print invoice number as barcode at receipt bottom' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" data-key="receipt_show_barcode" id="s_receipt_show_barcode">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'الطباعة عبر المتصفح عند الفشل' : 'Browser Fallback on Failure' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'عند فشل الطابعة الحرارية، افتح نافذة طباعة المتصفح' : 'Open browser print dialog when thermal printer fails' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" data-key="print_fallback_browser" id="s_print_fallback_browser">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <div class="label-text">{{ app()->getLocale() === 'ar' ? 'الرقم الضريبي على الإيصال' : 'Tax Registration Number' }}</div>
+                            <div class="label-desc">{{ app()->getLocale() === 'ar' ? 'يظهر في رأس الإيصال بجانب اسم المتجر' : 'Displayed in receipt header next to store name' }}</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="text" class="form-control" data-key="tax_registration_number" id="s_tax_registration_number"
+                                placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: 123456789' : 'e.g. 123456789' }}">
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Printers Management --}}
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-print me-2"></i>{{ app()->getLocale() === 'ar' ? 'الطابعات المتصلة' : 'Connected Printers' }}</span>
+                        <button class="btn btn-sm btn-success" data-fn="showPrinterModal">
+                            <i class="fas fa-plus me-1"></i>{{ app()->getLocale() === 'ar' ? 'إضافة طابعة' : 'Add Printer' }}
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>{{ app()->getLocale() === 'ar' ? 'الاسم' : 'Name' }}</th>
+                                        <th>{{ app()->getLocale() === 'ar' ? 'الاتصال' : 'Connection' }}</th>
+                                        <th>{{ app()->getLocale() === 'ar' ? 'العرض' : 'Paper' }}</th>
+                                        <th>{{ app()->getLocale() === 'ar' ? 'الفرع' : 'Branch' }}</th>
+                                        <th>{{ app()->getLocale() === 'ar' ? 'الحالة' : 'Status' }}</th>
+                                        <th>{{ app()->getLocale() === 'ar' ? 'إجراءات' : 'Actions' }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="printersTableBody">
+                                    <tr><td colspan="6" class="text-center text-muted py-3">{{ __('pos.loading') }}...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Queue Stats --}}
+                <div class="row g-3 mt-1" id="printQueueStats" style="display:none!important">
+                    <div class="col-6 col-md-3">
+                        <div class="card text-center border-warning">
+                            <div class="card-body py-2">
+                                <div class="h4 mb-0 text-warning" id="qs_pending">-</div>
+                                <div class="small text-muted">{{ app()->getLocale() === 'ar' ? 'معلّقة' : 'Pending' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card text-center border-danger">
+                            <div class="card-body py-2">
+                                <div class="h4 mb-0 text-danger" id="qs_failed">-</div>
+                                <div class="small text-muted">{{ app()->getLocale() === 'ar' ? 'فاشلة' : 'Failed' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card text-center border-info">
+                            <div class="card-body py-2">
+                                <div class="h4 mb-0 text-info" id="qs_processing">-</div>
+                                <div class="small text-muted">{{ app()->getLocale() === 'ar' ? 'قيد التنفيذ' : 'Processing' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card text-center border-success">
+                            <div class="card-body py-2">
+                                <div class="h4 mb-0 text-success" id="qs_completed_today">-</div>
+                                <div class="small text-muted">{{ app()->getLocale() === 'ar' ? 'مكتملة اليوم' : 'Done Today' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>{{-- /tab-printing --}}
+
+            {{-- ── Printer Add/Edit Modal ───────────────────────────────────── --}}
+            <div class="modal fade" id="printerModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="printerModalTitle">
+                                {{ app()->getLocale() === 'ar' ? 'إضافة طابعة' : 'Add Printer' }}
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="editPrinterId">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">{{ app()->getLocale() === 'ar' ? 'اسم الطابعة' : 'Printer Name' }} <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="p_name" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: طابعة الكاشير' : 'e.g. Cashier Printer' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">{{ app()->getLocale() === 'ar' ? 'نوع الاتصال' : 'Connection Type' }} <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="p_connection_type" data-on-change="togglePrinterFields">
+                                        <option value="network">{{ app()->getLocale() === 'ar' ? 'شبكة TCP/IP' : 'Network TCP/IP' }}</option>
+                                        <option value="usb">USB</option>
+                                        <option value="windows">{{ app()->getLocale() === 'ar' ? 'ويندوز (Spooler)' : 'Windows Spooler' }}</option>
+                                    </select>
+                                </div>
+
+                                {{-- Network fields --}}
+                                <div class="col-md-8" id="pf_ip">
+                                    <label class="form-label">IP Address <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="p_ip_address" placeholder="192.168.1.200">
+                                </div>
+                                <div class="col-md-4" id="pf_port">
+                                    <label class="form-label">Port</label>
+                                    <input type="number" class="form-control" id="p_port" value="9100">
+                                </div>
+
+                                {{-- USB field --}}
+                                <div class="col-md-12 d-none" id="pf_usb">
+                                    <label class="form-label">{{ app()->getLocale() === 'ar' ? 'مسار الجهاز' : 'Device Path' }} <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="p_usb_device" placeholder="/dev/usb/lp0">
+                                </div>
+
+                                {{-- Windows field --}}
+                                <div class="col-md-12 d-none" id="pf_windows">
+                                    <label class="form-label">{{ app()->getLocale() === 'ar' ? 'اسم الطابعة في ويندوز' : 'Windows Printer Name' }} <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="p_windows_printer_name" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: POS-80' : 'e.g. POS-80' }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ app()->getLocale() === 'ar' ? 'عرض الورق' : 'Paper Width' }}</label>
+                                    <select class="form-select" id="p_paper_width">
+                                        <option value="80">80mm (48 {{ app()->getLocale() === 'ar' ? 'حرف' : 'chars' }})</option>
+                                        <option value="58">58mm (32 {{ app()->getLocale() === 'ar' ? 'حرف' : 'chars' }})</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ app()->getLocale() === 'ar' ? 'مجموعة الأحرف' : 'Character Set' }}</label>
+                                    <select class="form-select" id="p_character_set">
+                                        <option value="CP720">CP720 ({{ app()->getLocale() === 'ar' ? 'عربي' : 'Arabic' }})</option>
+                                        <option value="CP437">CP437 (English)</option>
+                                        <option value="UTF-8">UTF-8</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ app()->getLocale() === 'ar' ? 'عدد النسخ' : 'Copies' }}</label>
+                                    <input type="number" class="form-control" id="p_copies" value="1" min="1" max="10">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mt-3">
+                                        <input class="form-check-input" type="checkbox" id="p_auto_cut" checked>
+                                        <label class="form-check-label" for="p_auto_cut">
+                                            {{ app()->getLocale() === 'ar' ? 'قطع تلقائي للورق' : 'Auto Cut Paper' }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mt-3">
+                                        <input class="form-check-input" type="checkbox" id="p_auto_open_drawer">
+                                        <label class="form-check-label" for="p_auto_open_drawer">
+                                            {{ app()->getLocale() === 'ar' ? 'فتح درج النقود تلقائياً' : 'Auto Open Cash Drawer' }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="p_is_default">
+                                        <label class="form-check-label" for="p_is_default">
+                                            {{ app()->getLocale() === 'ar' ? 'طابعة افتراضية' : 'Set as Default Printer' }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="p_is_active" checked>
+                                        <label class="form-check-label" for="p_is_active">
+                                            {{ app()->getLocale() === 'ar' ? 'مفعّلة' : 'Active' }}
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">{{ app()->getLocale() === 'ar' ? 'ملاحظات' : 'Notes' }}</label>
+                                    <input type="text" class="form-control" id="p_notes" placeholder="{{ app()->getLocale() === 'ar' ? 'اختياري' : 'Optional' }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('pos.cancel') }}</button>
+                            <button type="button" class="btn btn-outline-info" data-fn="testPrinterFromModal">
+                                <i class="fas fa-wifi me-1"></i>{{ app()->getLocale() === 'ar' ? 'اختبار الاتصال' : 'Test Connection' }}
+                            </button>
+                            <button type="button" class="btn btn-primary" data-fn="savePrinter">
+                                <i class="fas fa-save me-1"></i>{{ __('pos.save') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Save Button --}}
             <div class="save-btn-wrapper">
                 <div class="d-flex gap-2 justify-content-end">
@@ -1177,9 +1495,8 @@ async function savePermissions() {
         const originalShowTab = window.showTab;
         window.showTab = function(tab, btn) {
             if (originalShowTab) originalShowTab(tab, btn);
-            if (tab === 'roles') {
-                loadRolesAndPermissions();
-            }
+            if (tab === 'roles')    loadRolesAndPermissions();
+            if (tab === 'printing') { loadPrinters(); loadQueueStats(); }
         };
 
         async function loadSettings() {
@@ -1290,6 +1607,205 @@ async function savePermissions() {
             document.querySelectorAll('.settings-nav .nav-link').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.remove('d-none');
             btn.classList.add('active');
+        }
+
+        // ── Thermal Printing JS ────────────────────────────────────────────────
+        let printers = [];
+
+        async function loadPrinters() {
+            const res = await apiCall('{{ route('printing.printers.index') }}?active_only=0');
+            printers = res.printers || [];
+            renderPrintersTable();
+        }
+
+        function renderPrintersTable() {
+            const tbody = document.getElementById('printersTableBody');
+            if (!tbody) return;
+            if (!printers.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">
+                    {{ app()->getLocale() === 'ar' ? 'لا توجد طابعات مضافة بعد' : 'No printers added yet' }}
+                </td></tr>`;
+                return;
+            }
+            const isAr = document.documentElement.lang === 'ar' || document.dir === 'rtl';
+            tbody.innerHTML = printers.map(p => {
+                const connBadge = {
+                    network: '<span class="badge bg-primary">TCP/IP</span>',
+                    usb:     '<span class="badge bg-secondary">USB</span>',
+                    windows: '<span class="badge bg-info text-dark">Windows</span>',
+                }[p.connection_type] ?? p.connection_type;
+
+                const connDetail = p.connection_type === 'network'
+                    ? `<small class="text-muted d-block">${escHtml(p.ip_address ?? '')}:${p.port}</small>` : '';
+
+                const defaultBadge = p.is_default
+                    ? `<span class="badge bg-warning text-dark ms-1">${isAr ? 'افتراضية' : 'Default'}</span>` : '';
+
+                return `<tr>
+                    <td>
+                        <strong>${escHtml(p.name)}</strong>${defaultBadge}
+                        ${p.notes ? `<small class="text-muted d-block">${escHtml(p.notes)}</small>` : ''}
+                    </td>
+                    <td>${connBadge}${connDetail}</td>
+                    <td><span class="badge bg-light text-dark border">${p.paper_width}mm</span></td>
+                    <td>${escHtml(p.branch?.name ?? (isAr ? 'كل الفروع' : 'All Branches'))}</td>
+                    <td>
+                        <span class="badge ${p.is_active ? 'bg-success' : 'bg-danger'}">
+                            ${p.is_active ? (isAr ? 'مفعّلة' : 'Active') : (isAr ? 'معطّلة' : 'Inactive')}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info me-1" title="${isAr ? 'اختبار' : 'Test'}"
+                            data-fn="testPrinter" data-args='[${p.id}]'>
+                            <i class="fas fa-wifi"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning me-1" title="${isAr ? 'افتراضية' : 'Set Default'}"
+                            data-fn="setPrinterDefault" data-args='[${p.id}]' ${p.is_default ? 'disabled' : ''}>
+                            <i class="fas fa-star"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary me-1" title="${isAr ? 'تعديل' : 'Edit'}"
+                            data-fn="showPrinterModal" data-args='[${p.id}]'>
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" title="${isAr ? 'حذف' : 'Delete'}"
+                            data-fn="deletePrinter" data-args='[${p.id}]'>
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function loadQueueStats() {
+            const res = await apiCall('{{ route('printing.queue.stats') }}');
+            const s   = res.stats ?? {};
+            document.getElementById('qs_pending').textContent        = s.pending ?? 0;
+            document.getElementById('qs_failed').textContent         = s.failed ?? 0;
+            document.getElementById('qs_processing').textContent     = s.processing ?? 0;
+            document.getElementById('qs_completed_today').textContent = s.completed_today ?? 0;
+            document.getElementById('printQueueStats').style.removeProperty('display');
+        }
+
+        function togglePrinterFields() {
+            const type = document.getElementById('p_connection_type').value;
+            document.getElementById('pf_ip').classList.toggle('d-none',      type !== 'network');
+            document.getElementById('pf_port').classList.toggle('d-none',    type !== 'network');
+            document.getElementById('pf_usb').classList.toggle('d-none',     type !== 'usb');
+            document.getElementById('pf_windows').classList.toggle('d-none', type !== 'windows');
+        }
+
+        function showPrinterModal(printerId) {
+            if (printerId instanceof Element) printerId = null;
+            const p = printerId ? printers.find(x => x.id == printerId) : null;
+            const isAr = document.documentElement.lang === 'ar';
+
+            document.getElementById('printerModalTitle').textContent = p
+                ? (isAr ? 'تعديل طابعة' : 'Edit Printer')
+                : (isAr ? 'إضافة طابعة' : 'Add Printer');
+            document.getElementById('editPrinterId').value          = p?.id ?? '';
+            document.getElementById('p_name').value                 = p?.name ?? '';
+            document.getElementById('p_connection_type').value      = p?.connection_type ?? 'network';
+            document.getElementById('p_ip_address').value           = p?.ip_address ?? '';
+            document.getElementById('p_port').value                 = p?.port ?? 9100;
+            document.getElementById('p_usb_device').value           = p?.usb_device ?? '';
+            document.getElementById('p_windows_printer_name').value = p?.windows_printer_name ?? '';
+            document.getElementById('p_paper_width').value          = p?.paper_width ?? '80';
+            document.getElementById('p_character_set').value        = p?.character_set ?? 'CP720';
+            document.getElementById('p_copies').value               = p?.copies ?? 1;
+            document.getElementById('p_auto_cut').checked           = p ? !!p.auto_cut : true;
+            document.getElementById('p_auto_open_drawer').checked   = !!p?.auto_open_drawer;
+            document.getElementById('p_is_default').checked         = !!p?.is_default;
+            document.getElementById('p_is_active').checked          = p ? !!p.is_active : true;
+            document.getElementById('p_notes').value                = p?.notes ?? '';
+
+            togglePrinterFields();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('printerModal')).show();
+        }
+
+        async function savePrinter() {
+            const id = document.getElementById('editPrinterId').value;
+            const type = document.getElementById('p_connection_type').value;
+            const payload = {
+                name:                 document.getElementById('p_name').value.trim(),
+                connection_type:      type,
+                ip_address:           type === 'network' ? document.getElementById('p_ip_address').value.trim() : null,
+                port:                 type === 'network' ? parseInt(document.getElementById('p_port').value) : null,
+                usb_device:           type === 'usb'     ? document.getElementById('p_usb_device').value.trim() : null,
+                windows_printer_name: type === 'windows' ? document.getElementById('p_windows_printer_name').value.trim() : null,
+                paper_width:          document.getElementById('p_paper_width').value,
+                character_set:        document.getElementById('p_character_set').value,
+                copies:               parseInt(document.getElementById('p_copies').value),
+                auto_cut:             document.getElementById('p_auto_cut').checked,
+                auto_open_drawer:     document.getElementById('p_auto_open_drawer').checked,
+                is_default:           document.getElementById('p_is_default').checked,
+                is_active:            document.getElementById('p_is_active').checked,
+                notes:                document.getElementById('p_notes').value.trim() || null,
+            };
+
+            const url    = id ? `{{ url('api/printing/printers') }}/${id}` : '{{ route('printing.printers.store') }}';
+            const method = id ? 'PUT' : 'POST';
+            const res    = await apiCall(url, method, payload);
+
+            if (res.success) {
+                bootstrap.Modal.getInstance(document.getElementById('printerModal'))?.hide();
+                showToast(id ? '{{ app()->getLocale() === 'ar' ? 'تم تحديث الطابعة' : 'Printer updated' }}' : '{{ app()->getLocale() === 'ar' ? 'تمت إضافة الطابعة' : 'Printer added' }}');
+                await loadPrinters();
+            } else {
+                const msg = res.errors ? Object.values(res.errors).flat().join(' | ') : (res.message || '{{ __('pos.error') }}');
+                showToast(msg, 'danger');
+            }
+        }
+
+        async function testPrinter(printerId) {
+            if (printerId instanceof Element) return;
+            showToast('{{ app()->getLocale() === 'ar' ? 'جارٍ اختبار الاتصال...' : 'Testing connection...' }}', 'info');
+            const res = await apiCall(`{{ url('api/printing/printers') }}/${printerId}/test`, 'POST');
+            showToast(
+                res.success
+                    ? '{{ app()->getLocale() === 'ar' ? '✅ الطابعة متصلة وتعمل' : '✅ Printer is reachable' }}'
+                    : (res.message || '{{ app()->getLocale() === 'ar' ? 'فشل الاتصال' : 'Connection failed' }}'),
+                res.success ? 'success' : 'danger'
+            );
+        }
+
+        async function testPrinterFromModal() {
+            const id   = document.getElementById('editPrinterId').value;
+            const type = document.getElementById('p_connection_type').value;
+
+            if (!id) {
+                // Not saved yet — just validate IP reachability hint
+                const ip = document.getElementById('p_ip_address').value.trim();
+                if (type === 'network' && !ip) {
+                    showToast('{{ app()->getLocale() === 'ar' ? 'أدخل عنوان IP أولاً' : 'Enter IP address first' }}', 'warning');
+                } else {
+                    showToast('{{ app()->getLocale() === 'ar' ? 'احفظ الطابعة أولاً لتتمكن من اختبارها' : 'Save printer first to test connection' }}', 'warning');
+                }
+                return;
+            }
+            await testPrinter(id);
+        }
+
+        async function setPrinterDefault(printerId) {
+            const res = await apiCall(`{{ url('api/printing/printers') }}/${printerId}/set-default`, 'POST');
+            if (res.success) {
+                showToast('{{ app()->getLocale() === 'ar' ? 'تم تعيينها طابعة افتراضية' : 'Default printer updated' }}');
+                await loadPrinters();
+            } else {
+                showToast(res.message || '{{ __('pos.error') }}', 'danger');
+            }
+        }
+
+        async function deletePrinter(printerId) {
+            const p = printers.find(x => x.id == printerId);
+            const isAr = document.documentElement.lang === 'ar';
+            if (!confirm(`${isAr ? 'حذف الطابعة' : 'Delete printer'} "${p?.name}"?`)) return;
+            const res = await apiCall(`{{ url('api/printing/printers') }}/${printerId}`, 'DELETE');
+            if (res.success) {
+                showToast(isAr ? 'تم حذف الطابعة' : 'Printer deleted');
+                await loadPrinters();
+            } else {
+                showToast(res.message || '{{ __('pos.error') }}', 'danger');
+            }
         }
 
         // Load on init

@@ -3,15 +3,22 @@ namespace App\Http\Controllers;
 
 use App\Models\CashRegisterSession;
 use App\Services\CashRegisterService;
+use App\Services\Printing\ThermalPrinterService;
+use App\Services\SettingService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CashRegisterController extends Controller
 {
     use ApiResponse, AuditLog;
 
-    public function __construct(private CashRegisterService $cashRegisterService) {}
+    public function __construct(
+        private CashRegisterService   $cashRegisterService,
+        private ThermalPrinterService $printerService,
+        private SettingService        $settingService,
+    ) {}
 
     public function currentSession()
     {
@@ -66,7 +73,23 @@ class CashRegisterController extends Controller
             'actual' => $request->actual_cash,
         ]);
 
-        return $this->success(['session' => $closed]);
+        $printResult = null;
+        if ($this->settingService->get('print_on_shift_close', false)) {
+            try {
+                $printResult = $this->printerService->printShiftReport($closed);
+            } catch (\Throwable $e) {
+                Log::warning('Auto-print failed for shift report', [
+                    'session_id' => $closed->id,
+                    'error'      => $e->getMessage(),
+                ]);
+                $printResult = ['success' => false, 'fallback' => 'browser', 'message' => $e->getMessage()];
+            }
+        }
+
+        return $this->success(array_filter([
+            'session'      => $closed,
+            'print_result' => $printResult,
+        ]));
     }
 
     public function recordMovement(Request $request, int $id)

@@ -6,6 +6,7 @@ use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\ProductResource;
 use App\Models\Invoice;
 use App\Services\InvoiceService;
+use App\Services\Printing\ThermalPrinterService;
 use App\Services\SettingService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
@@ -18,8 +19,9 @@ class InvoiceController extends Controller
     use ApiResponse, AuditLog;
 
     public function __construct(
-        private InvoiceService $invoiceService,
-        private SettingService $settingService,
+        private InvoiceService        $invoiceService,
+        private SettingService        $settingService,
+        private ThermalPrinterService $printerService,
     ) {}
 
     public function posPage()
@@ -70,7 +72,24 @@ class InvoiceController extends Controller
         try {
             $invoice = $this->invoiceService->createInvoice($request->validated());
             $this->audit('invoice.created', Invoice::class, $invoice->id, ['total' => $invoice->final_total]);
-            return $this->success(['invoice' => new InvoiceResource($invoice)], '', 201);
+
+            $printResult = null;
+            if ($this->settingService->get('print_on_sale', false)) {
+                try {
+                    $printResult = $this->printerService->printInvoice($invoice);
+                } catch (\Throwable $e) {
+                    Log::warning('Auto-print failed for invoice', [
+                        'invoice_id' => $invoice->id,
+                        'error'      => $e->getMessage(),
+                    ]);
+                    $printResult = ['success' => false, 'fallback' => 'browser', 'message' => $e->getMessage()];
+                }
+            }
+
+            return $this->success(array_filter([
+                'invoice'      => new InvoiceResource($invoice),
+                'print_result' => $printResult,
+            ]), '', 201);
         } catch (\Illuminate\Database\QueryException $e) {
             Log::error('invoice.create_db_error', [
                 'error'   => $e->getMessage(),
