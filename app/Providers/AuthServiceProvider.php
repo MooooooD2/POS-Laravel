@@ -3,9 +3,11 @@ namespace App\Providers;
 
 use App\Models\Account;
 use App\Models\Branch;
+use App\Models\Budget;
 use App\Models\Customer;
 use App\Models\CustomerGroup;
 use App\Models\Expense;
+use App\Models\FiscalPeriod;
 use App\Models\HeldInvoice;
 use App\Models\Invoice;
 use App\Models\Product;
@@ -13,13 +15,16 @@ use App\Models\PurchaseOrder;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Models\TaxCategory;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Policies\AccountPolicy;
 use App\Policies\BranchPolicy;
+use App\Policies\BudgetPolicy;
 use App\Policies\CustomerGroupPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\ExpensePolicy;
+use App\Policies\FiscalPeriodPolicy;
 use App\Policies\HeldInvoicePolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\ProductPolicy;
@@ -28,6 +33,7 @@ use App\Policies\ReportPolicy;
 use App\Policies\SalesReturnPolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\SupplierPaymentPolicy;
+use App\Policies\TaxCategoryPolicy;
 use App\Policies\UserPolicy;
 use App\Policies\WarehousePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -50,6 +56,9 @@ class AuthServiceProvider extends ServiceProvider
         HeldInvoice::class    => HeldInvoicePolicy::class,
         CustomerGroup::class  => CustomerGroupPolicy::class,
         Expense::class        => ExpensePolicy::class,
+        TaxCategory::class    => TaxCategoryPolicy::class,
+        Budget::class         => BudgetPolicy::class,
+        FiscalPeriod::class   => FiscalPeriodPolicy::class,
     ];
 
     public function boot(): void

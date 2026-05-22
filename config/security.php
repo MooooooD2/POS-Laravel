@@ -5,6 +5,11 @@ return [
         'max_discount_percent' => (float) env('MAX_DISCOUNT_PERCENT', 20),
     ],
 
+    'login' => [
+        'max_attempts'      => (int) env('LOGIN_MAX_ATTEMPTS', 5),
+        'lockout_seconds'   => (int) env('LOGIN_LOCKOUT_SECONDS', 900),
+    ],
+
     'anomaly' => [
         // Alert when a single invoice exceeds this amount
         'invoice_amount_threshold' => env('ANOMALY_INVOICE_THRESHOLD', 50000),

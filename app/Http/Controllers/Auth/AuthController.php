@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Stancl\Tenancy\Facades\Tenancy;
 
 class AuthController extends Controller
@@ -30,8 +31,26 @@ class AuthController extends Controller
             'password'    => 'required|string|max:200',
         ]);
 
+        // Per-account lockout: keyed by tenant+username so it survives across IPs
+        $lockKey  = 'login:' . strtolower($credentials['tenant_code']) . ':' . strtolower($credentials['username']);
+        $maxAttempts = (int) config('security.login.max_attempts', 5);
+        $decaySecs   = (int) config('security.login.lockout_seconds', 900); // 15 minutes
+
+        if (RateLimiter::tooManyAttempts($lockKey, $maxAttempts)) {
+            $seconds = RateLimiter::availableIn($lockKey);
+            $this->writeAuthLog('auth.account_locked', null, $credentials['username'], $request, [
+                'reason'       => 'too_many_attempts',
+                'retry_after'  => $seconds,
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => __('auth.throttle', ['seconds' => $seconds]),
+            ], 429);
+        }
+
         $tenant = Tenant::where('code', strtolower($credentials['tenant_code']))->first();
         if (!$tenant) {
+            RateLimiter::hit($lockKey, $decaySecs);
             $this->writeAuthLog('auth.login_failed', null, $credentials['username'], $request, [
                 'reason' => 'tenant_not_found',
             ]);
@@ -48,6 +67,8 @@ class AuthController extends Controller
             $request->session()->put('tenant_id', $tenant->id);
             $request->session()->regenerate();
 
+            RateLimiter::clear($lockKey);
+
             $user = Auth::user();
             $this->writeAuthLog('auth.login_success', (int) $user->id, $user->username, $request);
 
@@ -61,6 +82,7 @@ class AuthController extends Controller
         $passwordMatches = $user && Hash::check($credentials['password'], $user->password);
 
         if ($passwordMatches && !$user->is_active) {
+            RateLimiter::hit($lockKey, $decaySecs);
             $this->writeAuthLog('auth.login_blocked', (int) $user->id, $credentials['username'], $request, [
                 'reason' => 'account_inactive',
             ]);
@@ -71,6 +93,7 @@ class AuthController extends Controller
             ], 401);
         }
 
+        RateLimiter::hit($lockKey, $decaySecs);
         $this->writeAuthLog('auth.login_failed', $user?->id ? (int) $user->id : null, $credentials['username'], $request, [
             'reason' => 'wrong_credentials',
         ]);

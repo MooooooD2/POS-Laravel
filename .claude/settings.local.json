@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(Get-ChildItem -Path \"e:\\\\POS-Laravel\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(php -l app/Http/Controllers/Auth/AuthController.php)",
+      "Bash(php -l app/Http/Controllers/CashRegisterController.php)",
+      "Bash(php -l app/Http/Controllers/OfflineSyncController.php)",
+      "Bash(php -l app/Http/Controllers/WarehouseController.php)",
+      "Bash(php -l app/Http/Middleware/IpWhitelist.php)"
     ]
   }
 }

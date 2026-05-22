@@ -71,7 +71,7 @@ class InvoiceBuilder
     private function buildLines(Invoice $invoice): array
     {
         return $invoice->items->map(function ($item) {
-            $taxRate = (float) ($item->product?->taxCategory?->rate ?? config('eta.vat_rate', 14));
+            $taxRate = (float) ($item->tax_rate ?? $item->product?->taxCategory?->rate ?? config('eta.vat_rate', 14));
 
             return [
                 'description'      => $item->product_name,

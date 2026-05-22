@@ -36,7 +36,6 @@ class IpWhitelist
         abort(403, 'Access denied: your IP address is not whitelisted.');
     }
 
-    /** Load the comma-separated whitelist from settings, cached for 5 minutes. */
     private function allowedIps(): array
     {
         $raw = Cache::remember('ip_whitelist', 300, function () {
@@ -48,23 +47,17 @@ class IpWhitelist
         return array_filter(array_map('trim', explode(',', $raw)));
     }
 
-    /**
-     * Match an IP against a single entry that may be:
-     *  - an exact IP       (192.168.1.10)
-     *  - a CIDR range      (192.168.1.0/24)
-     *  - a wildcard prefix (192.168.1.*)
-     */
     private function matches(string $ip, string $entry): bool
     {
         if ($ip === $entry) return true;
 
-        // Wildcard: 192.168.1.*
+        // Wildcard prefix (IPv4 only): 192.168.1.*
         if (str_ends_with($entry, '.*')) {
             $prefix = rtrim($entry, '.*');
             return str_starts_with($ip, $prefix . '.');
         }
 
-        // CIDR: 10.0.0.0/8
+        // CIDR range: supports both IPv4 (10.0.0.0/8) and IPv6 (2001:db8::/32)
         if (str_contains($entry, '/')) {
             return $this->ipInCidr($ip, $entry);
         }
@@ -74,13 +67,33 @@ class IpWhitelist
 
     private function ipInCidr(string $ip, string $cidr): bool
     {
-        [$subnet, $bits] = explode('/', $cidr);
-        $ipLong     = ip2long($ip);
-        $subnetLong = ip2long($subnet);
+        [$subnet, $prefixLen] = explode('/', $cidr, 2);
+        $prefixLen = (int) $prefixLen;
 
-        if ($ipLong === false || $subnetLong === false) return false;
+        $ipBin     = inet_pton($ip);
+        $subnetBin = inet_pton($subnet);
 
-        $mask = $bits >= 32 ? -1 : ~((1 << (32 - (int) $bits)) - 1);
-        return ($ipLong & $mask) === ($subnetLong & $mask);
+        // inet_pton returns false for invalid addresses; also both must be the same family
+        if ($ipBin === false || $subnetBin === false || strlen($ipBin) !== strlen($subnetBin)) {
+            return false;
+        }
+
+        $bits  = strlen($ipBin) * 8; // 32 for IPv4, 128 for IPv6
+        $prefixLen = min($prefixLen, $bits);
+
+        // Compare only the prefix bits by masking both addresses
+        $fullBytes  = intdiv($prefixLen, 8);
+        $remainder  = $prefixLen % 8;
+
+        if (substr($ipBin, 0, $fullBytes) !== substr($subnetBin, 0, $fullBytes)) {
+            return false;
+        }
+
+        if ($remainder === 0) {
+            return true;
+        }
+
+        $mask = 0xFF & (0xFF << (8 - $remainder));
+        return (ord($ipBin[$fullBytes]) & $mask) === (ord($subnetBin[$fullBytes]) & $mask);
     }
 }

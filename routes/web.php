@@ -39,7 +39,7 @@ Route::post('/register', [RegisterController::class, 'register'])->middleware('t
 // ── 2FA (FIX-5) ───────────────────────────────────────────────────────────
 Route::middleware(['auth'])->prefix('2fa')->name('2fa.')->group(function () {
     Route::get('/verify',          [TwoFactorController::class, 'showVerify'])->name('verify');
-    Route::post('/verify',         [TwoFactorController::class, 'verify'])->name('verify.post');
+    Route::post('/verify',         [TwoFactorController::class, 'verify'])->middleware('throttle:10,1')->name('verify.post');
     Route::get('/setup',           [TwoFactorController::class, 'showSetup'])->name('setup');
     Route::post('/setup/confirm',  [TwoFactorController::class, 'confirmSetup'])->name('setup.confirm');
     Route::post('/disable',        [TwoFactorController::class, 'disable'])->name('disable');

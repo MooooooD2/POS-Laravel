@@ -87,10 +87,32 @@ class WarehouseController extends Controller
     {
         $this->authorize('update', $warehouse);
 
-        $updated = \Illuminate\Support\Facades\DB::table('warehouse_stock as ws')
-            ->join('products as p', 'p.id', '=', 'ws.product_id')
-            ->where('ws.warehouse_id', $warehouse->id)
-            ->update(['ws.quantity' => \Illuminate\Support\Facades\DB::raw('p.quantity')]);
+        $warehouseStocks = WarehouseStock::where('warehouse_id', $warehouse->id)
+            ->with('product')
+            ->get()
+            ->filter(fn($ws) => $ws->product && $ws->quantity != $ws->product->quantity);
+
+        $updated = 0;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($warehouse, $warehouseStocks, &$updated) {
+            foreach ($warehouseStocks as $ws) {
+                $product = Product::lockForUpdate()->find($ws->product_id);
+                if (!$product) continue;
+
+                $delta = $product->quantity - $ws->quantity;
+                if ($delta === 0) continue;
+
+                $ws->update(['quantity' => $product->quantity]);
+
+                $type = $delta > 0 ? 'adjustment_add' : 'adjustment_remove';
+                $this->stockService->logMovement(
+                    $product, abs($delta), $type,
+                    'warehouse_stock_sync', $warehouse->id, 'warehouse_sync', $warehouse->id
+                );
+
+                $updated++;
+            }
+        });
 
         Log::channel('audit')->info('warehouse.stock_synced', [
             'warehouse_id'   => $warehouse->id,

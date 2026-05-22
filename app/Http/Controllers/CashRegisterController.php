@@ -51,6 +51,10 @@ class CashRegisterController extends Controller
 
         $session = CashRegisterSession::findOrFail($id);
 
+        if ($session->cashier_id !== auth()->id() && !auth()->user()?->hasRole('admin')) {
+            return $this->error(__('pos.cash_session_not_yours'), 403);
+        }
+
         try {
             $closed = $this->cashRegisterService->close($session, $request->only(['actual_cash', 'notes']));
         } catch (\Exception $e) {
@@ -74,6 +78,10 @@ class CashRegisterController extends Controller
         ]);
 
         $session = CashRegisterSession::findOrFail($id);
+
+        if ($session->cashier_id !== auth()->id() && !auth()->user()?->hasRole('admin')) {
+            return $this->error(__('pos.cash_session_not_yours'), 403);
+        }
 
         try {
             ['movement' => $movement, 'warnings' => $warnings] = $this->cashRegisterService->recordMovement(

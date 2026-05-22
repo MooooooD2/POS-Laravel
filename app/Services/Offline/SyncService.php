@@ -2,21 +2,18 @@
 namespace App\Services\Offline;
 
 use App\Models\Invoice;
+use App\Models\Product;
 use App\Services\InvoiceService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class SyncService
 {
+    private const MAX_PRICE_DEVIATION = 0.10; // allow up to 10% price deviation for rounding
+    private const MAX_QTY_PER_ITEM    = 9999;
+
     public function __construct(private InvoiceService $invoiceService) {}
 
-    /**
-     * Sync a batch of offline-created invoices.
-     *
-     * Each invoice must have an `offline_uuid`. If the UUID already exists in
-     * the database the row is returned without creating a duplicate (idempotent).
-     *
-     * Returns a summary array with per-invoice results.
-     */
     public function syncInvoices(array $invoices): array
     {
         $synced  = 0;
@@ -27,7 +24,6 @@ class SyncService
         foreach ($invoices as $inv) {
             $uuid = $inv['offline_uuid'] ?? null;
 
-            // Guard: offline_uuid is required for batch sync
             if (!$uuid) {
                 $results[] = ['offline_uuid' => null, 'status' => 'failed', 'message' => 'Missing offline_uuid'];
                 $failed++;
@@ -42,8 +38,32 @@ class SyncService
                 continue;
             }
 
+            // Fraud detection: validate item prices against current product prices
+            $fraudWarnings = $this->detectFraud($inv);
+            if (!empty($fraudWarnings)) {
+                Log::channel('audit')->warning('offline.sync_fraud_detected', [
+                    'offline_uuid' => $uuid,
+                    'user_id'      => Auth::id(),
+                    'warnings'     => $fraudWarnings,
+                    'ip'           => request()->ip(),
+                    'timestamp'    => now()->toIso8601String(),
+                ]);
+                $results[] = ['offline_uuid' => $uuid, 'status' => 'failed', 'message' => 'Price validation failed: ' . implode('; ', $fraudWarnings)];
+                $failed++;
+                continue;
+            }
+
             try {
                 $invoice   = $this->invoiceService->createInvoice($inv);
+
+                Log::channel('audit')->info('offline.invoice_synced', [
+                    'offline_uuid' => $uuid,
+                    'server_id'    => $invoice->id,
+                    'user_id'      => Auth::id(),
+                    'ip'           => request()->ip(),
+                    'timestamp'    => now()->toIso8601String(),
+                ]);
+
                 $results[] = ['offline_uuid' => $uuid, 'server_id' => $invoice->id, 'status' => 'synced'];
                 $synced++;
             } catch (\Throwable $e) {
@@ -59,5 +79,45 @@ class SyncService
             'failed'  => $failed,
             'results' => $results,
         ];
+    }
+
+    private function detectFraud(array $inv): array
+    {
+        $warnings = [];
+        $items    = $inv['items'] ?? [];
+
+        // Cache product prices to avoid N+1 per item
+        $productIds = array_column($items, 'product_id');
+        $products   = Product::whereIn('id', $productIds)
+            ->select('id', 'name', 'price')
+            ->get()
+            ->keyBy('id');
+
+        foreach ($items as $item) {
+            $pid      = $item['product_id'] ?? null;
+            $sentPrice = isset($item['price']) ? (float) $item['price'] : null;
+            $qty      = (int) ($item['quantity'] ?? 0);
+
+            // Quantity sanity check
+            if ($qty > self::MAX_QTY_PER_ITEM) {
+                $warnings[] = "Product #{$pid}: quantity {$qty} exceeds maximum allowed";
+            }
+
+            // Price deviation check (only when client sends a price)
+            if ($sentPrice !== null && $pid && isset($products[$pid])) {
+                $dbPrice = (float) $products[$pid]->price;
+                if ($dbPrice > 0) {
+                    $deviation = abs($sentPrice - $dbPrice) / $dbPrice;
+                    if ($deviation > self::MAX_PRICE_DEVIATION) {
+                        $warnings[] = sprintf(
+                            'Product #%d "%s": sent price %.2f deviates %.1f%% from current price %.2f',
+                            $pid, $products[$pid]->name, $sentPrice, $deviation * 100, $dbPrice
+                        );
+                    }
+                }
+            }
+        }
+
+        return $warnings;
     }
 }
