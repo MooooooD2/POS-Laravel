@@ -9,8 +9,8 @@ return [
     'deprecations' => ['channel' => env('LOG_DEPRECATIONS_CHANNEL', 'null'), 'trace' => env('LOG_DEPRECATIONS_TRACE', false)],
     'channels' => [
         'stack' => ['driver' => 'stack', 'channels' => explode(',', env('LOG_STACK', 'single')), 'ignore_exceptions' => false],
-        'single' => ['driver' => 'single', 'path' => storage_path('logs/laravel.log'), 'level' => env('LOG_LEVEL', 'debug'), 'replace_placeholders' => true],
-        'daily'  => ['driver' => 'daily', 'path' => storage_path('logs/laravel.log'), 'level' => env('LOG_LEVEL', 'debug'), 'days' => env('LOG_DAILY_DAYS', 14), 'replace_placeholders' => true],
+        'single' => ['driver' => 'single', 'path' => storage_path('logs/laravel.log'), 'level' => env('LOG_LEVEL', 'warning'), 'replace_placeholders' => true],
+        'daily'  => ['driver' => 'daily', 'path' => storage_path('logs/laravel.log'), 'level' => env('LOG_LEVEL', 'warning'), 'days' => env('LOG_DAILY_DAYS', 14), 'replace_placeholders' => true],
 
         // #38-43 Audit Trail منفصل لكل العمليات الحساسة
         'audit' => [
@@ -22,6 +22,6 @@ return [
         ],
 
         'null' => ['driver' => 'monolog', 'handler' => NullHandler::class],
-        'stderr' => ['driver' => 'monolog', 'level' => env('LOG_LEVEL', 'debug'), 'handler' => StreamHandler::class, 'formatter' => env('LOG_STDERR_FORMATTER'), 'with' => ['stream' => 'php://stderr'], 'processors' => [PsrLogMessageProcessor::class]],
+        'stderr' => ['driver' => 'monolog', 'level' => env('LOG_LEVEL', 'warning'), 'handler' => StreamHandler::class, 'formatter' => env('LOG_STDERR_FORMATTER'), 'with' => ['stream' => 'php://stderr'], 'processors' => [PsrLogMessageProcessor::class]],
     ],
 ];

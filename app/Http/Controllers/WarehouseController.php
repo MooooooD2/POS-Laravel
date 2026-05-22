@@ -9,6 +9,7 @@ use App\Services\StockService;
 use App\Services\WarehouseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class WarehouseController extends Controller
 {
@@ -84,10 +85,22 @@ class WarehouseController extends Controller
 
     public function syncStock(Warehouse $warehouse): JsonResponse
     {
+        $this->authorize('update', $warehouse);
+
         $updated = \Illuminate\Support\Facades\DB::table('warehouse_stock as ws')
             ->join('products as p', 'p.id', '=', 'ws.product_id')
             ->where('ws.warehouse_id', $warehouse->id)
             ->update(['ws.quantity' => \Illuminate\Support\Facades\DB::raw('p.quantity')]);
+
+        Log::channel('audit')->info('warehouse.stock_synced', [
+            'warehouse_id'   => $warehouse->id,
+            'warehouse_name' => $warehouse->name,
+            'rows_updated'   => $updated,
+            'user_id'        => auth()->id(),
+            'username'       => auth()->user()?->username,
+            'ip'             => request()->ip(),
+            'timestamp'      => now()->toIso8601String(),
+        ]);
 
         return response()->json([
             'success' => true,

@@ -681,4 +681,14 @@ return [
     'net_profit'                      => 'Net Profit',
     'operating_expenses'              => 'Operating Expenses',
     'invoice_notes'                   => 'Invoice Notes',
+
+    // Security & validation messages
+    'held_invoice_not_yours'          => 'You cannot access a held invoice belonging to another cashier.',
+    'too_many_2fa_attempts'           => 'Too many attempts. Try again in :seconds seconds.',
+    'product_not_in_invoice'          => 'This product does not exist in the original invoice.',
+    'journal_entry_unbalanced'        => 'Unbalanced entry: total debit (:debit) does not equal total credit (:credit).',
+    'expense_period_closed'           => 'The expense date falls within a closed fiscal period and cannot be modified.',
+    'supplier_payment_exceeds_balance'=> 'Payment amount (:amount) exceeds the supplier outstanding balance (:balance).',
+    'supplier_no_outstanding_balance' => 'This supplier has no outstanding balance to pay.',
+    'recipe_ingredient_shortfall'     => 'Insufficient stock for recipe ingredient ":name" (needed :needed, available :available).',
 ];

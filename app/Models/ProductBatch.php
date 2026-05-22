@@ -14,7 +14,7 @@ class ProductBatch extends Model
     protected $casts = [
         'manufacture_date' => 'date',
         'expiry_date'      => 'date',
-        'cost_price'       => 'float',
+        'cost_price'       => 'decimal:4',
         'original_qty'     => 'integer',
         'remaining_qty'    => 'integer',
     ];

@@ -27,8 +27,12 @@ trait AuditLog
                 'changes'    => $changes,
                 'timestamp'  => now()->toIso8601String(),
             ]);
-        } catch (\Throwable) {
-            // Never break business operations
+        } catch (\Throwable $e) {
+            // Never break business operations, but record the failure so it isn't invisible
+            Log::channel('stderr')->error('audit_log_file_failure', [
+                'action' => $action,
+                'error'  => $e->getMessage(),
+            ]);
         }
 
         try {
@@ -44,8 +48,12 @@ trait AuditLog
                 'changes'    => $changes ?: null,
                 'created_at' => now(),
             ]);
-        } catch (\Throwable) {
-            // Never break business operations
+        } catch (\Throwable $e) {
+            // Never break business operations, but record the failure so it isn't invisible
+            Log::channel('stderr')->error('audit_log_db_failure', [
+                'action' => $action,
+                'error'  => $e->getMessage(),
+            ]);
         }
     }
 

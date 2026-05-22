@@ -12,7 +12,19 @@ class StockMovement extends Model
         'warehouse_id', 'batch_id',
         'reason', 'employee_id', 'employee_name', 'ip_address',
     ];
-    // StockMovement لا تُحذف ولا تُعدَّل — للتدقيق فقط
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::updating(function () {
+            throw new \RuntimeException('StockMovement records are immutable — updates are not permitted.');
+        });
+
+        static::deleting(function () {
+            throw new \RuntimeException('StockMovement records are immutable — deletes are not permitted.');
+        });
+    }
+
     public function product()   { return $this->belongsTo(Product::class); }
     public function employee()  { return $this->belongsTo(User::class, 'employee_id'); }
     public function warehouse() { return $this->belongsTo(Warehouse::class); }

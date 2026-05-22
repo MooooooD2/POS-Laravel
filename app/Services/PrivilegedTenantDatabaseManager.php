@@ -53,11 +53,23 @@ class PrivilegedTenantDatabaseManager implements TenantDatabaseManager
         return DB::connection('tenant_manager')->statement($sql);
     }
 
+    /** Validate a MySQL identifier contains only safe characters. */
+    protected function assertSafeIdentifier(string $value, string $label): void
+    {
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $value)) {
+            throw new \InvalidArgumentException("Unsafe MySQL identifier for {$label}: {$value}");
+        }
+    }
+
     public function createDatabase(TenantWithDatabase $tenant): bool
     {
         $dbName    = $this->resolveDbName($tenant->database()->getName());
         $charset   = DB::connection($this->connection ?? 'mysql')->getConfig('charset');
         $collation = DB::connection($this->connection ?? 'mysql')->getConfig('collation');
+
+        $this->assertSafeIdentifier($dbName, 'database name');
+        $this->assertSafeIdentifier($charset, 'charset');
+        $this->assertSafeIdentifier($collation, 'collation');
 
         return $this->adminStatement(
             "CREATE DATABASE `{$dbName}` CHARACTER SET `{$charset}` COLLATE `{$collation}`"
@@ -67,6 +79,7 @@ class PrivilegedTenantDatabaseManager implements TenantDatabaseManager
     public function deleteDatabase(TenantWithDatabase $tenant): bool
     {
         $dbName = $this->resolveDbName($tenant->database()->getName());
+        $this->assertSafeIdentifier($dbName, 'database name');
         return $this->adminStatement("DROP DATABASE IF EXISTS `{$dbName}`");
     }
 

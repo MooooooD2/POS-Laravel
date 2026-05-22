@@ -31,40 +31,26 @@ class RecipeService
 
             if (!$ingredient || $needed <= 0) continue;
 
-            try {
-                DB::transaction(function () use ($ingredient, $needed, $invoiceId, $warehouseId) {
-                    $fresh = Product::lockForUpdate()->findOrFail($ingredient->id);
+            // Lock the ingredient row — we are already inside InvoiceService's transaction.
+            $fresh = Product::lockForUpdate()->findOrFail($ingredient->id);
 
-                    if ($fresh->quantity < $needed) {
-                        Log::channel('audit')->warning('recipe.ingredient_low', [
-                            'ingredient_id'   => $fresh->id,
-                            'ingredient_name' => $fresh->name,
-                            'needed'          => $needed,
-                            'available'       => $fresh->quantity,
-                            'invoice_id'      => $invoiceId,
-                        ]);
-                        // خصم ما هو متاح فقط دون إيقاف البيع
-                        $needed = min($needed, (float) $fresh->quantity);
-                        if ($needed <= 0) return;
-                    }
-
-                    $this->stockService->deductLockedStock(
-                        $fresh,
-                        (int) ceil($needed),
-                        'recipe_deduction',
-                        __('pos.recipe_deduction_note', ['invoice' => $invoiceId]),
-                        $invoiceId,
-                        'invoice',
-                        $warehouseId
-                    );
-                });
-            } catch (\Throwable $e) {
-                Log::channel('audit')->error('recipe.deduction_failed', [
-                    'ingredient_id' => $line->ingredient_id,
-                    'invoice_id'    => $invoiceId,
-                    'error'         => $e->getMessage(),
-                ]);
+            if ($fresh->quantity < $needed) {
+                throw new \Exception(__('pos.recipe_ingredient_shortfall', [
+                    'name'      => $fresh->name,
+                    'needed'    => $needed,
+                    'available' => $fresh->quantity,
+                ]));
             }
+
+            $this->stockService->deductLockedStock(
+                $fresh,
+                (int) ceil($needed),
+                'recipe_deduction',
+                __('pos.recipe_deduction_note', ['invoice' => $invoiceId]),
+                $invoiceId,
+                'invoice',
+                $warehouseId
+            );
         }
     }
 

@@ -117,7 +117,7 @@ class RegisterController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => __('pos.registration_failed'),
             ], 500);
         }
     }

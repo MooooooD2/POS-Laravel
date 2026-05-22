@@ -12,7 +12,7 @@ class SupplierPayment extends Model
         'notes', 'created_by', 'created_by_name'
     ];
 
-    protected $casts = ['payment_date' => 'date', 'amount' => 'float'];
+    protected $casts = ['payment_date' => 'date', 'amount' => 'decimal:4'];
 
     public function supplier() { return $this->belongsTo(Supplier::class); }
     public function creator()  { return $this->belongsTo(User::class, 'created_by'); }

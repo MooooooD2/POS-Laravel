@@ -70,32 +70,36 @@ class InvoiceBuilder
 
     private function buildLines(Invoice $invoice): array
     {
-        return $invoice->items->map(fn($item) => [
-            'description'      => $item->product_name,
-            'itemType'         => $item->product->item_code_type ?? 'EGS',
-            'itemCode'         => $item->product->item_code ?? 'EG-' . $item->product_id,
-            'unitType'         => $item->product->unit_type ?? 'EA',
-            'quantity'         => (float) $item->quantity,
-            'internalCode'     => 'P-' . $item->product_id,
-            'salesTotal'       => (float) ($item->price * $item->quantity),
-            'total'            => (float) $item->subtotal,
-            'valueDifference'  => 0,
-            'totalTaxableFees' => 0,
-            'netTotal'         => (float) $item->subtotal,
-            'itemsDiscount'    => 0,
-            'unitValue'        => [
-                'currencySold' => 'EGP',
-                'amountEGP'    => (float) $item->price,
-            ],
-            'discount' => ['rate' => 0, 'amount' => 0],
-            'taxableItems' => [
-                [
-                    'taxType' => 'T1',
-                    'amount'  => (float) ($item->subtotal * 0.14),
-                    'subType' => 'V001',
-                    'rate'    => 14,
+        return $invoice->items->map(function ($item) {
+            $taxRate = (float) ($item->product?->taxCategory?->rate ?? config('eta.vat_rate', 14));
+
+            return [
+                'description'      => $item->product_name,
+                'itemType'         => $item->product->item_code_type ?? 'EGS',
+                'itemCode'         => $item->product->item_code ?? 'EG-' . $item->product_id,
+                'unitType'         => $item->product->unit_type ?? 'EA',
+                'quantity'         => (float) $item->quantity,
+                'internalCode'     => 'P-' . $item->product_id,
+                'salesTotal'       => (float) ($item->price * $item->quantity),
+                'total'            => (float) $item->subtotal,
+                'valueDifference'  => 0,
+                'totalTaxableFees' => 0,
+                'netTotal'         => (float) $item->subtotal,
+                'itemsDiscount'    => 0,
+                'unitValue'        => [
+                    'currencySold' => 'EGP',
+                    'amountEGP'    => (float) $item->price,
                 ],
-            ],
-        ])->toArray();
+                'discount'     => ['rate' => 0, 'amount' => 0],
+                'taxableItems' => [
+                    [
+                        'taxType' => 'T1',
+                        'amount'  => (float) ($item->subtotal * ($taxRate / 100)),
+                        'subType' => 'V001',
+                        'rate'    => $taxRate,
+                    ],
+                ],
+            ];
+        })->toArray();
     }
 }

@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreWasteRequest;
 use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\WasteRecord;
@@ -22,18 +23,9 @@ class WasteController extends Controller
         return view('warehouse.waste');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreWasteRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'product_id'   => 'required|exists:products,id',
-            'warehouse_id' => 'nullable|exists:warehouses,id',
-            'batch_id'     => 'nullable|exists:product_batches,id',
-            'quantity'     => 'required|numeric|min:0.001',
-            'reason'       => 'required|in:expired,damaged,theft,other',
-            'notes'        => 'nullable|string|max:500',
-        ]);
-
-        $data['notes'] = isset($data['notes']) ? strip_tags($data['notes']) : null;
+        $data = $request->validated();
 
         $record = DB::transaction(function () use ($data) {
             $product  = Product::lockForUpdate()->findOrFail($data['product_id']);

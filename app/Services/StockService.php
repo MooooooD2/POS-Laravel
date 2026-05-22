@@ -135,6 +135,10 @@ class StockService
                 ->lockForUpdate()
                 ->get();
 
+            // Decrement product total before logging so balance_after is accurate
+            $fresh->decrement('quantity', $quantity);
+            $this->syncWarehouseStock($fresh->id, $warehouseId, -$quantity);
+
             $remaining = $quantity;
             foreach ($batches as $batch) {
                 if ($remaining <= 0) break;
@@ -142,7 +146,7 @@ class StockService
                 $take = min($batch->remaining_qty, $remaining);
                 $batch->decrement('remaining_qty', $take);
 
-                if ($batch->remaining_qty === 0) {
+                if ($batch->remaining_qty <= 0) {
                     $batch->update(['status' => 'exhausted']);
                 }
 
@@ -155,9 +159,6 @@ class StockService
             if ($remaining > 0) {
                 throw new \Exception(__('pos.insufficient_batch_stock', ['name' => $fresh->name]));
             }
-
-            $fresh->decrement('quantity', $quantity);
-            $this->syncWarehouseStock($fresh->id, $warehouseId, -$quantity);
         });
 
         return $allocations;

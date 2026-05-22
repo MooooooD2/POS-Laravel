@@ -205,7 +205,7 @@ class PaymobController extends Controller
         [$tenantId, $planId, $months] = array_pad(explode('|', $ref), 3, null);
 
         if ($tenantId && $planId && $months) {
-            $this->activateSubscription($tenantId, $planId, (int) $months);
+            $this->activateSubscription($tenantId, $planId, (int) $months, $ref);
         }
 
         return view('subscription.success', [
@@ -237,7 +237,7 @@ class PaymobController extends Controller
         [$tenantId, $planId, $months] = array_pad(explode('|', $ref), 3, null);
 
         if ($tenantId && $planId && $months) {
-            $this->activateSubscription($tenantId, $planId, (int) $months);
+            $this->activateSubscription($tenantId, $planId, (int) $months, $ref);
         }
 
         return response('OK', 200);
@@ -248,7 +248,7 @@ class PaymobController extends Controller
     private function verifyCallbackHmac(array $params): bool
     {
         $secret = config('services.paymob.hmac_secret');
-        if (!$secret) return true;
+        if (!$secret) return false;
 
         $fields = [
             'amount_cents', 'created_at', 'currency', 'error_occured',
@@ -269,7 +269,7 @@ class PaymobController extends Controller
     private function verifyWebhookHmac(string $received, array $obj): bool
     {
         $secret = config('services.paymob.hmac_secret');
-        if (!$secret) return true;
+        if (!$secret) return false;
 
         $fields = [
             'amount_cents', 'created_at', 'currency', 'error_occured',
@@ -294,8 +294,18 @@ class PaymobController extends Controller
 
     // ── Activate subscription ─────────────────────────────────────────────────
 
-    private function activateSubscription(string $tenantId, string $planId, int $months): void
+    private function activateSubscription(string $tenantId, string $planId, int $months, string $ref = ''): void
     {
+        // Idempotency guard: callback and webhook can both fire for the same payment
+        if ($ref) {
+            $idempotencyKey = 'sub_activated_' . md5($ref);
+            if (\Illuminate\Support\Facades\Cache::has($idempotencyKey)) {
+                Log::info('Paymob subscription activation skipped (duplicate)', compact('ref'));
+                return;
+            }
+            \Illuminate\Support\Facades\Cache::put($idempotencyKey, true, now()->addHours(48));
+        }
+
         $tenant = Tenant::find($tenantId);
         if (!$tenant) return;
 
@@ -310,6 +320,6 @@ class PaymobController extends Controller
             'is_active'            => true,
         ]);
 
-        Log::info('Paymob subscription activated', compact('tenantId', 'planId', 'months'));
+        Log::info('Paymob subscription activated', compact('tenantId', 'planId', 'months', 'ref'));
     }
 }

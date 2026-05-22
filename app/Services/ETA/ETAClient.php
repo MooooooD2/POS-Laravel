@@ -20,7 +20,7 @@ class ETAClient
 
     public function authenticate(): string
     {
-        return Cache::remember('eta_token', 3500, function () {
+        $encrypted = Cache::remember('eta_token', 3500, function () {
             $response = Http::asForm()->post(
                 config('eta.identity_url') . '/connect/token',
                 [
@@ -35,8 +35,10 @@ class ETAClient
                 throw new \Exception('ETA authentication failed: ' . $response->body());
             }
 
-            return $response->json('access_token');
+            return encrypt($response->json('access_token'));
         });
+
+        return decrypt($encrypted);
     }
 
     public function submitDocuments(array $documents): array

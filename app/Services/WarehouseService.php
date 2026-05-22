@@ -142,14 +142,12 @@ class WarehouseService
                 if ($srcStock) {
                     $srcStock->decrement('reserved_qty', $item->quantity);
                     $srcStock->decrement('quantity', $item->quantity);
-                    // Sync aggregate
-                    Product::where('id', $item->product_id)->decrement('quantity', $item->quantity);
                 }
 
-                // Add to destination
+                // Add to destination warehouse stock
                 $dstStock = $this->getOrCreateStock($transfer->to_warehouse_id, $item->product_id);
                 $dstStock->increment('quantity', $item->quantity);
-                // Aggregate already decremented above — net is zero (transfer)
+                // Product aggregate (products.quantity) is unchanged — stock just moves between warehouses
 
                 // Log movements
                 $product = Product::find($item->product_id);

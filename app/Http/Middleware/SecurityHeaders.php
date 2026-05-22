@@ -42,9 +42,9 @@ class SecurityHeaders
             "default-src 'self'; " .
             "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
             "script-src-elem 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.bunny.net; " .
-            "style-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.bunny.net; " .
-            "style-src-attr 'unsafe-inline'; " .
+            "style-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.bunny.net; " .
+            "style-src-elem 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.bunny.net; " .
+            "style-src-attr 'none'; " .
             "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://fonts.bunny.net; " .
             "img-src 'self' data: blob:; " .
             "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .

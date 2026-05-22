@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Contracts\Repositories\StockMovementRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class StockReconciliationService
 {
@@ -15,6 +16,7 @@ class StockReconciliationService
 
     public function reconcile(array $physicalCounts): array
     {
+        return DB::transaction(function () use ($physicalCounts) {
         $discrepancies = [];
         $reconciled    = [];
 
@@ -52,6 +54,7 @@ class StockReconciliationService
             'reconciled_at'    => now()->toDateTimeString(),
             'performed_by'     => Auth::user()?->full_name,
         ];
+        }); // end DB::transaction
     }
 
     public function productAuditTrail(int $productId, string $from, string $to): array

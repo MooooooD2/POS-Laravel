@@ -12,7 +12,7 @@ class SupplierAccount extends Model
         'notes', 'created_by'
     ];
 
-    protected $casts = ['debit' => 'float', 'credit' => 'float', 'balance' => 'float'];
+    protected $casts = ['debit' => 'decimal:4', 'credit' => 'decimal:4', 'balance' => 'decimal:4'];
 
     public function supplier() { return $this->belongsTo(Supplier::class); }
     public function creator()  { return $this->belongsTo(User::class, 'created_by'); }

@@ -149,22 +149,38 @@ class InventoryValuationService
     }
 
     /**
-     * Calculate the value of on-hand stock using a specific ordering (FIFO/LIFO layers).
-     * Layers are read-only here — no deduction.
+     * Calculate the value of on-hand stock using the specified FIFO or LIFO ordering.
+     * Consumes layers in order until totalQty is covered; falls back to WAC for any
+     * remainder not covered by existing layers. Read-only — no deductions occur.
      */
     private function layerValue(int $productId, ?int $warehouseId, string $order, int $totalQty, float $fallbackUnit): float
     {
-        $layerTotal = (float) InventoryCostLayer::where('product_id', $productId)
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
-            ->withStock()
-            ->selectRaw('SUM(remaining_qty * unit_cost) as layer_value')
-            ->value('layer_value');
-
-        // If no layers exist, fall back to WAC value
-        if ($layerTotal <= 0) {
-            return $totalQty * $fallbackUnit;
+        if ($totalQty <= 0) {
+            return 0.0;
         }
 
-        return $layerTotal;
+        $query = InventoryCostLayer::where('product_id', $productId)
+            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId));
+
+        $layers = $order === 'fifo'
+            ? $query->fifo()->get()
+            : $query->lifo()->get();
+
+        $remaining = $totalQty;
+        $total     = 0.0;
+
+        foreach ($layers as $layer) {
+            if ($remaining <= 0) break;
+            $take       = min($layer->remaining_qty, $remaining);
+            $total     += $take * (float) $layer->unit_cost;
+            $remaining -= $take;
+        }
+
+        // Quantity not covered by layers — fall back to weighted average cost
+        if ($remaining > 0) {
+            $total += $remaining * $fallbackUnit;
+        }
+
+        return $total;
     }
 }

@@ -12,10 +12,10 @@ class Product extends Model
     // #7 fillable صريح — quantity محذوف (يتعدل عبر StockService فقط)
     protected $fillable = ['name', 'price', 'wholesale_price', 'vip_price', 'cost_price', 'avg_cost', 'last_cost', 'min_stock', 'reorder_point', 'reorder_qty', 'track_batches', 'barcode', 'category', 'supplier', 'unit_id', 'tax_category_id'];
     protected $hidden   = ['deleted_at'];
-    protected $casts    = ['price' => 'float', 'wholesale_price' => 'float', 'vip_price' => 'float', 'cost_price' => 'float', 'avg_cost' => 'float', 'last_cost' => 'float', 'min_stock' => 'integer', 'quantity' => 'integer', 'track_batches' => 'boolean'];
+    protected $casts    = ['price' => 'decimal:4', 'wholesale_price' => 'decimal:4', 'vip_price' => 'decimal:4', 'cost_price' => 'decimal:4', 'avg_cost' => 'decimal:4', 'last_cost' => 'decimal:4', 'min_stock' => 'integer', 'quantity' => 'integer', 'track_batches' => 'boolean'];
 
     /** Return the effective selling price for the given customer price level. */
-    public function priceFor(string $level): float
+    public function priceFor(string $level): string
     {
         return match ($level) {
             'wholesale' => $this->wholesale_price > 0 ? $this->wholesale_price : $this->price,

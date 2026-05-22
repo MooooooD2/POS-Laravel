@@ -29,7 +29,7 @@ class SessionSecurity
             if ($session->get('_fingerprint') !== $this->fingerprint($request)) {
                 Log::channel('audit')->warning('session_hijack_attempt', [
                     'user_id'    => Auth::id(),
-                    'username'   => Auth::user()->username,
+                    'username'   => Auth::user()?->username ?? 'unknown',
                     'ip'         => $request->ip(),
                     'stored_fp'  => $session->get('_fingerprint'),
                     'current_fp' => $this->fingerprint($request),

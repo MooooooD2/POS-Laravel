@@ -30,10 +30,15 @@ class ProductController extends Controller
             'category'  => 'nullable|string|max:100',
             'low_stock' => 'nullable|boolean',
             'per_page'  => 'nullable|integer|min:10|max:200',
+            'all'       => 'nullable|boolean',
         ]);
 
         $filters  = $request->only(['search', 'category', 'low_stock', 'per_page']);
-        $fetchAll = $request->boolean('all');
+        // Cap unbounded fetch: only honour all=true for filtered queries to avoid
+        // loading the entire catalogue into memory on large installations.
+        $fetchAll = $request->boolean('all') && (
+            !empty($filters['search']) || !empty($filters['category'])
+        );
 
         return $this->success(['products' => ProductResource::collection(
             $this->productRepo->all($filters, $fetchAll)

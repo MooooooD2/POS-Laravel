@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\PermissionRegistrar;
@@ -24,6 +25,16 @@ class InitializeTenancyBySession
             if ($tenant && $tenant->is_active) {
                 tenancy()->initialize($tenant);
                 app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+                // Verify the session user actually exists in this tenant's database.
+                // Prevents cross-tenant access if session tenant_id is tampered with.
+                $userId = $request->session()->get(Auth::guard('web')->getName());
+                if ($userId !== null && !User::where('id', $userId)->exists()) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                    return redirect()->route('login');
+                }
             } elseif ($tenant && !$tenant->is_active) {
                 Auth::logout();
                 $request->session()->invalidate();

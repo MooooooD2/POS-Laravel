@@ -366,7 +366,7 @@ class ReportController extends Controller
         $file     = "profitable_products_{$data['start_date']}_{$data['end_date']}.xlsx";
         return Excel::download(new ProfitableProductsExport($products), $file);
     }
-    // Note: these are GET routes — validation still works because Request::validate() reads both query and body
+    // Export routes use POST to prevent date parameters from leaking into server logs and browser history
 
     public function supplierRating(Request $request)
     {

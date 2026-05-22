@@ -13,7 +13,7 @@ class EnforceTwoFactor
         $user = $request->user();
 
         // Check if user is logged in and needs 2FA
-        if ($user && $user->two_factor_enabled && !$request->session()->has('2fa_verified')) {
+        if ($user && $user->google2fa_enabled && !$request->session()->has('2fa_passed')) {
 
             // CRITICAL: Do not redirect if already on the 2FA verification page
             if (!$request->is('auth/2fa*')) {

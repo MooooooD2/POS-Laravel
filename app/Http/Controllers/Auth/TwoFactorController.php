@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 /**
@@ -24,17 +26,25 @@ class TwoFactorController extends Controller
 
     public function verify(Request $request)
     {
+        $key = '2fa:' . Auth::id();
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $seconds = RateLimiter::availableIn($key);
+            return back()->withErrors(['one_time_password' => __('pos.too_many_2fa_attempts', ['seconds' => $seconds])]);
+        }
+
         $request->validate(['one_time_password' => 'required|digits:6']);
 
-        $user   = Auth::user();
+        $user      = Auth::user();
         $google2fa = app('pragmarx.google2fa');
-
-        $valid = $google2fa->verifyKey($user->google2fa_secret, $request->one_time_password);
+        $valid     = $google2fa->verifyKey($user->google2fa_secret, $request->one_time_password);
 
         if (!$valid) {
+            RateLimiter::hit($key, 300);
             return back()->withErrors(['one_time_password' => 'الرمز غير صحيح. حاول مرة أخرى.']);
         }
 
+        RateLimiter::clear($key);
         $request->session()->put('2fa_passed', true);
 
         return redirect()->intended(route('dashboard'));
@@ -74,11 +84,12 @@ class TwoFactorController extends Controller
         }
 
         $recoveryCodes = collect(range(1, 10))->map(fn() => Str::random(10))->toArray();
+        $hashedCodes   = array_map(fn($code) => Hash::make($code), $recoveryCodes);
 
         $user->update([
             'google2fa_secret'         => encrypt($secret),
             'google2fa_enabled'        => true,
-            'google2fa_recovery_codes' => $recoveryCodes,
+            'google2fa_recovery_codes' => $hashedCodes,
         ]);
 
         session()->forget('2fa_setup_secret');

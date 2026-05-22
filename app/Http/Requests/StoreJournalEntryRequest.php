@@ -24,4 +24,22 @@ class StoreJournalEntryRequest extends FormRequest
             'lines.*.description'    => 'nullable|string|max:255',
         ];
     }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($validator->errors()->has('lines')) return;
+
+            $lines       = $this->input('lines', []);
+            $totalDebit  = collect($lines)->sum(fn($l) => (float) ($l['debit']  ?? 0));
+            $totalCredit = collect($lines)->sum(fn($l) => (float) ($l['credit'] ?? 0));
+
+            if (round(abs($totalDebit - $totalCredit), 2) > 0.01) {
+                $validator->errors()->add('lines', __('pos.journal_entry_unbalanced', [
+                    'debit'  => number_format($totalDebit, 2),
+                    'credit' => number_format($totalCredit, 2),
+                ]));
+            }
+        });
+    }
 }

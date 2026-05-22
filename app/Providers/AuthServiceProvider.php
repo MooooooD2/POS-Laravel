@@ -2,6 +2,11 @@
 namespace App\Providers;
 
 use App\Models\Account;
+use App\Models\Branch;
+use App\Models\Customer;
+use App\Models\CustomerGroup;
+use App\Models\Expense;
+use App\Models\HeldInvoice;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
@@ -9,7 +14,13 @@ use App\Models\SalesReturn;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Policies\AccountPolicy;
+use App\Policies\BranchPolicy;
+use App\Policies\CustomerGroupPolicy;
+use App\Policies\CustomerPolicy;
+use App\Policies\ExpensePolicy;
+use App\Policies\HeldInvoicePolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\PurchaseOrderPolicy;
@@ -18,6 +29,7 @@ use App\Policies\SalesReturnPolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\SupplierPaymentPolicy;
 use App\Policies\UserPolicy;
+use App\Policies\WarehousePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -32,6 +44,12 @@ class AuthServiceProvider extends ServiceProvider
         PurchaseOrder::class  => PurchaseOrderPolicy::class,
         SalesReturn::class    => SalesReturnPolicy::class,
         SupplierPayment::class => SupplierPaymentPolicy::class,
+        Customer::class       => CustomerPolicy::class,
+        Branch::class         => BranchPolicy::class,
+        Warehouse::class      => WarehousePolicy::class,
+        HeldInvoice::class    => HeldInvoicePolicy::class,
+        CustomerGroup::class  => CustomerGroupPolicy::class,
+        Expense::class        => ExpensePolicy::class,
     ];
 
     public function boot(): void

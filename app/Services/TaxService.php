@@ -37,7 +37,7 @@ class TaxService
         }
 
         if ($taxInclusive) {
-            $taxAmount = $subtotal - ($subtotal / (1 + $rate / 100));
+            $taxAmount = $subtotal * $rate / (100 + $rate);
             return [
                 'tax_rate'   => $rate,
                 'tax_amount' => round($taxAmount, 2),
@@ -45,11 +45,11 @@ class TaxService
             ];
         }
 
-        $taxAmount = $subtotal * ($rate / 100);
+        $rawTax = $subtotal * ($rate / 100);
         return [
             'tax_rate'   => $rate,
-            'tax_amount' => round($taxAmount, 2),
-            'line_total' => $subtotal + round($taxAmount, 2),
+            'tax_amount' => round($rawTax, 2),
+            'line_total' => round($subtotal + $rawTax, 2),
         ];
     }
 }

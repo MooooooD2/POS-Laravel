@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreCustomerRequest;
+use App\Http\Requests\UpdateCustomerRequest;
+use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
 use App\Services\CustomerService;
 use App\Traits\ApiResponse;
@@ -55,57 +58,22 @@ class CustomerController extends Controller
         return $this->success(['customers' => $customers]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreCustomerRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'name'                => 'required|string|max:150',
-            'phone'               => 'nullable|string|max:20',
-            'email'               => 'nullable|email|max:150',
-            'type'                => 'nullable|in:individual,business',
-            'national_id'         => 'nullable|string|max:14',
-            'tax_number'          => 'nullable|string|max:20',
-            'commercial_register' => 'nullable|string|max:30',
-            'governate'           => 'nullable|string|max:50',
-            'city'                => 'nullable|string|max:100',
-            'address'             => 'nullable|string|max:500',
-            'credit_limit'        => 'nullable|numeric|min:0',
-            'notes'               => 'nullable|string|max:500',
-            'customer_group_id'   => 'nullable|exists:customer_groups,id',
-            'price_level'         => 'nullable|in:retail,wholesale,vip',
-            'is_active'           => 'boolean',
-        ]);
-
+        $data         = $request->validated();
         $data['code'] = $this->service->nextCode();
         $data['type'] = $data['type'] ?? 'individual';
 
         $customer = Customer::create($data);
 
-        return $this->success(['customer' => $customer], '', 201);
+        return $this->success(['customer' => new CustomerResource($customer)], '', 201);
     }
 
-    public function update(Request $request, Customer $customer): JsonResponse
+    public function update(UpdateCustomerRequest $request, Customer $customer): JsonResponse
     {
-        $data = $request->validate([
-            'name'                => 'sometimes|string|max:150',
-            'phone'               => 'nullable|string|max:20',
-            'email'               => 'nullable|email|max:150',
-            'type'                => 'nullable|in:individual,business',
-            'national_id'         => 'nullable|string|max:14',
-            'tax_number'          => 'nullable|string|max:20',
-            'commercial_register' => 'nullable|string|max:30',
-            'governate'           => 'nullable|string|max:50',
-            'city'                => 'nullable|string|max:100',
-            'address'             => 'nullable|string|max:500',
-            'credit_limit'        => 'nullable|numeric|min:0',
-            'notes'               => 'nullable|string|max:500',
-            'customer_group_id'   => 'nullable|exists:customer_groups,id',
-            'price_level'         => 'nullable|in:retail,wholesale,vip',
-            'is_active'           => 'boolean',
-        ]);
+        $customer->update($request->validated());
 
-        $customer->update($data);
-
-        return $this->success(['customer' => $customer->fresh()]);
+        return $this->success(['customer' => new CustomerResource($customer->fresh())]);
     }
 
     public function destroy(Customer $customer): JsonResponse
@@ -122,6 +90,6 @@ class CustomerController extends Controller
     public function show(Customer $customer): JsonResponse
     {
         $customer->load('accountEntries');
-        return $this->success(['customer' => $customer]);
+        return $this->success(['customer' => new CustomerResource($customer)]);
     }
 }

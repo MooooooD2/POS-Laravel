@@ -42,7 +42,7 @@ class CashRegisterService
             return $this->sessionRepo->create([
                 'session_number' => SequenceService::next('session', 'SES'),
                 'cashier_id'     => Auth::id(),
-                'cashier_name'   => Auth::user()->full_name,
+                'cashier_name'   => Auth::user()?->full_name ?? '',
                 'opening_amount' => $data['opening_amount'],
                 'status'         => 'open',
                 'notes'          => $data['notes'] ?? null,

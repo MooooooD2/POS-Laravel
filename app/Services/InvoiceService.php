@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoicePayment;
+use App\Models\ProductRecipe;
 use App\Models\ReturnItem;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -92,7 +93,7 @@ class InvoiceService
             if ($requestedDiscount > $maxAllowedDiscount) {
                 Log::channel('audit')->warning('invoice.discount_cap_exceeded', [
                     'user_id'            => Auth::id(),
-                    'username'           => Auth::user()->username,
+                    'username'           => Auth::user()?->username,
                     'requested_discount' => $requestedDiscount,
                     'max_allowed'        => $maxAllowedDiscount,
                     'total'              => $total,
@@ -193,7 +194,7 @@ class InvoiceService
                 'branch_id'           => $data['branch_id'] ?? \App\Models\Branch::where('is_default', true)->value('id'),
                 'warehouse_id'        => $warehouseId,
                 'cashier_id'          => Auth::id(),
-                'cashier_name'        => Auth::user()->full_name,
+                'cashier_name'        => Auth::user()?->full_name ?? '',
                 'status'              => 'completed',
                 'date'                => now(),
             ]);
@@ -276,26 +277,26 @@ class InvoiceService
                 }
             }
 
+            // Deduct recipe ingredients inside the transaction so a recipe failure rolls back the sale
+            foreach ($data['items'] as $item) {
+                $this->recipeService->deductIngredients(
+                    $item['product_id'],
+                    (float) $item['quantity'],
+                    $invoice->id,
+                    $warehouseId
+                );
+            }
+
+            // Earn loyalty points inside the transaction so they're awarded atomically
+            if (!empty($data['customer_id'])) {
+                $loyaltyCustomer = Customer::find($data['customer_id']);
+                if ($loyaltyCustomer) {
+                    $this->customerService->addLoyaltyPoints($loyaltyCustomer, $finalTotal);
+                }
+            }
+
             return $invoice->load(['items.product.unit', 'customer']);
         });
-
-        // Deduct recipe ingredients for products that have a BOM/recipe
-        foreach ($invoice->items as $item) {
-            $this->recipeService->deductIngredients(
-                $item->product_id,
-                (float) $item->quantity,
-                $invoice->id,
-                $invoice->warehouse_id
-            );
-        }
-
-        // Earn loyalty points on the final paid amount (after all discounts)
-        if (!empty($invoice->customer_id)) {
-            $customer = Customer::find($invoice->customer_id);
-            if ($customer) {
-                $this->customerService->addLoyaltyPoints($customer, $invoice->final_total);
-            }
-        }
 
         if (config('eta.enabled')) {
             SubmitInvoiceToETA::dispatch($invoice->id);
@@ -312,7 +313,7 @@ class InvoiceService
 
     public function cancelInvoice(Invoice $invoice): Invoice
     {
-        return DB::transaction(function () use ($invoice) {
+        $invoice = DB::transaction(function () use ($invoice) {
             $locked = Invoice::with('items.product')->lockForUpdate()->findOrFail($invoice->id);
 
             if ($locked->status === 'cancelled') {
@@ -347,11 +348,47 @@ class InvoiceService
                 }
             }
 
-            // Reverse loyalty points if redeemed
+            // Restore recipe ingredients consumed during this sale
+            foreach ($locked->items as $item) {
+                $ingredients = ProductRecipe::where('product_id', $item->product_id)
+                    ->with('ingredient')
+                    ->get();
+
+                foreach ($ingredients as $line) {
+                    $restoreQty = $line->quantity * $item->quantity;
+                    if ($restoreQty <= 0 || !$line->ingredient) continue;
+
+                    $this->stockService->addStock(
+                        $line->ingredient,
+                        (int) ceil($restoreQty),
+                        __('pos.invoice_cancelled_note', ['inv' => $locked->invoice_number]),
+                        $locked->id,
+                        'invoice_cancel',
+                        null,
+                        $warehouseId
+                    );
+                }
+            }
+
+            // Reverse loyalty points that were redeemed on this invoice
             if ($locked->loyalty_points_used > 0 && $locked->customer_id) {
                 $customer = \App\Models\Customer::lockForUpdate()->find($locked->customer_id);
                 if ($customer) {
                     $customer->increment('loyalty_points', $locked->loyalty_points_used);
+                }
+            }
+
+            // Reverse loyalty points that were earned from this sale
+            if ($locked->customer_id) {
+                $rate = (int) setting('loyalty_earn_rate', 10);
+                if ($rate > 0) {
+                    $earnedPoints = (int) floor((float) $locked->final_total / $rate);
+                    if ($earnedPoints > 0) {
+                        $customer = \App\Models\Customer::lockForUpdate()->find($locked->customer_id);
+                        if ($customer && $customer->loyalty_points >= $earnedPoints) {
+                            $customer->decrement('loyalty_points', $earnedPoints);
+                        }
+                    }
                 }
             }
 
@@ -385,6 +422,29 @@ class InvoiceService
 
             return $locked->fresh();
         });
+
+        // Cancel the ETA document outside the transaction (remote API call)
+        if (
+            config('eta.enabled') &&
+            !empty($invoice->eta_uuid) &&
+            in_array($invoice->eta_status, ['submitted', 'valid'])
+        ) {
+            try {
+                app(\App\Services\ETA\ETAClient::class)->cancelDocument(
+                    $invoice->eta_uuid,
+                    __('pos.invoice_cancelled_note', ['inv' => $invoice->invoice_number])
+                );
+                $invoice->update(['eta_status' => 'cancelled']);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('eta.cancel_failed', [
+                    'invoice_number' => $invoice->invoice_number,
+                    'eta_uuid'       => $invoice->eta_uuid,
+                    'error'          => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $invoice;
     }
 
     public function searchProduct(string $query, bool $exact = false): mixed

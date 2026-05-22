@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\FiscalPeriod;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,8 +23,18 @@ class ExpenseService
             ->paginate($filters['per_page'] ?? 15);
     }
 
+    private function assertOpenPeriod(string $date): void
+    {
+        $period = FiscalPeriod::forDate($date);
+        if ($period && $period->isClosed()) {
+            throw new \DomainException(__('pos.expense_period_closed'));
+        }
+    }
+
     public function create(array $data): Expense
     {
+        $this->assertOpenPeriod($data['expense_date']);
+
         return DB::transaction(function () use ($data) {
             $number = SequenceService::next('expense', 'EXP');
 
@@ -37,7 +48,7 @@ class ExpenseService
                 'expense_date'   => $data['expense_date'],
                 'notes'          => $data['notes'] ?? null,
                 'created_by'     => Auth::id(),
-                'created_by_name'=> Auth::user()->full_name,
+                'created_by_name'=> Auth::user()?->full_name ?? '',
             ]);
 
             Log::channel('audit')->info('expense.created', [
@@ -55,6 +66,9 @@ class ExpenseService
 
     public function update(Expense $expense, array $data): Expense
     {
+        $targetDate = $data['expense_date'] ?? $expense->expense_date->toDateString();
+        $this->assertOpenPeriod($targetDate);
+
         return DB::transaction(function () use ($expense, $data) {
             $expense->update([
                 'category_id'    => $data['category_id'] ?? $expense->category_id,

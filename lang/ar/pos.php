@@ -686,4 +686,14 @@ return [
     'net_profit'                      => 'صافي الربح',
     'operating_expenses'              => 'المصروفات التشغيلية',
     'invoice_notes'                   => 'ملاحظات الفاتورة',
+
+    // رسائل الأمان والتحقق
+    'held_invoice_not_yours'          => 'لا يمكنك الوصول إلى فاتورة معلّقة لكاشير آخر.',
+    'too_many_2fa_attempts'           => 'محاولات كثيرة جداً. حاول بعد :seconds ثانية.',
+    'product_not_in_invoice'          => 'هذا المنتج غير موجود في الفاتورة الأصلية.',
+    'journal_entry_unbalanced'        => 'القيد محير: إجمالي المدين (:debit) لا يساوي إجمالي الدائن (:credit).',
+    'expense_period_closed'           => 'تاريخ المصروف يقع ضمن فترة مالية مغلقة ولا يمكن تعديله.',
+    'supplier_payment_exceeds_balance'=> 'مبلغ الدفعة (:amount) يتجاوز رصيد المورد المستحق (:balance).',
+    'supplier_no_outstanding_balance' => 'لا يوجد رصيد مستحق لهذا المورد.',
+    'recipe_ingredient_shortfall'     => 'مخزون غير كافٍ لمكوّن الوصفة ":name" (مطلوب :needed، متاح :available).',
 ];

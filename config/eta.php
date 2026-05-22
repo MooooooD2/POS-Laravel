@@ -19,6 +19,7 @@ return [
     ],
 
     'activity_code' => env('ETA_ACTIVITY_CODE'),
+    'vat_rate'      => env('ETA_VAT_RATE', 14),
 
     'signing' => [
         'enabled'           => env('ETA_SIGNING_ENABLED', true),

@@ -58,7 +58,7 @@ class PurchaseOrderService
                 'expected_date'   => $data['expected_date'] ?? null,
                 'notes'           => $data['notes'] ?? null,
                 'created_by'      => Auth::id(),
-                'created_by_name' => Auth::user()->full_name,
+                'created_by_name' => Auth::user()?->full_name ?? '',
             ]);
 
             foreach ($itemLines as $item) {
@@ -75,7 +75,6 @@ class PurchaseOrderService
                 ]);
             }
 
-            $this->recordSupplierDebt($supplier->id, $po->id, $poNumber, $finalAmount);
             return $po->load('items');
         });
     }
@@ -83,6 +82,8 @@ class PurchaseOrderService
     public function receivePurchaseOrder(PurchaseOrder $po, array $receivedItems): PurchaseOrder
     {
         return DB::transaction(function () use ($po, $receivedItems) {
+            $receivedValue = 0.0;
+
             foreach ($receivedItems as $item) {
                 // Lock the item row to prevent concurrent receive race conditions
                 $poItem = PurchaseOrderItem::lockForUpdate()->find($item['item_id']);
@@ -138,6 +139,10 @@ class PurchaseOrderService
                         $unitCost
                     );
                 }
+
+                // Accumulate received value for supplier debt recording
+                $effectiveCost = isset($item['cost_price']) ? (float) $item['cost_price'] : (float) $poItem->cost_price;
+                $receivedValue += $effectiveCost * $actualQty * (1 + (float) $poItem->tax_rate / 100);
             }
 
             $po->refresh();
@@ -148,6 +153,11 @@ class PurchaseOrderService
                 'status'        => $allReceived ? 'received' : ($anyReceived ? 'partial' : 'pending'),
                 'received_date' => $allReceived ? now() : null,
             ]);
+
+            // Record supplier debt only when goods are actually received (not on draft creation)
+            if ($receivedValue > 0.0) {
+                $this->recordSupplierDebt($po->supplier_id, $po->id, $po->po_number, round($receivedValue, 2));
+            }
 
             return $po->load('items');
         });

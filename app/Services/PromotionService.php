@@ -25,6 +25,7 @@ class PromotionService
                 $today = now()->toDateString();
                 $q->whereNull('ends_at')->orWhere('ends_at', '>=', $today);
             })
+            ->limit(200)
             ->get();
 
         $totalDiscount = 0.0;
@@ -80,8 +81,13 @@ class PromotionService
             }
         }
 
+        // Cap stacked promotions at the configurable max-discount percentage.
+        // Without this cap, simultaneous promotions could grant a 100% discount.
+        $maxPromoPercent = (float) config('promotions.max_discount_percent', 50);
+        $maxAllowed      = $orderTotal * ($maxPromoPercent / 100);
+
         return [
-            'discount'   => min($totalDiscount, $orderTotal),
+            'discount'   => min($totalDiscount, $maxAllowed, $orderTotal),
             'applied'    => $applied,
             'free_items' => $freeItems,
         ];

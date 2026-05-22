@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StorePromotionRequest;
 use App\Models\Promotion;
 use App\Services\PromotionService;
 use App\Traits\ApiResponse;
@@ -35,22 +36,21 @@ class PromotionController extends Controller
             ->where(fn($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $today))
             ->where(fn($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>=', $today))
             ->with('product:id,name')
+            ->limit(500)
             ->get();
 
         return $this->success(['promotions' => $promotions]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StorePromotionRequest $request): JsonResponse
     {
-        $data = $this->validatePromotion($request);
-        $promo = Promotion::create($data);
+        $promo = Promotion::create($request->validated());
         return $this->success(['promotion' => $promo], '', 201);
     }
 
-    public function update(Request $request, Promotion $promotion): JsonResponse
+    public function update(StorePromotionRequest $request, Promotion $promotion): JsonResponse
     {
-        $data = $this->validatePromotion($request, $promotion->id);
-        $promotion->update($data);
+        $promotion->update($request->validated());
         return $this->success(['promotion' => $promotion->fresh()]);
     }
 
@@ -82,21 +82,4 @@ class PromotionController extends Controller
         return $this->success($result);
     }
 
-    private function validatePromotion(Request $request, ?int $ignoreId = null): array
-    {
-        return $request->validate([
-            'name'             => 'required|string|max:150',
-            'description'      => 'nullable|string|max:500',
-            'type'             => 'required|in:percentage,fixed,buy_x_get_y',
-            'value'            => 'required_unless:type,buy_x_get_y|numeric|min:0',
-            'buy_qty'          => 'required_if:type,buy_x_get_y|nullable|integer|min:1',
-            'get_qty'          => 'required_if:type,buy_x_get_y|nullable|integer|min:1',
-            'product_id'       => 'nullable|exists:products,id',
-            'product_category' => 'nullable|string|max:100',
-            'min_order_amount' => 'nullable|numeric|min:0',
-            'starts_at'        => 'nullable|date',
-            'ends_at'          => 'nullable|date|after_or_equal:starts_at',
-            'is_active'        => 'boolean',
-        ]);
-    }
 }

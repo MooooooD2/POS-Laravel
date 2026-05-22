@@ -20,7 +20,7 @@ class HeldInvoiceService
         return HeldInvoice::create([
             'hold_number'    => $holdNumber,
             'cashier_id'     => Auth::id(),
-            'cashier_name'   => Auth::user()->full_name,
+            'cashier_name'   => Auth::user()?->full_name ?? '',
             'customer_id'    => $data['customer_id'] ?? null,
             'customer_name'  => $data['customer_name'] ?? null,
             'cart_data'      => [
@@ -43,6 +43,7 @@ class HeldInvoiceService
     public function active(): Collection
     {
         return HeldInvoice::where('status', 'held')
+            ->where('cashier_id', Auth::id())
             ->where(fn($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->latest()
             ->get(['id', 'hold_number', 'cashier_name', 'customer_name', 'total', 'notes', 'created_at', 'expires_at']);
@@ -50,6 +51,10 @@ class HeldInvoiceService
 
     public function resume(HeldInvoice $held): HeldInvoice
     {
+        if ($held->cashier_id !== Auth::id()) {
+            throw new \Exception(__('pos.held_invoice_not_yours'));
+        }
+
         if ($held->status !== 'held') {
             throw new \Exception(__('pos.held_invoice_not_available'));
         }
@@ -65,6 +70,10 @@ class HeldInvoiceService
 
     public function discard(HeldInvoice $held): void
     {
+        if ($held->cashier_id !== Auth::id()) {
+            throw new \Exception(__('pos.held_invoice_not_yours'));
+        }
+
         if (!in_array($held->status, ['held', 'expired'])) {
             throw new \Exception(__('pos.held_invoice_not_available'));
         }

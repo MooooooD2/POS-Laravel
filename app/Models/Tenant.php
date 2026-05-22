@@ -10,7 +10,12 @@ class Tenant extends BaseTenant implements TenantWithDatabase
 {
     use HasDatabase;
 
-    protected $connection = 'mysql';  // Should be 'mysql' not 'tenant'
+    protected $connection = 'mysql';
+
+    protected $fillable = [
+        'name', 'code', 'plan', 'is_active',
+        'subscription_status', 'trial_ends_at', 'subscription_ends_at',
+    ];
 
     public static function getCustomColumns(): array
     {

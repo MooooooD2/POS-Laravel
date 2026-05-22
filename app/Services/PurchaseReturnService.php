@@ -63,7 +63,7 @@ class PurchaseReturnService
                 'refund_method'    => $data['refund_method'] ?? 'credit_note',
                 'status'           => 'completed',
                 'processed_by'     => Auth::id(),
-                'processed_by_name'=> Auth::user()->full_name,
+                'processed_by_name'=> Auth::user()?->full_name ?? '',
                 'return_date'      => now()->toDateString(),
             ]);
 
@@ -82,14 +82,25 @@ class PurchaseReturnService
 
                 $product = $this->productRepo->findById($item['product_id']);
                 if ($product) {
-                    $this->stockService->deductStock(
-                        $product,
-                        $item['quantity'],
-                        'return_to_supplier',
-                        __('pos.purchase_return_note', ['ret' => $returnNumber]),
-                        $return->id,
-                        'purchase_return'
-                    );
+                    if ($product->track_batches) {
+                        $this->stockService->deductBatchStock(
+                            $product,
+                            $item['quantity'],
+                            'return_to_supplier',
+                            __('pos.purchase_return_note', ['ret' => $returnNumber]),
+                            $return->id,
+                            'purchase_return'
+                        );
+                    } else {
+                        $this->stockService->deductStock(
+                            $product,
+                            $item['quantity'],
+                            'return_to_supplier',
+                            __('pos.purchase_return_note', ['ret' => $returnNumber]),
+                            $return->id,
+                            'purchase_return'
+                        );
+                    }
                 }
             }
 

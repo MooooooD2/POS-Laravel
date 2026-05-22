@@ -56,14 +56,19 @@ class AuthController extends Controller
 
         $user = User::where('username', $credentials['username'])->first();
 
-        if ($user && !$user->is_active && Hash::check($credentials['password'], $user->password)) {
+        // Always run Hash::check to prevent timing-based user enumeration.
+        // The result is only acted upon if the user actually exists and is inactive.
+        $passwordMatches = $user && Hash::check($credentials['password'], $user->password);
+
+        if ($passwordMatches && !$user->is_active) {
             $this->writeAuthLog('auth.login_blocked', (int) $user->id, $credentials['username'], $request, [
                 'reason' => 'account_inactive',
             ]);
+            // Return 401 (not 403) so the response doesn't reveal whether the username exists
             return response()->json([
                 'success' => false,
-                'message' => __('auth.account_disabled'),
-            ], 403);
+                'message' => __('auth.failed'),
+            ], 401);
         }
 
         $this->writeAuthLog('auth.login_failed', $user?->id ? (int) $user->id : null, $credentials['username'], $request, [

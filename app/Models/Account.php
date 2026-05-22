@@ -7,7 +7,7 @@ class Account extends Model
 {
     // #7 balance محذوف من fillable — يُحسب تلقائياً من journal lines
     protected $fillable = ['account_code', 'account_name', 'account_type', 'parent_id', 'description'];
-    protected $casts    = ['balance' => 'float'];
+    protected $casts    = ['balance' => 'decimal:4'];
 
     public function parent()   { return $this->belongsTo(Account::class, 'parent_id'); }
     public function children() { return $this->hasMany(Account::class, 'parent_id'); }

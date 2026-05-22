@@ -48,8 +48,14 @@ class ReturnService
                 $totalAmount += $price * $item['quantity'];
             }
 
+            // Refund only what the customer actually paid (proportional to invoice discount)
+            $netDiscount   = ($invoice->discount ?? 0) + ($invoice->loyalty_discount ?? 0);
+            $discountRatio = ($invoice->total > 0 && $netDiscount > 0)
+                ? max(0.0, ($invoice->total - $netDiscount) / $invoice->total)
+                : 1.0;
+
             $refundMethod = $data['refund_method'] ?? 'cash';
-            $refundAmount = round($totalAmount, 2);
+            $refundAmount = round($totalAmount * $discountRatio, 2);
 
             if (!in_array($refundMethod, ['cash', 'store_credit', 'exchange'])) {
                 throw new \Exception('طريقة رد المبلغ غير صالحة.');
@@ -71,7 +77,7 @@ class ReturnService
                 'status'            => 'completed',
                 'return_date'       => now()->toDateString(),
                 'processed_by'      => Auth::id(),
-                'processed_by_name' => Auth::user()->full_name,
+                'processed_by_name' => Auth::user()?->full_name ?? '',
             ]);
 
             foreach ($data['items'] as $item) {
