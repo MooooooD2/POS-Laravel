@@ -104,7 +104,7 @@
             </div>
 
             <!-- Summary Stats -->
-            <div class="row g-3 mb-4" id="salesStats" style="display:none">
+            <div class="row g-3 mb-4 d-none" id="salesStats">
                 <div class="col-md-3">
                     <div class="stat-card blue">
                         <p class="mb-1 opacity-75 small">{{ __('pos.total') }}</p>
@@ -137,7 +137,7 @@
                     <div class="card">
                         <div class="card-header">{{ __('pos.recent_invoices') }}</div>
                         <div class="card-body p-0">
-                            <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+                            <div class="table-responsive table-scroll-400">
                                 <table class="table table-hover mb-0 table-sm">
                                     <thead class="table-dark sticky-top">
                                         <tr>
@@ -255,7 +255,7 @@
                     <div class="card">
                         <div class="card-header">{{ __('pos.returns_list') }}</div>
                         <div class="card-body p-0">
-                            <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+                            <div class="table-responsive table-scroll-400">
                                 <table class="table table-hover mb-0 table-sm">
                                     <thead class="table-dark sticky-top">
                                         <tr>
@@ -335,7 +335,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>{{ __('pos.stock_report') }}</span>
                     <div class="d-flex gap-2">
-                        <input type="text" class="form-control form-control-sm" style="width:180px" id="stockSearch"
+                        <input type="text" class="form-control form-control-sm input-w-180" id="stockSearch"
                             placeholder="{{ __('pos.search') }}..." data-on-input="filterStock">
                         <div class="btn-group">
                             <button class="btn btn-sm btn-outline-success" data-export-type="stock" data-export-format="csv">
@@ -783,7 +783,7 @@
         <div class="tab-pane fade" id="kpiTab">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="d-flex align-items-center gap-3">
-                    <input type="date" class="form-control form-control-sm" id="kpiDate" value="{{ date('Y-m-d') }}" style="width:180px">
+                    <input type="date" class="form-control form-control-sm input-w-180" id="kpiDate" value="{{ date('Y-m-d') }}">
                     <button class="btn btn-sm btn-primary" data-fn="loadKpi"><i class="fas fa-rotate me-1"></i>{{ app()->getLocale() === 'ar' ? 'تحديث' : 'Refresh' }}</button>
                 </div>
                 <div id="kpiLastUpdated" class="text-muted small"></div>
@@ -906,7 +906,7 @@
             });
 
             // Show stats
-            document.getElementById('salesStats').style.removeProperty('display');
+            document.getElementById('salesStats').classList.remove('d-none');
             document.getElementById('statTotal').textContent = formatCurrency(res.totals?.total_revenue);
             document.getElementById('statCount').textContent = res.totals?.total_count ?? 0;
             document.getElementById('statCash').textContent = formatCurrency(res.byPayment?.cash?.total || 0);

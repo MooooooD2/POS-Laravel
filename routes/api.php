@@ -96,6 +96,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\CheckSubscripti
     // Warehouse
     Route::middleware('permission:view_warehouse')->group(function () {
         Route::get('/products', [ProductController::class, 'all'])->name('products.all');
+        Route::get('/products/by-barcode', [ProductController::class, 'lookupByBarcode'])->name('products.by-barcode');
         Route::post('/products', [ProductController::class, 'store'])->middleware('throttle:30,1')->name('products.store');
         Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');

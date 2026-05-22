@@ -23,6 +23,9 @@ DESCRIPTION: Product management with search, CRUD, stock management
             <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#unitsModal">
                 <i class="fas fa-ruler me-1"></i>{{ __('pos.manage_units') }}
             </button>
+            <button class="btn btn-outline-success btn-sm" data-fn="openBarcodeScanner">
+                <i class="fas fa-barcode me-1"></i>{{ app()->getLocale() === 'ar' ? 'مسح باركود' : 'Scan Barcode' }}
+            </button>
             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
                 <i class="fas fa-plus me-1"></i>{{ __('pos.add_product') }}
             </button>
@@ -104,7 +107,15 @@ DESCRIPTION: Product management with search, CRUD, stock management
                     </div>
                     <div class="col-6">
                         <label class="form-label">{{ __('pos.barcode') }}</label>
-                        <input type="text" class="form-control" id="productBarcode">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="productBarcode"
+                                placeholder="{{ app()->getLocale() === 'ar' ? 'أدخل أو امسح الباركود' : 'Enter or scan barcode' }}">
+                            <button type="button" class="btn btn-outline-secondary"
+                                title="{{ app()->getLocale() === 'ar' ? 'مسح بالكاميرا' : 'Scan with camera' }}"
+                                data-fn="openBarcodeScanner" data-args='["field","productBarcode"]'>
+                                <i class="fas fa-camera"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="col-6">
                         <label class="form-label">{{ __('pos.category') }}</label>
@@ -255,6 +266,46 @@ DESCRIPTION: Product management with search, CRUD, stock management
     </div>
 </div>
 
+{{-- ─── BARCODE SCANNER MODAL ──────────────────────────────────────────────── --}}
+<div class="modal fade" id="barcodeScannerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-camera me-2"></i>
+                    {{ app()->getLocale() === 'ar' ? 'مسح الباركود' : 'Scan Barcode' }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                {{-- Camera viewfinder (html5-qrcode renders here) --}}
+                <div id="barcodeScannerReader" class="w-100 scanner-reader-box"></div>
+
+                {{-- Manual / physical scanner fallback --}}
+                <div class="p-3 border-top">
+                    <p class="text-muted small mb-2">
+                        <i class="fas fa-keyboard me-1"></i>
+                        {{ app()->getLocale() === 'ar'
+                            ? 'أو أدخل الباركود يدوياً (يدعم الماسح الضوئي الفيزيائي):'
+                            : 'Or enter barcode manually (physical scanner supported):' }}
+                    </p>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="manualBarcodeInput"
+                            placeholder="{{ app()->getLocale() === 'ar' ? 'اكتب أو امسح واضغط Enter' : 'Type or scan & press Enter' }}"
+                            autocomplete="off">
+                        <button class="btn btn-primary" data-fn="processManualBarcode">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Dynamic result shown after scan --}}
+            <div id="barcodeScanResult" class="d-none"></div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -358,7 +409,7 @@ function editProduct(p) {
     const qtyInput = document.getElementById('productQuantity');
     qtyInput.value    = p.quantity ?? 0;
     qtyInput.disabled = true;
-    document.getElementById('productWarehouseRow').style.display = 'none';
+    document.getElementById('productWarehouseRow').classList.add('d-none');
     document.getElementById('productModalTitle').textContent = '{{ __("pos.edit_product") }}';
     new bootstrap.Modal(document.getElementById('addProductModal')).show();
 }
@@ -438,7 +489,7 @@ document.getElementById('addProductModal').addEventListener('show.bs.modal', fun
     document.getElementById('productName').value = '';
     document.getElementById('productUnitId').value = '';
     document.getElementById('productQuantity').disabled = false;
-    document.getElementById('productWarehouseRow').style.display = '';
+    document.getElementById('productWarehouseRow').classList.remove('d-none');
     document.getElementById('productModalTitle').textContent = '{{ __("pos.add_product") }}';
 });
 
@@ -636,5 +687,243 @@ function downloadBarcode() {
 function formatCurrency(v) {
     return new Intl.NumberFormat('{{ app()->getLocale() }}', { minimumFractionDigits: 2 }).format(v);
 }
+
+// ─── BARCODE SCANNER ─────────────────────────────────────────────────────────
+// scannerTarget: 'standalone' → lookup product  |  'field' → fill an input field
+let _scannerTarget  = 'standalone';
+let _scannerFieldId = null;
+let _html5QrCode    = null;
+
+async function _loadHtml5QrCode() {
+    if (window.Html5Qrcode) return;
+    await new Promise((resolve, reject) => {
+        const s    = document.createElement('script');
+        s.src      = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
+        s.onload   = resolve;
+        s.onerror  = reject;
+        document.head.appendChild(s);
+    });
+}
+
+// Entry point — called by data-fn="openBarcodeScanner" [data-args='["field","productBarcode"]']
+async function openBarcodeScanner(target, fieldId) {
+    _scannerTarget  = target  || 'standalone';
+    _scannerFieldId = fieldId || null;
+
+    // Reset UI
+    const resultEl = document.getElementById('barcodeScanResult');
+    resultEl.classList.add('d-none');
+    resultEl.innerHTML = '';
+    document.getElementById('manualBarcodeInput').value = '';
+
+    // Show modal first, then start camera (needs DOM visible for dimensions)
+    const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
+    modal.show();
+}
+
+// Start camera once modal is fully visible
+document.getElementById('barcodeScannerModal').addEventListener('shown.bs.modal', async function() {
+    const readerEl = document.getElementById('barcodeScannerReader');
+    readerEl.innerHTML = ''; // clear any previous render
+
+    await _loadHtml5QrCode().catch(() => {
+        readerEl.innerHTML = `<div class="text-center py-4 text-danger small p-3">
+            <i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>
+            ${LOCALE === 'ar' ? 'فشل تحميل مكتبة الماسح.' : 'Failed to load scanner library.'}
+        </div>`;
+        return;
+    });
+
+    _html5QrCode = new Html5Qrcode('barcodeScannerReader');
+    _html5QrCode.start(
+        { facingMode: 'environment' },           // rear camera on mobile
+        { fps: 10, qrbox: { width: 280, height: 120 } },  // wide box for 1-D barcodes
+        _onScanSuccess,
+        null                                     // ignore per-frame decode errors
+    ).catch(() => {
+        readerEl.innerHTML = `<div class="text-center py-4 text-muted p-3">
+            <i class="fas fa-camera-slash fa-2x mb-2 d-block"></i>
+            <span class="small">${LOCALE === 'ar' ? 'لا يمكن الوصول للكاميرا. استخدم الإدخال اليدوي أدناه.' : 'Camera unavailable. Use manual input below.'}</span>
+        </div>`;
+    });
+});
+
+// Stop camera when modal closes
+document.getElementById('barcodeScannerModal').addEventListener('hide.bs.modal', function() {
+    if (_html5QrCode) {
+        _html5QrCode.stop().catch(() => {});
+        _html5QrCode = null;
+    }
+});
+
+// Physical-scanner / manual input: listen for Enter key
+document.getElementById('manualBarcodeInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); processManualBarcode(); }
+});
+
+// "Search" button for manual input
+async function processManualBarcode() {
+    const barcode = document.getElementById('manualBarcodeInput').value.trim();
+    if (!barcode) return;
+    if (_html5QrCode) { _html5QrCode.stop().catch(() => {}); _html5QrCode = null; }
+    await _handleScannedBarcode(barcode);
+}
+
+// Called by html5-qrcode on successful frame decode
+async function _onScanSuccess(barcode) {
+    if (_html5QrCode) { _html5QrCode.stop().catch(() => {}); _html5QrCode = null; }
+    await _handleScannedBarcode(barcode);
+}
+
+// Core logic: fill-field mode OR standalone lookup mode
+async function _handleScannedBarcode(barcode) {
+    // ── Field-fill mode: just fill the target input and close ────────────────
+    if (_scannerTarget === 'field' && _scannerFieldId) {
+        const targetInput = document.getElementById(_scannerFieldId);
+        if (targetInput) targetInput.value = barcode;
+        bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal')).hide();
+        showToast(
+            (LOCALE === 'ar' ? 'تم مسح الباركود: ' : 'Barcode scanned: ') + barcode,
+            'success'
+        );
+        return;
+    }
+
+    // ── Standalone mode: lookup barcode in the system ────────────────────────
+    const resultEl = document.getElementById('barcodeScanResult');
+    resultEl.innerHTML = `<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></div>`;
+    resultEl.classList.remove('d-none');
+
+    const res = await apiCall(
+        '{{ route('products.by-barcode') }}?barcode=' + encodeURIComponent(barcode)
+    ).catch(() => null);
+
+    if (!res) {
+        resultEl.innerHTML = `<div class="alert alert-danger rounded-0 rounded-bottom mb-0">
+            <i class="fas fa-exclamation-circle me-1"></i>
+            ${LOCALE === 'ar' ? 'خطأ في الاتصال بالخادم.' : 'Server connection error.'}
+        </div>`;
+        return;
+    }
+
+    if (res.found && res.product) {
+        // ── Product EXISTS ──────────────────────────────────────────────────
+        const p = res.product;
+        resultEl.innerHTML = `
+            <div class="alert alert-success rounded-0 rounded-bottom mb-0">
+                <div class="fw-bold mb-1">
+                    <i class="fas fa-check-circle me-1"></i>
+                    ${LOCALE === 'ar' ? 'المنتج موجود:' : 'Product found:'}
+                </div>
+                <div class="mb-1 fw-semibold">${_esc(p.name)}</div>
+                <div class="text-muted small mb-3">
+                    <code class="me-2">${_esc(p.barcode || barcode)}</code>
+                    <span class="text-success">${formatCurrency(p.price)}</span>
+                    &nbsp;·&nbsp;
+                    ${LOCALE === 'ar' ? 'المخزون: ' : 'Stock: '}
+                    <strong class="${p.quantity === 0 ? 'text-danger' : p.low_stock ? 'text-warning' : 'text-success'}">${p.quantity}</strong>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-primary" data-scan-action="edit" data-product-id="${p.id}">
+                        <i class="fas fa-edit me-1"></i>${LOCALE === 'ar' ? 'تعديل' : 'Edit'}
+                    </button>
+                    <button class="btn btn-sm btn-success" data-scan-action="add-stock"
+                        data-product-id="${p.id}" data-product-name="${_esc(p.name)}">
+                        <i class="fas fa-plus me-1"></i>${LOCALE === 'ar' ? 'إضافة مخزون' : 'Add Stock'}
+                    </button>
+                </div>
+            </div>`;
+    } else {
+        // ── Product NOT FOUND locally ───────────────────────────────────────
+        const ext      = res.external;           // {name, brand} or null
+        const extName  = ext?.name  || '';
+        const extBrand = ext?.brand || '';
+
+        // Build "found in global DB" info block
+        const extBlock = extName
+            ? `<div class="d-flex align-items-start gap-2 p-2 mb-3 rounded bg-white bg-opacity-50">
+                   <span class="badge bg-info text-dark flex-shrink-0 mt-1">
+                       <i class="fas fa-globe me-1"></i>${LOCALE === 'ar' ? 'قاعدة عالمية' : 'Global DB'}
+                   </span>
+                   <div>
+                       <div class="fw-semibold">${_esc(extName)}</div>
+                       ${extBrand ? `<div class="text-muted small">${_esc(extBrand)}</div>` : ''}
+                   </div>
+               </div>`
+            : `<p class="text-muted small mb-3">
+                   ${LOCALE === 'ar' ? 'لم يُعثر على اسم المنتج في قواعد البيانات العالمية.' : 'Product name not found in global databases.'}
+               </p>`;
+
+        resultEl.innerHTML = `
+            <div class="alert alert-warning rounded-0 rounded-bottom mb-0">
+                <div class="fw-bold mb-2">
+                    <i class="fas fa-question-circle me-1"></i>
+                    ${LOCALE === 'ar' ? 'الباركود غير موجود في النظام' : 'Barcode not found in system'}
+                    &nbsp;<code class="fw-normal fs-6">${_esc(barcode)}</code>
+                </div>
+                ${extBlock}
+                <button class="btn btn-sm btn-primary"
+                    data-scan-action="add-new"
+                    data-barcode="${_esc(barcode)}"
+                    data-prefill-name="${_esc(extName)}">
+                    <i class="fas fa-plus me-1"></i>${LOCALE === 'ar' ? 'إضافة منتج جديد' : 'Add New Product'}
+                </button>
+            </div>`;
+    }
+}
+
+// Event delegation for scan-result action buttons (CSP-safe — no onclick attrs)
+document.getElementById('barcodeScanResult').addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-scan-action]');
+    if (!btn) return;
+    const action = btn.dataset.scanAction;
+    const modal  = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
+
+    if (action === 'edit') {
+        modal.hide();
+        const p = allProducts.find(x => x.id === parseInt(btn.dataset.productId));
+        if (p) editProduct(p);
+
+    } else if (action === 'add-stock') {
+        modal.hide();
+        showAddStock(parseInt(btn.dataset.productId), btn.dataset.productName);
+
+    } else if (action === 'add-new') {
+        modal.hide();
+        const barcode      = btn.dataset.barcode;
+        const prefillName  = btn.dataset.prefillName  || '';
+        const prefillPrice = btn.dataset.prefillPrice || '';
+
+        // Pre-fill barcode + name + price (from external DB when available)
+        document.getElementById('productId').value       = '';
+        document.getElementById('productName').value     = prefillName;
+        document.getElementById('productBarcode').value  = barcode;
+        document.getElementById('productPrice').value    = prefillPrice;
+        document.getElementById('productCategory').value = '';
+        document.getElementById('productQuantity').disabled = false;
+        document.getElementById('productWarehouseRow').classList.remove('d-none');
+        document.getElementById('productModalTitle').textContent =
+            LOCALE === 'ar' ? '{{ __("pos.add_product") }}' : 'Add Product';
+
+        // Decide which field to focus:
+        //  • name pre-filled but no price → focus price
+        //  • name pre-filled and price pre-filled → focus price (still needs local adjustment)
+        //  • nothing pre-filled → focus name
+        setTimeout(() => {
+            new bootstrap.Modal(document.getElementById('addProductModal')).show();
+            setTimeout(() => {
+                document.getElementById(prefillName ? 'productPrice' : 'productName').focus();
+            }, 300);
+        }, 300);
+    }
+});
+
+// Helper: HTML-escape for dynamic content
+function _esc(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+// ─────────────────────────────────────────────────────────────────────────────
 </script>
 @endpush

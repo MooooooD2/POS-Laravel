@@ -98,9 +98,9 @@ Route::middleware(['auth', 'tenancy', '2fa', \App\Http\Middleware\CheckSubscript
         Route::get('/reports', fn() => view('reports.index'))->name('reports');
         Route::get('/reports/budget', fn() => view('reports.budget'))->name('reports.budget');
         Route::middleware('throttle:10,1')->group(function () {
-            Route::post('/reports/export/sales',   [ReportController::class, 'exportSales'])->name('reports.export.sales');
-            Route::post('/reports/export/returns', [ReportController::class, 'exportReturns'])->name('reports.export.returns');
-            Route::post('/reports/export/stock',   [ReportController::class, 'exportStock'])->name('reports.export.stock');
+            Route::get('/reports/export/sales',   [ReportController::class, 'exportSales'])->name('reports.export.sales');
+            Route::get('/reports/export/returns', [ReportController::class, 'exportReturns'])->name('reports.export.returns');
+            Route::get('/reports/export/stock',   [ReportController::class, 'exportStock'])->name('reports.export.stock');
         });
     });
     Route::middleware(['permission:manage_roles'])->get('/roles', fn() => view('roles.index'))->name('roles');

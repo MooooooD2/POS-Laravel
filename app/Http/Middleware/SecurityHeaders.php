@@ -35,7 +35,9 @@ class SecurityHeaders
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-XSS-Protection', '1; mode=block');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        // camera=(self) — allow camera on the same origin for barcode scanning (warehouse page)
+        // microphone/geolocation remain fully blocked
+        $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
         $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
         $response->headers->set('Content-Security-Policy',

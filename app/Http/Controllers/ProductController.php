@@ -81,6 +81,58 @@ class ProductController extends Controller
         return $this->success(message: __('pos.product_deleted'));
     }
 
+    public function lookupByBarcode(Request $request)
+    {
+        $request->validate(['barcode' => 'required|string|max:100']);
+        $barcode = $request->barcode;
+        $product = Product::where('barcode', $barcode)->first();
+
+        return $this->success([
+            'found'    => (bool) $product,
+            'product'  => $product ? new ProductResource($product) : null,
+            // Only query external APIs when the barcode isn't in our system
+            'external' => $product ? null : $this->fetchExternalBarcode($barcode),
+        ]);
+    }
+
+    /**
+     * Try to resolve a barcode against public product databases.
+     * Primary : UPCitemdb  (EAN-13, UPC-A, UPC-E — general retail, 100 req/day free).
+     * Fallback : Open Food Facts (food/drink — unlimited, free).
+     * Returns [name, brand] or null on failure/not-found.
+     */
+    private function fetchExternalBarcode(string $barcode): ?array
+    {
+        // ── 1. UPCitemdb ────────────────────────────────────────────────────
+        try {
+            $res  = \Illuminate\Support\Facades\Http::timeout(3)
+                ->get('https://api.upcitemdb.com/prod/trial/lookup', ['upc' => $barcode]);
+            $item = $res->ok() ? $res->json('items.0') : null;
+            if ($item && !empty($item['title'])) {
+                return array_filter([
+                    'name'  => $item['title'],
+                    'brand' => $item['brand'] ?? null,
+                ], fn($v) => $v !== null);
+            }
+        } catch (\Throwable) {}
+
+        // ── 2. Open Food Facts (covers food/drink) ───────────────────────────
+        try {
+            $res  = \Illuminate\Support\Facades\Http::timeout(3)
+                ->get("https://world.openfoodfacts.org/api/v2/product/{$barcode}",
+                    ['fields' => 'product_name,brands']);
+            $prod = $res->ok() ? $res->json('product') : null;
+            if ($prod && !empty($prod['product_name'])) {
+                return array_filter([
+                    'name'  => $prod['product_name'],
+                    'brand' => $prod['brands'] ?? null,
+                ], fn($v) => $v !== null);
+            }
+        } catch (\Throwable) {}
+
+        return null;
+    }
+
     public function addStock(AddStockRequest $request, Product $product)
     {
         $this->authorize('addStock', $product);

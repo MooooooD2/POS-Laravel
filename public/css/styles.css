@@ -544,7 +544,8 @@ i,
     position: fixed;
     left: 0;
     top: 0;
-    z-index: 1040;
+    /* Must be ABOVE the backdrop (1039) so links are tappable on mobile */
+    z-index: 1050;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -595,17 +596,19 @@ body.rtl #sidebar {
     background: rgba(255, 255, 255, 0.3);
 }
 
-/* Mobile backdrop overlay */
+/* Mobile backdrop overlay — sits BEHIND the sidebar (z-index must be < sidebar's 1050) */
 #sidebar-backdrop {
     display: none;
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 1045;
+    z-index: 1039;
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
     opacity: 0;
     transition: opacity 0.3s ease;
+    /* Ensure taps on backdrop close the sidebar, not pass through */
+    touch-action: none;
 }
 #sidebar-backdrop.show {
     display: block;
@@ -764,6 +767,34 @@ body.rtl #main-content {
 .badge-in-stock {
     background: #d1fae5;
     color: #065f46;
+}
+
+/* ── Barcode scanner modal ──────────────────────────────────────────────────── */
+.scanner-reader-box {
+    min-height: 220px;
+    background: #000;
+    overflow: hidden;
+    border-radius: 0;
+}
+/* html5-qrcode injects a video + canvas; ensure they fill the container */
+.scanner-reader-box video,
+.scanner-reader-box canvas {
+    width: 100% !important;
+    max-width: 100%;
+    display: block;
+}
+/* The scan-region overlay border color */
+.scanner-reader-box #barcodeScannerReader__scan_region > img {
+    display: none; /* hide the default QR icon — we scan barcodes, not QR only */
+}
+
+/* ── CSP-safe utility classes (replaces forbidden inline style= attributes) ── */
+.table-scroll-400 {
+    max-height: 400px;
+    overflow-y: auto;
+}
+.input-w-180 {
+    width: 180px;
 }
 
 /* Responsive - mobile sidebar */
