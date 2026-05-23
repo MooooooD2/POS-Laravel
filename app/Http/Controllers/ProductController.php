@@ -8,6 +8,7 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Services\DynamicPricingService;
 use App\Services\StockService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
@@ -21,6 +22,7 @@ class ProductController extends Controller
     public function __construct(
         private StockService $stockService,
         private ProductRepositoryInterface $productRepo,
+        private DynamicPricingService $pricing,
     ) {}
 
     public function index()
@@ -45,9 +47,25 @@ class ProductController extends Controller
             ! empty($filters['search']) || ! empty($filters['category'])
         );
 
-        return $this->success(['products' => ProductResource::collection(
-            $this->productRepo->all($filters, $fetchAll)
-        )]);
+        $products = $this->productRepo->all($filters, $fetchAll);
+
+        // Phase 9: Attach dynamic pricing data to each product
+        $happyHourActive = $this->pricing->isHappyHourActive();
+        $productsWithPricing = ProductResource::collection($products)->toArray($request);
+        if ($happyHourActive || $request->boolean('with_pricing')) {
+            foreach ($productsWithPricing as &$p) {
+                $priceData = $this->pricing->getEffectivePrice($p['id'], 1, $request->integer('customer_group_id') ?: null);
+                $p['effective_price'] = $priceData['price'];
+                $p['discount_pct']    = $priceData['discount_pct'];
+                $p['price_rule']      = $priceData['rule'];
+                $p['has_discount']    = $priceData['has_discount'];
+            }
+        }
+
+        return $this->success([
+            'products'          => $productsWithPricing,
+            'happy_hour_active' => $happyHourActive,
+        ]);
     }
 
     public function store(StoreProductRequest $request)

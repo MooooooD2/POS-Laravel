@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\DeviceSessionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -74,6 +75,11 @@ class AuthController extends Controller
 
             $user = Auth::user();
             $this->writeAuthLog('auth.login_success', (int) $user->id, $user->username, $request);
+
+            // Phase 6: Track device session
+            try {
+                app(DeviceSessionService::class)->register($user, $request);
+            } catch (\Throwable) {}
 
             return response()->json(['success' => true, 'redirect' => route('dashboard')]);
         }

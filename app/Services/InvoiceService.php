@@ -29,7 +29,10 @@ class InvoiceService
         private CustomerService $customerService,
         private TaxService $taxService,
         private RecipeService $recipeService,
-    ) {}
+        private ?CashbackService $cashbackService = null,
+    ) {
+        $this->cashbackService ??= app(CashbackService::class);
+    }
 
     public function createInvoice(array $data): Invoice
     {
@@ -305,6 +308,13 @@ class InvoiceService
                 if ($loyaltyCustomer) {
                     $this->customerService->addLoyaltyPoints($loyaltyCustomer, $finalTotal);
                 }
+            }
+
+            // Phase 8: Earn cashback after successful invoice
+            try {
+                $this->cashbackService->earnFromInvoice($invoice);
+            } catch (\Throwable $e) {
+                Log::warning('cashback.earn_failed', ['invoice_id' => $invoice->id, 'error' => $e->getMessage()]);
             }
 
             return $invoice->load(['items.product.unit', 'customer']);

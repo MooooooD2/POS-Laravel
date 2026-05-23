@@ -4,15 +4,21 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\CrmController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeviceSessionController;
+use App\Http\Controllers\DynamicPricingController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\KitchenDisplayController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PurchaseReturnController;
+use App\Http\Controllers\QrOrderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WarehouseController;
@@ -156,4 +162,44 @@ Route::middleware(['auth', '2fa', 'permission:view_pos'])->group(function () {
 
 Route::middleware(['auth', '2fa', 'permission:view_reports'])->group(function () {
     Route::get('/profit-reports', fn () => view('profit-reports.index'))->name('profit-reports');
+});
+
+// ── Kitchen Display System ────────────────────────────────────────────────
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class])->group(function () {
+    Route::middleware(['permission:view_pos'])->group(function () {
+        Route::get('/kitchen', [KitchenDisplayController::class, 'index'])->name('kitchen');
+        Route::get('/kitchen/display', [KitchenDisplayController::class, 'display'])->name('kitchen.display');
+    });
+    // CRM
+    Route::middleware(['permission:view_warehouse'])->group(function () {
+        Route::get('/crm', [CrmController::class, 'index'])->name('crm');
+        Route::get('/crm/customer/{id}', [CrmController::class, 'customer'])->name('crm.customer');
+    });
+    // Dynamic Pricing
+    Route::middleware(['permission:view_pos'])->group(function () {
+        Route::get('/pricing-rules', [DynamicPricingController::class, 'index'])->name('pricing-rules');
+    });
+    // Forecasting
+    Route::middleware(['permission:view_reports'])->group(function () {
+        Route::get('/forecasting', [ForecastController::class, 'index'])->name('forecasting');
+    });
+    // Device Sessions
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/device-sessions', [DeviceSessionController::class, 'index'])->name('device-sessions');
+        Route::delete('/device-sessions/{id}', [DeviceSessionController::class, 'revoke'])->name('device-sessions.revoke');
+        Route::delete('/device-sessions', [DeviceSessionController::class, 'revokeAll'])->name('device-sessions.revoke-all');
+    });
+});
+
+// ── QR Ordering (public, no auth) ─────────────────────────────────────────
+Route::prefix('qr')->name('qr.')->group(function () {
+    Route::get('/{token}', [QrOrderController::class, 'menu'])->name('menu');
+    Route::post('/{token}/order', [QrOrderController::class, 'placeOrder'])->name('order')->middleware('throttle:10,1');
+    Route::get('/{token}/order/{orderId}/status', [QrOrderController::class, 'status'])->name('status');
+});
+
+// ── QR Management (admin) ─────────────────────────────────────────────────
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:view_pos'])->group(function () {
+    Route::get('/qr-tables', [QrOrderController::class, 'manage'])->name('qr-tables');
+    Route::post('/qr-tables', [QrOrderController::class, 'generate'])->name('qr-tables.generate');
 });

@@ -6,14 +6,20 @@ use App\Http\Controllers\BackupMonitorController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashRegisterController;
+use App\Http\Controllers\CashbackController;
+use App\Http\Controllers\CrmController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerGroupController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeviceSessionController;
+use App\Http\Controllers\DynamicPricingController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\FiscalPeriodController;
+use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\FraudDetectionController;
 use App\Http\Controllers\HeldInvoiceController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\KitchenDisplayController;
 use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\PrintController;
 use App\Http\Controllers\ProductController;
@@ -21,6 +27,7 @@ use App\Http\Controllers\ProfitReportController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseReturnController;
+use App\Http\Controllers\QrOrderController;
 use App\Http\Controllers\RecipeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReturnController;
@@ -374,4 +381,63 @@ Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->group(funct
         Route::post('/reports/profit-by-product', [ProfitReportController::class, 'byProduct'])->name('reports.profit-product');
         Route::post('/reports/profit-daily', [ProfitReportController::class, 'daily'])->name('reports.profit-daily');
     });
+});
+
+// ── Kitchen Display System API ────────────────────────────────────────────
+Route::middleware(['auth', 'permission:view_pos', 'throttle:120,1'])->prefix('kitchen')->group(function () {
+    Route::get('/',                              [KitchenDisplayController::class, 'orders'])->name('api.kitchen.orders');
+    Route::post('/',                             [KitchenDisplayController::class, 'store'])->name('api.kitchen.store');
+    Route::post('/{id}/accept',                  [KitchenDisplayController::class, 'accept'])->name('api.kitchen.accept');
+    Route::post('/{id}/ready',                   [KitchenDisplayController::class, 'ready'])->name('api.kitchen.ready');
+    Route::post('/{id}/served',                  [KitchenDisplayController::class, 'served'])->name('api.kitchen.served');
+    Route::post('/{id}/cancel',                  [KitchenDisplayController::class, 'cancel'])->name('api.kitchen.cancel');
+    Route::patch('/items/{itemId}/status',       [KitchenDisplayController::class, 'updateItem'])->name('api.kitchen.item.status');
+    Route::get('/stats',                         [KitchenDisplayController::class, 'stats'])->name('api.kitchen.stats');
+});
+
+// ── QR Orders API ─────────────────────────────────────────────────────────
+Route::middleware(['throttle:30,1'])->prefix('qr')->group(function () {
+    Route::get('/{token}/products',  [QrOrderController::class, 'products'])->name('api.qr.products');
+    Route::post('/{token}/order',    [QrOrderController::class, 'placeOrder'])->name('api.qr.order');
+    Route::get('/order/{id}/status', [QrOrderController::class, 'orderStatus'])->name('api.qr.order.status');
+});
+
+// ── Forecasting API ───────────────────────────────────────────────────────
+Route::middleware(['auth', 'permission:view_reports', 'throttle:30,1'])->group(function () {
+    Route::get('/forecast/sales',    [ForecastController::class, 'salesForecast'])->name('api.forecast.sales');
+    Route::get('/forecast/products', [ForecastController::class, 'productForecast'])->name('api.forecast.products');
+    Route::get('/forecast/stock',    [ForecastController::class, 'stockForecast'])->name('api.forecast.stock');
+});
+
+// ── Dynamic Pricing API ───────────────────────────────────────────────────
+Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->prefix('pricing-rules')->group(function () {
+    Route::get('/',         [DynamicPricingController::class, 'all'])->name('api.pricing-rules.all');
+    Route::post('/',        [DynamicPricingController::class, 'store'])->name('api.pricing-rules.store');
+    Route::put('/{id}',     [DynamicPricingController::class, 'update'])->name('api.pricing-rules.update');
+    Route::delete('/{id}',  [DynamicPricingController::class, 'destroy'])->name('api.pricing-rules.destroy');
+    Route::patch('/{id}/toggle', [DynamicPricingController::class, 'toggle'])->name('api.pricing-rules.toggle');
+    Route::post('/evaluate', [DynamicPricingController::class, 'evaluate'])->name('api.pricing-rules.evaluate');
+});
+
+// ── Device Sessions API ───────────────────────────────────────────────────
+Route::middleware(['auth', 'throttle:30,1'])->group(function () {
+    Route::get('/device-sessions',        [DeviceSessionController::class, 'list'])->name('api.device-sessions.list');
+    Route::delete('/device-sessions/{id}',[DeviceSessionController::class, 'revoke'])->name('api.device-sessions.revoke');
+});
+
+// ── Cashback API ──────────────────────────────────────────────────────────
+Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->group(function () {
+    Route::get('/cashback/customer/{id}', [CashbackController::class, 'balance'])->name('api.cashback.balance');
+    Route::post('/cashback/redeem',       [CashbackController::class, 'redeem'])->name('api.cashback.redeem');
+    Route::get('/cashback/history',       [CashbackController::class, 'history'])->name('api.cashback.history');
+});
+
+// ── CRM API ───────────────────────────────────────────────────────────────
+Route::middleware(['auth', 'permission:view_warehouse', 'throttle:60,1'])->prefix('crm')->group(function () {
+    Route::get('/customers/{id}/activities', [CrmController::class, 'activities'])->name('api.crm.activities');
+    Route::post('/activities',               [CrmController::class, 'storeActivity'])->name('api.crm.store');
+    Route::put('/activities/{id}',           [CrmController::class, 'updateActivity'])->name('api.crm.update');
+    Route::delete('/activities/{id}',        [CrmController::class, 'deleteActivity'])->name('api.crm.delete');
+    Route::get('/follow-ups',                [CrmController::class, 'followUps'])->name('api.crm.followups');
+    Route::get('/stats',                     [CrmController::class, 'stats'])->name('api.crm.stats');
 });

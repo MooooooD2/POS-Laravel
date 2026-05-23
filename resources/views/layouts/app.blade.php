@@ -146,6 +146,25 @@
         <a href="{{ route('expenses') }}" class="{{ request()->routeIs('expenses') ? 'active' : '' }}">
             <i class="fas fa-receipt"></i><span class="nav-label"> {{ __('pos.expenses') }}</span>
         </a>
+        {{-- Phase 2: Kitchen Display System --}}
+        <a href="{{ route('kitchen') }}" class="{{ request()->routeIs('kitchen*') ? 'active' : '' }}">
+            <i class="fas fa-utensils"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'شاشة المطبخ' : 'Kitchen Display' }}</span>
+        </a>
+        {{-- Phase 2: QR Ordering --}}
+        <a href="{{ route('qr-tables') }}" class="{{ request()->routeIs('qr-tables*') ? 'active' : '' }}">
+            <i class="fas fa-qrcode"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'طلبات QR' : 'QR Ordering' }}</span>
+        </a>
+        {{-- Phase 9: Dynamic Pricing --}}
+        <a href="{{ route('pricing-rules') }}" class="{{ request()->routeIs('pricing-rules*') ? 'active' : '' }}">
+            <i class="fas fa-tags"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'قواعد التسعير' : 'Pricing Rules' }}</span>
+        </a>
+    @endpermission
+
+    @permission('view_warehouse')
+        {{-- Phase 8: CRM --}}
+        <a href="{{ route('crm') }}" class="{{ request()->routeIs('crm*') ? 'active' : '' }}">
+            <i class="fas fa-users-gear"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'إدارة العملاء CRM' : 'CRM' }}</span>
+        </a>
     @endpermission
 
     @permission('view_reports')
@@ -157,6 +176,10 @@
         </a>
         <a href="{{ route('reports.budget') }}" class="{{ request()->routeIs('reports.budget') ? 'active' : '' }}">
             <i class="fas fa-scale-unbalanced"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}</span>
+        </a>
+        {{-- Phase 4: AI Forecasting --}}
+        <a href="{{ route('forecasting') }}" class="{{ request()->routeIs('forecasting*') ? 'active' : '' }}">
+            <i class="fas fa-robot"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'التنبؤ بالذكاء الاصطناعي' : 'AI Forecasting' }}</span>
         </a>
     @endpermission
 
@@ -365,6 +388,11 @@
                                     {{ __('pos.no_role') }}
                                 @endif
                             </span>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('device-sessions') }}">
+                                <i class="fas fa-shield-halved me-2"></i>{{ app()->getLocale()==='ar' ? 'الأجهزة النشطة' : 'Active Devices' }}
+                            </a>
                         </li>
                         <li>
                             <hr class="dropdown-divider">
