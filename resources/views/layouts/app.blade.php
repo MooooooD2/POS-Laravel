@@ -71,152 +71,10 @@
 @php $isMasterTenant = config('tenancy.master_tenant') && tenancy()->tenant?->id === config('tenancy.master_tenant'); @endphp
 <div class="sidebar-menu mt-2">
     @if($isMasterTenant)
+        {{-- ═══════════════ MASTER TENANT PANEL ═══════════════ --}}
         <a href="{{ route('admin.cpanel') }}" class="{{ request()->routeIs('admin.cpanel') ? 'active' : '' }}">
             <i class="fas fa-gauge-high"></i><span class="nav-label"> {{ __('pos.dashboard') }}</span>
         </a>
-    @else
-        <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard', 'home') ? 'active' : '' }}">
-            <i class="fas fa-gauge-high"></i><span class="nav-label"> {{ __('pos.dashboard') }}</span>
-        </a>
-    @endif
-
-    @if(!$isMasterTenant)
-
-    @permission('view_pos')
-        <a href="{{ route('pos') }}" class="{{ request()->routeIs('pos') ? 'active' : '' }}">
-            <i class="fas fa-cash-register"></i><span class="nav-label"> {{ __('pos.pos') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_returns')
-        <a href="{{ route('returns') }}" class="{{ request()->routeIs('returns') ? 'active' : '' }}">
-            <i class="fas fa-rotate-left"></i><span class="nav-label"> {{ __('pos.returns') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_warehouse')
-        <a href="{{ route('warehouse') }}" class="{{ request()->routeIs('warehouse') ? 'active' : '' }}">
-            <i class="fas fa-boxes-stacked"></i><span class="nav-label"> {{ __('pos.warehouse') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_suppliers')
-        <a href="{{ route('suppliers') }}" class="{{ request()->routeIs('suppliers') ? 'active' : '' }}">
-            <i class="fas fa-truck-fast"></i><span class="nav-label"> {{ __('pos.suppliers') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_purchase_orders')
-        <a href="{{ route('purchase-orders') }}" class="{{ request()->routeIs('purchase-orders') ? 'active' : '' }}">
-            <i class="fas fa-file-invoice-dollar"></i><span class="nav-label"> {{ __('pos.purchase_orders') }}</span>
-        </a>
-        <a href="{{ route('purchase-returns') }}" class="{{ request()->routeIs('purchase-returns') ? 'active' : '' }}">
-            <i class="fas fa-arrow-rotate-left"></i><span class="nav-label"> {{ __('pos.purchase_returns') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_supplier_payments')
-        <a href="{{ route('supplier-payments') }}" class="{{ request()->routeIs('supplier-payments') ? 'active' : '' }}">
-            <i class="fas fa-money-bill-transfer"></i><span class="nav-label"> {{ __('pos.supplier_payments') }}</span>
-        </a>
-        <a href="{{ route('supplier-accounts') }}" class="{{ request()->routeIs('supplier-accounts') ? 'active' : '' }}">
-            <i class="fas fa-scale-balanced"></i><span class="nav-label"> {{ __('pos.supplier_accounts') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_warehouse')
-        <a href="{{ route('warehouses') }}" class="{{ request()->routeIs('warehouses') ? 'active' : '' }}">
-            <i class="fas fa-warehouse"></i><span class="nav-label"> {{ app()->getLocale() === 'ar' ? 'المستودعات' : 'Warehouses' }}</span>
-        </a>
-        <a href="{{ route('customers') }}" class="{{ request()->routeIs('customers') ? 'active' : '' }}">
-            <i class="fas fa-users"></i><span class="nav-label"> {{ __('pos.customers') }}</span>
-        </a>
-        <a href="{{ route('customer-groups') }}" class="{{ request()->routeIs('customer-groups') ? 'active' : '' }}">
-            <i class="fas fa-people-group"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'مجموعات العملاء' : 'Customer Groups' }}</span>
-        </a>
-        <a href="{{ route('promotions') }}" class="{{ request()->routeIs('promotions') ? 'active' : '' }}">
-            <i class="fas fa-percent"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'العروض الترويجية' : 'Promotions' }}</span>
-        </a>
-        <a href="{{ route('waste') }}" class="{{ request()->routeIs('waste') ? 'active' : '' }}">
-            <i class="fas fa-trash-alt"></i><span class="nav-label"> {{ __('pos.waste_recording') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_pos')
-        <a href="{{ route('expenses') }}" class="{{ request()->routeIs('expenses') ? 'active' : '' }}">
-            <i class="fas fa-receipt"></i><span class="nav-label"> {{ __('pos.expenses') }}</span>
-        </a>
-        {{-- Phase 2: Kitchen Display System --}}
-        <a href="{{ route('kitchen') }}" class="{{ request()->routeIs('kitchen*') ? 'active' : '' }}">
-            <i class="fas fa-utensils"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'شاشة المطبخ' : 'Kitchen Display' }}</span>
-        </a>
-        {{-- Phase 2: QR Ordering --}}
-        <a href="{{ route('qr-tables') }}" class="{{ request()->routeIs('qr-tables*') ? 'active' : '' }}">
-            <i class="fas fa-qrcode"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'طلبات QR' : 'QR Ordering' }}</span>
-        </a>
-        {{-- Phase 9: Dynamic Pricing --}}
-        <a href="{{ route('pricing-rules') }}" class="{{ request()->routeIs('pricing-rules*') ? 'active' : '' }}">
-            <i class="fas fa-tags"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'قواعد التسعير' : 'Pricing Rules' }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_warehouse')
-        {{-- Phase 8: CRM --}}
-        <a href="{{ route('crm') }}" class="{{ request()->routeIs('crm*') ? 'active' : '' }}">
-            <i class="fas fa-users-gear"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'إدارة العملاء CRM' : 'CRM' }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_reports')
-        <a href="{{ route('reports') }}" class="{{ request()->routeIs('reports') ? 'active' : '' }}">
-            <i class="fas fa-chart-column"></i><span class="nav-label"> {{ __('pos.reports') }}</span>
-        </a>
-        <a href="{{ route('profit-reports') }}" class="{{ request()->routeIs('profit-reports') ? 'active' : '' }}">
-            <i class="fas fa-chart-line"></i><span class="nav-label"> {{ __('pos.profit_reports') }}</span>
-        </a>
-        <a href="{{ route('reports.budget') }}" class="{{ request()->routeIs('reports.budget') ? 'active' : '' }}">
-            <i class="fas fa-scale-unbalanced"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}</span>
-        </a>
-        {{-- Phase 4: AI Forecasting --}}
-        <a href="{{ route('forecasting') }}" class="{{ request()->routeIs('forecasting*') ? 'active' : '' }}">
-            <i class="fas fa-robot"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'التنبؤ بالذكاء الاصطناعي' : 'AI Forecasting' }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_pos')
-        <a href="{{ route('cash-register') }}" class="{{ request()->routeIs('cash-register') ? 'active' : '' }}">
-            <i class="fas fa-cash-register"></i><span class="nav-label"> {{ __('pos.cash_register_settlement') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_accounting')
-        <a href="{{ route('accounting') }}" class="{{ request()->routeIs('accounting') ? 'active' : '' }}">
-            <i class="fas fa-book-open"></i><span class="nav-label"> {{ __('pos.accounting') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_financial_reports')
-        <a href="{{ route('financial-reports') }}" class="{{ request()->routeIs('financial-reports') ? 'active' : '' }}">
-            <i class="fas fa-chart-area"></i><span class="nav-label"> {{ __('pos.financial_reports') }}</span>
-        </a>
-    @endpermission
-
-    @permission('manage_roles')
-        <a href="{{ route('branches') }}" class="{{ request()->routeIs('branches') ? 'active' : '' }}">
-            <i class="fas fa-sitemap"></i><span class="nav-label"> {{ __('pos.branches') }}</span>
-        </a>
-        <a href="{{ route('whatsapp') }}" class="{{ request()->routeIs('whatsapp') ? 'active' : '' }}">
-            <i class="fab fa-whatsapp"></i><span class="nav-label"> {{ __('pos.whatsapp') }}</span>
-        </a>
-    @endpermission
-
-    @permission('view_settings')
-        <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
-            <i class="fas fa-gear"></i><span class="nav-label"> {{ __('pos.settings') }}</span>
-        </a>
-    @endpermission
-
-    @else {{-- Master tenant owner --}}
         <a href="{{ route('admin.tenants') }}" class="{{ request()->routeIs('admin.tenants') ? 'active' : '' }}">
             <i class="fas fa-building-columns"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الاشتراكات' : 'Subscriptions' }}</span>
         </a>
@@ -232,6 +90,165 @@
         <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
             <i class="fas fa-gear"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'إعدادات النظام' : 'System Settings' }}</span>
         </a>
+
+    @else
+        {{-- ═══════════════ TENANT NAVIGATION ═══════════════ --}}
+
+        {{-- Dashboard --}}
+        <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard', 'home') ? 'active' : '' }}">
+            <i class="fas fa-gauge-high"></i><span class="nav-label"> {{ __('pos.dashboard') }}</span>
+        </a>
+
+        {{-- ──────────── OPERATIONS ──────────── --}}
+        @permission('view_pos')
+        <hr class="sidebar-divider">
+        <div class="sidebar-section-label">{{ app()->getLocale()==='ar' ? 'العمليات' : 'Operations' }}</div>
+        <a href="{{ route('pos') }}" class="{{ request()->routeIs('pos') ? 'active' : '' }}">
+            <i class="fas fa-cash-register"></i><span class="nav-label"> {{ __('pos.pos') }}</span>
+        </a>
+        @endpermission
+
+        @permission('view_returns')
+        <a href="{{ route('returns') }}" class="{{ request()->routeIs('returns') ? 'active' : '' }}">
+            <i class="fas fa-rotate-left"></i><span class="nav-label"> {{ __('pos.returns') }}</span>
+        </a>
+        @endpermission
+
+        @permission('view_pos')
+        <a href="{{ route('kitchen') }}" class="{{ request()->routeIs('kitchen*') ? 'active' : '' }}">
+            <i class="fas fa-utensils"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'شاشة المطبخ' : 'Kitchen Display' }}</span>
+        </a>
+        <a href="{{ route('qr-tables') }}" class="{{ request()->routeIs('qr-tables*') ? 'active' : '' }}">
+            <i class="fas fa-qrcode"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'طلبات QR' : 'QR Ordering' }}</span>
+        </a>
+        @endpermission
+
+        {{-- ──────────── INVENTORY & SUPPLY ──────────── --}}
+        @permission('view_warehouse')
+        <hr class="sidebar-divider">
+        <div class="sidebar-section-label">{{ app()->getLocale()==='ar' ? 'المخزون والتوريد' : 'Inventory & Supply' }}</div>
+        <a href="{{ route('warehouse') }}" class="{{ request()->routeIs('warehouse') ? 'active' : '' }}">
+            <i class="fas fa-boxes-stacked"></i><span class="nav-label"> {{ __('pos.warehouse') }}</span>
+        </a>
+        <a href="{{ route('warehouses') }}" class="{{ request()->routeIs('warehouses') ? 'active' : '' }}">
+            <i class="fas fa-warehouse"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'المستودعات' : 'Warehouses' }}</span>
+        </a>
+        <a href="{{ route('waste') }}" class="{{ request()->routeIs('waste') ? 'active' : '' }}">
+            <i class="fas fa-trash-alt"></i><span class="nav-label"> {{ __('pos.waste_recording') }}</span>
+        </a>
+        @endpermission
+
+        @permission('view_suppliers')
+        <a href="{{ route('suppliers') }}" class="{{ request()->routeIs('suppliers') ? 'active' : '' }}">
+            <i class="fas fa-truck-fast"></i><span class="nav-label"> {{ __('pos.suppliers') }}</span>
+        </a>
+        @endpermission
+
+        @permission('view_purchase_orders')
+        <a href="{{ route('purchase-orders') }}" class="{{ request()->routeIs('purchase-orders') ? 'active' : '' }}">
+            <i class="fas fa-file-invoice-dollar"></i><span class="nav-label"> {{ __('pos.purchase_orders') }}</span>
+        </a>
+        <a href="{{ route('purchase-returns') }}" class="{{ request()->routeIs('purchase-returns') ? 'active' : '' }}">
+            <i class="fas fa-arrow-rotate-left"></i><span class="nav-label"> {{ __('pos.purchase_returns') }}</span>
+        </a>
+        @endpermission
+
+        @permission('view_supplier_payments')
+        <a href="{{ route('supplier-payments') }}" class="{{ request()->routeIs('supplier-payments') ? 'active' : '' }}">
+            <i class="fas fa-money-bill-transfer"></i><span class="nav-label"> {{ __('pos.supplier_payments') }}</span>
+        </a>
+        <a href="{{ route('supplier-accounts') }}" class="{{ request()->routeIs('supplier-accounts') ? 'active' : '' }}">
+            <i class="fas fa-scale-balanced"></i><span class="nav-label"> {{ __('pos.supplier_accounts') }}</span>
+        </a>
+        @endpermission
+
+        {{-- ──────────── CUSTOMERS & MARKETING ──────────── --}}
+        @permission('view_warehouse')
+        <hr class="sidebar-divider">
+        <div class="sidebar-section-label">{{ app()->getLocale()==='ar' ? 'العملاء والتسويق' : 'Customers & Marketing' }}</div>
+        <a href="{{ route('customers') }}" class="{{ request()->routeIs('customers') ? 'active' : '' }}">
+            <i class="fas fa-users"></i><span class="nav-label"> {{ __('pos.customers') }}</span>
+        </a>
+        <a href="{{ route('customer-groups') }}" class="{{ request()->routeIs('customer-groups') ? 'active' : '' }}">
+            <i class="fas fa-people-group"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'مجموعات العملاء' : 'Customer Groups' }}</span>
+        </a>
+        <a href="{{ route('promotions') }}" class="{{ request()->routeIs('promotions') ? 'active' : '' }}">
+            <i class="fas fa-percent"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'العروض الترويجية' : 'Promotions' }}</span>
+        </a>
+        <a href="{{ route('cashback') }}" class="{{ request()->routeIs('cashback*') ? 'active' : '' }}">
+            <i class="fas fa-coins"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الكاش باك' : 'Cashback' }}</span>
+        </a>
+        <a href="{{ route('crm') }}" class="{{ request()->routeIs('crm*') ? 'active' : '' }}">
+            <i class="fas fa-users-gear"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'إدارة العملاء CRM' : 'CRM' }}</span>
+        </a>
+        @endpermission
+
+        {{-- ──────────── FINANCE ──────────── --}}
+        @permission('view_pos')
+        <hr class="sidebar-divider">
+        <div class="sidebar-section-label">{{ app()->getLocale()==='ar' ? 'المالية' : 'Finance' }}</div>
+        <a href="{{ route('expenses') }}" class="{{ request()->routeIs('expenses') ? 'active' : '' }}">
+            <i class="fas fa-receipt"></i><span class="nav-label"> {{ __('pos.expenses') }}</span>
+        </a>
+        <a href="{{ route('cash-register') }}" class="{{ request()->routeIs('cash-register') ? 'active' : '' }}">
+            <i class="fas fa-cash-register"></i><span class="nav-label"> {{ __('pos.cash_register_settlement') }}</span>
+        </a>
+        @endpermission
+
+        @permission('view_accounting')
+        <a href="{{ route('accounting') }}" class="{{ request()->routeIs('accounting') ? 'active' : '' }}">
+            <i class="fas fa-book-open"></i><span class="nav-label"> {{ __('pos.accounting') }}</span>
+        </a>
+        @endpermission
+
+        @permission('view_financial_reports')
+        <a href="{{ route('financial-reports') }}" class="{{ request()->routeIs('financial-reports') ? 'active' : '' }}">
+            <i class="fas fa-chart-area"></i><span class="nav-label"> {{ __('pos.financial_reports') }}</span>
+        </a>
+        @endpermission
+
+        {{-- ──────────── REPORTS & ANALYTICS ──────────── --}}
+        @permission('view_reports')
+        <hr class="sidebar-divider">
+        <div class="sidebar-section-label">{{ app()->getLocale()==='ar' ? 'التقارير والتحليلات' : 'Reports & Analytics' }}</div>
+        <a href="{{ route('reports') }}" class="{{ request()->routeIs('reports') ? 'active' : '' }}">
+            <i class="fas fa-chart-column"></i><span class="nav-label"> {{ __('pos.reports') }}</span>
+        </a>
+        <a href="{{ route('profit-reports') }}" class="{{ request()->routeIs('profit-reports') ? 'active' : '' }}">
+            <i class="fas fa-chart-line"></i><span class="nav-label"> {{ __('pos.profit_reports') }}</span>
+        </a>
+        <a href="{{ route('reports.budget') }}" class="{{ request()->routeIs('reports.budget') ? 'active' : '' }}">
+            <i class="fas fa-scale-unbalanced"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}</span>
+        </a>
+        <a href="{{ route('forecasting') }}" class="{{ request()->routeIs('forecasting*') ? 'active' : '' }}">
+            <i class="fas fa-robot"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'التنبؤ بالذكاء الاصطناعي' : 'AI Forecasting' }}</span>
+        </a>
+        @endpermission
+
+        {{-- ──────────── CONFIGURATION ──────────── --}}
+        @permission('view_pos')
+        <hr class="sidebar-divider">
+        <div class="sidebar-section-label">{{ app()->getLocale()==='ar' ? 'الإعدادات والتكوين' : 'Configuration' }}</div>
+        <a href="{{ route('pricing-rules') }}" class="{{ request()->routeIs('pricing-rules*') ? 'active' : '' }}">
+            <i class="fas fa-tags"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'قواعد التسعير' : 'Pricing Rules' }}</span>
+        </a>
+        @endpermission
+
+        @permission('manage_roles')
+        <a href="{{ route('branches') }}" class="{{ request()->routeIs('branches') ? 'active' : '' }}">
+            <i class="fas fa-sitemap"></i><span class="nav-label"> {{ __('pos.branches') }}</span>
+        </a>
+        <a href="{{ route('whatsapp') }}" class="{{ request()->routeIs('whatsapp') ? 'active' : '' }}">
+            <i class="fab fa-whatsapp"></i><span class="nav-label"> {{ __('pos.whatsapp') }}</span>
+        </a>
+        @endpermission
+
+        @permission('view_settings')
+        <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">
+            <i class="fas fa-gear"></i><span class="nav-label"> {{ __('pos.settings') }}</span>
+        </a>
+        @endpermission
+
     @endif
 </div>
     </nav>

@@ -430,6 +430,9 @@ Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->group(funct
     Route::get('/cashback/customer/{id}', [CashbackController::class, 'balance'])->name('api.cashback.balance');
     Route::post('/cashback/redeem',       [CashbackController::class, 'redeem'])->name('api.cashback.redeem');
     Route::get('/cashback/history',       [CashbackController::class, 'history'])->name('api.cashback.history');
+    // Cashback rules management
+    Route::get('/cashback/rules',         [CashbackController::class, 'rules'])->name('api.cashback.rules');
+    Route::post('/cashback/rules',        [CashbackController::class, 'storeRule'])->name('api.cashback.rules.store');
 });
 
 // ── CRM API ───────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\CashbackController;
 use App\Http\Controllers\CrmController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
@@ -188,6 +189,10 @@ Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class])->g
         Route::get('/device-sessions', [DeviceSessionController::class, 'index'])->name('device-sessions');
         Route::delete('/device-sessions/{id}', [DeviceSessionController::class, 'revoke'])->name('device-sessions.revoke');
         Route::delete('/device-sessions', [DeviceSessionController::class, 'revokeAll'])->name('device-sessions.revoke-all');
+    });
+    // Cashback Management
+    Route::middleware(['permission:view_warehouse'])->group(function () {
+        Route::get('/cashback', [CashbackController::class, 'indexPage'])->name('cashback');
     });
 });
 

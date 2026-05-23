@@ -100,7 +100,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 const API   = '{{ route("api.kitchen.orders") }}';
 const BASE  = '{{ url("api/kitchen") }}';
 const CSRF  = document.querySelector('meta[name="csrf-token"]').content;
@@ -147,19 +147,34 @@ async function loadOrders() {
           ${o.notes ? `<div class="small text-muted">📝 ${o.notes}</div>` : ''}
         </div>
         <div class="card-footer p-2 d-flex gap-1">
-          ${o.status === 'pending'   ? `<button class="btn btn-sm btn-primary flex-fill" onclick="accept(${o.id})">Accept</button>` : ''}
-          ${o.status === 'preparing' ? `<button class="btn btn-sm btn-success flex-fill" onclick="markReady(${o.id})">Ready</button>` : ''}
-          ${o.status === 'ready'     ? `<button class="btn btn-sm btn-purple flex-fill" onclick="serve(${o.id})" style="background:#9333ea;color:#fff">Served</button>` : ''}
-          ${['pending','preparing'].includes(o.status) ? `<button class="btn btn-sm btn-outline-danger" onclick="cancelOrder(${o.id})">✕</button>` : ''}
+          ${o.status === 'pending'   ? `<button class="btn btn-sm btn-primary flex-fill" data-action="accept" data-id="${o.id}">Accept</button>` : ''}
+          ${o.status === 'preparing' ? `<button class="btn btn-sm btn-success flex-fill" data-action="ready"  data-id="${o.id}">Ready</button>` : ''}
+          ${o.status === 'ready'     ? `<button class="btn btn-sm btn-secondary flex-fill"                    data-action="serve"  data-id="${o.id}">Served</button>` : ''}
+          ${['pending','preparing'].includes(o.status) ? `<button class="btn btn-sm btn-outline-danger" data-action="cancel" data-id="${o.id}">✕</button>` : ''}
         </div>
       </div>
     </div>`).join('');
 }
 
-async function accept(id)      { await apiFetch(`${BASE}/${id}/accept`, 'POST'); loadOrders(); }
-async function markReady(id)   { await apiFetch(`${BASE}/${id}/ready`, 'POST'); loadOrders(); }
-async function serve(id)       { await apiFetch(`${BASE}/${id}/served`, 'POST'); loadOrders(); }
-async function cancelOrder(id) { if(confirm('Cancel?')) { await apiFetch(`${BASE}/${id}/cancel`, 'POST'); loadOrders(); } }
+/* ─── Event delegation for order action buttons ─── */
+document.getElementById('ordersContainer').addEventListener('click', async function(e) {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const { action, id } = btn.dataset;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  try {
+    if (action === 'accept') await apiFetch(`${BASE}/${id}/accept`, 'POST');
+    if (action === 'ready')  await apiFetch(`${BASE}/${id}/ready`,  'POST');
+    if (action === 'serve')  await apiFetch(`${BASE}/${id}/served`, 'POST');
+    if (action === 'cancel') {
+      if (!confirm('Cancel?')) { btn.disabled = false; btn.innerHTML = orig; return; }
+      await apiFetch(`${BASE}/${id}/cancel`, 'POST');
+    }
+    loadOrders();
+  } catch(err) { console.error(err); btn.disabled = false; btn.innerHTML = orig; }
+});
 
 /* ─── New order modal ─── */
 document.getElementById('addItemRow').addEventListener('click', () => {

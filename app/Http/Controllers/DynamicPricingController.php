@@ -111,6 +111,10 @@ class DynamicPricingController extends Controller
 
     private function clearCache(): void
     {
-        Cache::tags ? Cache::tags(['price_rules'])->flush() : Cache::flush();
+        try {
+            Cache::tags(['price_rules'])->flush();
+        } catch (\BadMethodCallException $e) {
+            Cache::flush();
+        }
     }
 }

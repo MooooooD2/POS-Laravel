@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashbackRule;
+use App\Models\CashbackTransaction;
 use App\Services\CashbackService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,26 @@ use Illuminate\Http\Request;
 class CashbackController extends Controller
 {
     public function __construct(private CashbackService $cashback) {}
+
+    /**
+     * Cashback management page (web).
+     */
+    public function indexPage()
+    {
+        $activeRule   = CashbackRule::where('is_active', true)->latest()->first();
+        $allRules     = CashbackRule::orderByDesc('is_active')->orderByDesc('created_at')->get();
+        $totalEarned  = CashbackTransaction::where('type', 'earned')->sum('amount');
+        $totalRedeemed = CashbackTransaction::where('type', 'redeemed')->sum('amount');
+        $totalBalance = \App\Models\Customer::sum('cashback_balance');
+        $recentTxns   = CashbackTransaction::with('customer')
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        return view('cashback.index', compact(
+            'activeRule', 'allRules', 'totalEarned', 'totalRedeemed', 'totalBalance', 'recentTxns'
+        ));
+    }
 
     /**
      * Get customer cashback balance.

@@ -50,7 +50,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 
 async function revokeSession(id) {

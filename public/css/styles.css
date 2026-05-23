@@ -930,21 +930,28 @@ body.rtl .toast-container {
     border-radius: 10px;
 }
 
-/* Sidebar owner panel divider & section label */
+/* Sidebar section divider & section label */
 .sidebar-divider {
-    border-top: 1px solid rgba(255,255,255,0.1);
-    margin: 0.5rem 1rem;
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    margin: 0.6rem 1rem 0.2rem;
 }
 .sidebar-section-label {
-    padding: 0.6rem 1.25rem 0.25rem;
-    font-size: 0.65rem;
+    padding: 0.45rem 1.25rem 0.3rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
-    opacity: 0.5;
-    color: inherit;
+    color: #6fa8d0;
+    opacity: 1;
     pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+/* Hide section labels & thin dividers in compact mode (icon-only) */
+#sidebar.compact .sidebar-section-label { display: none; }
+#sidebar.compact .sidebar-divider { margin: 0.35rem 0.5rem; }
 
 /* ── Nuqtah Sidebar Brand Logo ─────────────────────────────────────────── */
 .brand-logo {

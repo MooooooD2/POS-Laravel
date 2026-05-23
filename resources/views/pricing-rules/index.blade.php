@@ -5,7 +5,7 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
   <p class="text-muted mb-0">Configure time-based, bulk, and smart pricing rules.</p>
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ruleModal" onclick="openCreate()">
+  <button class="btn btn-primary" id="newRuleBtn" data-bs-toggle="modal" data-bs-target="#ruleModal">
     <i class="fas fa-plus me-1"></i> New Rule
   </button>
 </div>
@@ -48,7 +48,7 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Rule Type</label>
-            <select class="form-select" id="ruleType" onchange="toggleTypeFields()">
+            <select class="form-select" id="ruleType">
               <option value="happy_hour">⏰ Happy Hour</option>
               <option value="bulk_discount">📦 Bulk Discount</option>
               <option value="day_of_week">📅 Day of Week</option>
@@ -137,12 +137,14 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 const API  = '/api/pricing-rules';
 
-let editId = null;
+let editId  = null;
+let ruleMap = new Map();   // id → rule object for edit lookups
 
+/* ─── Rule type → show/hide field groups ─── */
 function toggleTypeFields() {
   const type = document.getElementById('ruleType').value;
   document.querySelectorAll('.time-fields').forEach(el => el.style.display = type === 'happy_hour' ? '' : 'none');
@@ -150,6 +152,7 @@ function toggleTypeFields() {
   document.querySelectorAll('.bulk-fields').forEach(el => el.style.display = type === 'bulk_discount' ? '' : 'none');
 }
 
+/* ─── Open create modal ─── */
 function openCreate() {
   editId = null;
   document.getElementById('ruleModalTitle').textContent = 'New Pricing Rule';
@@ -164,6 +167,7 @@ function openCreate() {
   toggleTypeFields();
 }
 
+/* ─── Open edit modal ─── */
 function openEdit(rule) {
   editId = rule.id;
   document.getElementById('ruleModalTitle').textContent = 'Edit Rule';
@@ -187,6 +191,7 @@ function openEdit(rule) {
   new bootstrap.Modal(document.getElementById('ruleModal')).show();
 }
 
+/* ─── Save rule (create or update) ─── */
 document.getElementById('saveRuleBtn').addEventListener('click', async () => {
   const dows = [...document.querySelectorAll('.dow-cb:checked')].map(cb => parseInt(cb.value));
   const payload = {
@@ -223,6 +228,7 @@ document.getElementById('saveRuleBtn').addEventListener('click', async () => {
   }
 });
 
+/* ─── Toggle / Delete ─── */
 async function toggleRule(id) {
   await fetch(`${API}/${id}/toggle`, { method: 'PATCH', headers: { 'X-CSRF-TOKEN': CSRF } });
   loadRules();
@@ -234,8 +240,29 @@ async function deleteRule(id) {
   loadRules();
 }
 
+/* ─── Event delegation on rules table (replaces all onclick= in template strings) ─── */
+document.getElementById('rulesTable').addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const { action, id } = btn.dataset;
+  if (action === 'edit')   openEdit(ruleMap.get(parseInt(id)));
+  if (action === 'toggle') toggleRule(id);
+  if (action === 'delete') deleteRule(id);
+});
+
+/* ─── New Rule button ─── */
+document.getElementById('newRuleBtn').addEventListener('click', openCreate);
+
+/* ─── Rule Type select change ─── */
+document.getElementById('ruleType').addEventListener('change', toggleTypeFields);
+
+/* ─── Load rules ─── */
 async function loadRules() {
   const data = await fetch(API, { headers: { 'Accept': 'application/json' } }).then(r => r.json());
+
+  // Rebuild lookup map for edit
+  ruleMap.clear();
+  data.forEach(r => ruleMap.set(r.id, r));
 
   // Check happy hour
   const happyHourActive = data.some(r => r.rule_type === 'happy_hour' && r.is_currently_active);
@@ -253,9 +280,9 @@ async function loadRules() {
       <td><span class="badge bg-${r.is_active ? 'success' : 'secondary'}">${r.is_active ? 'Active' : 'Inactive'}</span></td>
       <td>${r.is_currently_active ? '<span class="badge bg-warning text-dark">✓ Now</span>' : '–'}</td>
       <td>
-        <button class="btn btn-sm btn-outline-secondary" onclick='openEdit(${JSON.stringify(r)})'>Edit</button>
-        <button class="btn btn-sm btn-outline-${r.is_active ? 'warning' : 'success'}" onclick="toggleRule(${r.id})">${r.is_active ? 'Disable' : 'Enable'}</button>
-        <button class="btn btn-sm btn-outline-danger" onclick="deleteRule(${r.id})">Del</button>
+        <button class="btn btn-sm btn-outline-secondary" data-action="edit"   data-id="${r.id}">Edit</button>
+        <button class="btn btn-sm btn-outline-${r.is_active ? 'warning' : 'success'}" data-action="toggle" data-id="${r.id}">${r.is_active ? 'Disable' : 'Enable'}</button>
+        <button class="btn btn-sm btn-outline-danger"    data-action="delete" data-id="${r.id}">Del</button>
       </td>
     </tr>`).join('') || '<tr><td colspan="8" class="text-center text-muted py-3">No rules yet</td></tr>';
 }

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>{{ $table->table_name }} — Menu</title>
-<style>
+<style @nonce>
   :root {
     --primary: #f59e0b;
     --dark: #1e293b;
@@ -210,7 +210,7 @@
     <div style="font-size:.75rem;color:#94a3b8;">📍 {{ $table->table_name }}</div>
     <h1>Our Menu</h1>
   </div>
-  <button class="cart-btn" onclick="openCart()">
+  <button class="cart-btn" id="openCartBtn">
     🛒 Cart <span class="cart-badge" id="cartCount">0</span>
   </button>
 </div>
@@ -220,7 +220,7 @@
 <div class="products" id="productsGrid"></div>
 
 {{-- Cart overlay --}}
-<div class="cart-overlay" id="cartOverlay" onclick="closeCartOnBg(event)">
+<div class="cart-overlay" id="cartOverlay">
   <div class="cart-sheet" id="cartSheet">
     <h2>🛒 Your Order</h2>
     <div id="cartItemsList"></div>
@@ -230,7 +230,7 @@
       <input type="tel" id="custPhone" placeholder="Phone (optional)">
     </div>
     <textarea class="cart-note" id="orderNote" rows="2" placeholder="Special instructions…"></textarea>
-    <button class="checkout-btn" id="placeOrderBtn" onclick="placeOrder()">Place Order</button>
+    <button class="checkout-btn" id="placeOrderBtn">Place Order</button>
   </div>
 </div>
 
@@ -240,10 +240,10 @@
   <h2>Order Placed!</h2>
   <p id="successMsg">We've received your order and the kitchen is preparing it.</p>
   <p style="font-size:.85rem;color:var(--muted);">Order #<span id="orderId"></span></p>
-  <button class="track-btn" onclick="backToMenu()">Back to Menu</button>
+  <button class="track-btn" id="backToMenuBtn">Back to Menu</button>
 </div>
 
-<script>
+<script @nonce>
 const PRODUCTS = @json($products);
 const TABLE_TOKEN = "{{ $table->token }}";
 const API_ORDER   = `/qr/${TABLE_TOKEN}/order`;
@@ -266,7 +266,7 @@ function init() {
 function renderCatTabs(active) {
   const tabs = document.getElementById('catTabs');
   tabs.innerHTML = allCategories.map(c =>
-    `<button class="cat-btn${c === active ? ' active' : ''}" onclick="filterBy('${escHtml(c)}')">${escHtml(c)}</button>`
+    `<button class="cat-btn${c === active ? ' active' : ''}" data-cat="${escHtml(c)}">${escHtml(c)}</button>`
   ).join('');
 }
 
@@ -280,7 +280,7 @@ function renderProducts(cat) {
   document.getElementById('productsGrid').innerHTML = list.map(p => {
     const inCart = cart[p.id];
     const qty    = inCart ? inCart.qty : 0;
-    return `<div class="product-card${qty ? ' in-cart' : ''}" data-qty="${qty}" onclick="addToCart(${p.id})" data-id="${p.id}">
+    return `<div class="product-card${qty ? ' in-cart' : ''}" data-qty="${qty}" data-id="${p.id}">
       ${p.image
         ? `<img class="product-img" src="${escHtml(p.image)}" alt="${escHtml(p.name)}" loading="lazy">`
         : `<div class="product-img-placeholder">🍽</div>`}
@@ -346,9 +346,9 @@ function renderCartItems() {
     return `<div class="cart-item">
       <span class="cart-item-name">${escHtml(p.name)}</span>
       <div class="qty-controls">
-        <button class="qty-btn qty-minus" onclick="updateQty(${p.id},-1)">−</button>
+        <button class="qty-btn qty-minus" data-id="${p.id}" data-delta="-1">−</button>
         <span>${qty}</span>
-        <button class="qty-btn qty-plus" onclick="updateQty(${p.id},1)">+</button>
+        <button class="qty-btn qty-plus" data-id="${p.id}" data-delta="1">+</button>
       </div>
       <span class="cart-item-price">${formatMoney(sub)}</span>
     </div>`;
@@ -408,6 +408,33 @@ function formatMoney(n) { return parseFloat(n).toFixed(2); }
 function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 init();
+
+/* ─── Static HTML listeners ─── */
+document.getElementById('openCartBtn').addEventListener('click', openCart);
+document.getElementById('cartOverlay').addEventListener('click', closeCartOnBg);
+document.getElementById('placeOrderBtn').addEventListener('click', placeOrder);
+document.getElementById('backToMenuBtn').addEventListener('click', backToMenu);
+
+/* ─── Event delegation: category tabs ─── */
+document.getElementById('catTabs').addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-cat]');
+  if (!btn) return;
+  filterBy(btn.dataset.cat);
+});
+
+/* ─── Event delegation: product cards ─── */
+document.getElementById('productsGrid').addEventListener('click', function(e) {
+  const card = e.target.closest('.product-card[data-id]');
+  if (!card) return;
+  addToCart(parseInt(card.dataset.id));
+});
+
+/* ─── Event delegation: cart qty buttons ─── */
+document.getElementById('cartItemsList').addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-delta]');
+  if (!btn) return;
+  updateQty(parseInt(btn.dataset.id), parseInt(btn.dataset.delta));
+});
 </script>
 
 {{-- Need CSRF for the POST --}}

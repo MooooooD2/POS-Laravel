@@ -72,7 +72,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 function copyUrl(id) {
   const input = document.getElementById(`url-${id}`);
   input.select();

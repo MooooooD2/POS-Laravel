@@ -1,310 +1,302 @@
 <!DOCTYPE html>
-<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
+<html lang="{{ app()->getLocale() }}" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>{{ __('pos.kitchen_display') ?? 'Kitchen Display System' }}</title>
-<style>
-  :root {
-    --kds-bg: #0f172a;
-    --card-pending: #78350f;
-    --card-preparing: #1e3a5f;
-    --card-ready: #14532d;
-    --urgent: #dc2626;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--kds-bg);
-    color: #f1f5f9;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  /* ─── Header ─── */
-  .kds-header {
-    background: #1e293b;
-    padding: 10px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #334155;
-  }
-  .kds-header h1 { font-size: 1.4rem; font-weight: 700; color: #f59e0b; }
-  .kds-clock { font-size: 1.6rem; font-weight: 700; color: #38bdf8; font-variant-numeric: tabular-nums; }
-  .kds-stats { display: flex; gap: 16px; }
-  .stat-pill {
-    padding: 4px 14px; border-radius: 20px; font-size: .85rem; font-weight: 600;
-  }
-  .stat-pending  { background: #78350f; }
-  .stat-preparing{ background: #1e3a5f; }
-  .stat-ready    { background: #14532d; }
-
-  /* ─── Grid ─── */
-  .kds-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 14px;
-    padding: 16px;
-  }
-
-  /* ─── Cards ─── */
-  .order-card {
-    border-radius: 12px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    animation: fadeIn .3s ease;
-    position: relative;
-    border: 2px solid transparent;
-    transition: border-color .3s;
-  }
-  .order-card.urgent { border-color: var(--urgent) !important; animation: urgentPulse 1.5s infinite; }
-  .order-card.status-pending   { background: #451a03; border-color: #92400e; }
-  .order-card.status-preparing { background: #0c1a2e; border-color: #1d4ed8; }
-  .order-card.status-ready     { background: #052e16; border-color: #16a34a; }
-
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .order-num { font-size: 1.4rem; font-weight: 800; color: #f59e0b; }
-  .table-num { font-size: .85rem; background: #334155; padding: 2px 10px; border-radius: 20px; }
-  .order-type { font-size: .75rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
-  .elapsed {
-    font-size: .75rem;
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: #1e293b;
-  }
-  .elapsed.urgent { background: var(--urgent); color: #fff; font-weight: 700; }
-
-  .items-list { list-style: none; }
-  .item-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
-    gap: 8px;
-  }
-  .item-row:last-child { border: none; }
-  .item-qty  { font-weight: 700; font-size: 1.1rem; color: #fbbf24; min-width: 30px; }
-  .item-name { flex: 1; font-size: .95rem; }
-  .item-note { font-size: .75rem; color: #94a3b8; display: block; }
-  .item-status { font-size: .7rem; padding: 2px 6px; border-radius: 4px; }
-  .item-status.done { background: #14532d; }
-
-  .card-notes { font-size: .8rem; color: #cbd5e1; background: #1e293b; padding: 6px 8px; border-radius: 6px; }
-
-  .card-actions { display: flex; gap: 8px; margin-top: 4px; }
-  .btn-kds {
-    flex: 1;
-    padding: 8px;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: .85rem;
-    cursor: pointer;
-    transition: opacity .2s;
-  }
-  .btn-kds:hover { opacity: .85; }
-  .btn-accept  { background: #2563eb; color: #fff; }
-  .btn-ready   { background: #16a34a; color: #fff; }
-  .btn-serve   { background: #9333ea; color: #fff; }
-  .btn-cancel  { background: #dc2626; color: #fff; }
-
-  /* ─── Empty state ─── */
-  .kds-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 60vh;
-    color: #475569;
-    gap: 12px;
-  }
-  .kds-empty svg { width: 80px; height: 80px; opacity: .3; }
-  .kds-empty h2 { font-size: 1.5rem; }
-
-  /* ─── Animations ─── */
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes urgentPulse {
-    0%, 100% { border-color: var(--urgent); box-shadow: 0 0 0 0 rgba(220,38,38,.4); }
-    50%       { border-color: #fca5a5; box-shadow: 0 0 0 8px rgba(220,38,38,0); }
-  }
-
-  /* ─── Sound icon ─── */
-  .sound-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; }
+<title>Kitchen Display</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style @nonce>
+  html,body{height:100%;overflow:hidden;background:#f8f9fa;}
+  body{display:flex;flex-direction:column;}
+  .scroll-area{flex:1;overflow-y:auto;}
+  .kds-clock{font-size:1.6rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.03em;}
+  .card-top-bar{height:4px;border-radius:0;}
+  .urgent-card{animation:urgentPulse 2s ease-in-out infinite;}
+  @keyframes urgentPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,53,69,.4);}50%{box-shadow:0 0 0 8px rgba(220,53,69,0);}}
+  @keyframes fadeInUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  .order-card{animation:fadeInUp .2s ease;}
+  .conn-live{width:9px;height:9px;border-radius:50%;background:#198754;display:inline-block;animation:livePulse 2s infinite;}
+  .conn-dead{width:9px;height:9px;border-radius:50%;background:#dc3545;display:inline-block;}
+  @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(25,135,84,.5);}70%{box-shadow:0 0 0 6px rgba(25,135,84,0);}100%{box-shadow:0 0 0 0 rgba(25,135,84,0);}}
+  .elapsed-danger{animation:blinkBadge 1s step-end infinite;}
+  @keyframes blinkBadge{0%,100%{opacity:1;}50%{opacity:.3;}}
 </style>
 </head>
 <body>
 
-<div class="kds-header">
-  <h1>🍳 Kitchen Display</h1>
-  <div class="kds-stats">
-    <span class="stat-pill stat-pending" id="statPending">Pending: 0</span>
-    <span class="stat-pill stat-preparing" id="statPreparing">Cooking: 0</span>
-    <span class="stat-pill stat-ready" id="statReady">Ready: 0</span>
+{{-- ═══ NAVBAR ═══ --}}
+<nav class="navbar bg-white border-bottom shadow-sm px-3 py-2" style="flex-shrink:0">
+  <div class="d-flex align-items-center gap-2">
+    <span class="bg-warning rounded-2 d-flex align-items-center justify-content-center text-white fw-bold"
+          style="width:36px;height:36px;font-size:1.1rem">🍳</span>
+    <div>
+      <div class="fw-bold text-dark lh-1" style="font-size:.95rem">Kitchen Display</div>
+      <div class="text-muted lh-1" style="font-size:.6rem;letter-spacing:.07em;text-transform:uppercase">Live Orders</div>
+    </div>
+    <span class="conn-live ms-1" id="connDot"></span>
   </div>
-  <div style="display:flex;align-items:center;gap:12px;">
-    <button class="sound-btn" id="soundToggle" title="Toggle sound">🔔</button>
-    <div class="kds-clock" id="clock">--:--:--</div>
+
+  <div class="mx-auto text-center d-none d-md-block">
+    <div class="kds-clock text-dark" id="clock">00:00:00</div>
+    <div class="text-muted" id="clockDate" style="font-size:.62rem;text-transform:uppercase;letter-spacing:.05em"></div>
+  </div>
+
+  <div class="d-flex align-items-center gap-2">
+    <span class="badge rounded-pill text-bg-warning d-flex align-items-center gap-1 px-3 py-2">
+      <i class="fas fa-hourglass-half fa-xs"></i>
+      <span id="statPending" class="fw-bold fs-6">0</span>
+      <span class="d-none d-sm-inline fw-normal">Pending</span>
+    </span>
+    <span class="badge rounded-pill text-bg-primary d-flex align-items-center gap-1 px-3 py-2">
+      <i class="fas fa-fire fa-xs"></i>
+      <span id="statCooking" class="fw-bold fs-6">0</span>
+      <span class="d-none d-sm-inline fw-normal">Cooking</span>
+    </span>
+    <span class="badge rounded-pill text-bg-success d-flex align-items-center gap-1 px-3 py-2">
+      <i class="fas fa-bell fa-xs"></i>
+      <span id="statReady" class="fw-bold fs-6">0</span>
+      <span class="d-none d-sm-inline fw-normal">Ready</span>
+    </span>
+    <button class="btn btn-sm btn-outline-secondary" id="soundToggle" title="Toggle sound">
+      <i class="fas fa-volume-high" id="soundIcon"></i>
+    </button>
+  </div>
+</nav>
+
+{{-- ═══ FILTER TABS ═══ --}}
+<div class="bg-white border-bottom px-3" style="flex-shrink:0">
+  <ul class="nav nav-tabs border-0" id="filterTabs">
+    <li class="nav-item">
+      <button class="nav-link active fw-semibold" data-filter="all">
+        <i class="fas fa-table-cells-large fa-xs me-1"></i>All Orders
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link fw-semibold text-warning" data-filter="pending">
+        <i class="fas fa-hourglass-half fa-xs me-1"></i>Pending
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link fw-semibold text-primary" data-filter="preparing">
+        <i class="fas fa-fire fa-xs me-1"></i>Cooking
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link fw-semibold text-success" data-filter="ready">
+        <i class="fas fa-check-circle fa-xs me-1"></i>Ready
+      </button>
+    </li>
+  </ul>
+</div>
+
+{{-- ═══ ORDERS GRID ═══ --}}
+<div class="scroll-area p-3" id="ordersGrid">
+  <div class="d-flex align-items-center justify-content-center" style="height:60vh">
+    <div class="text-center text-muted">
+      <div class="spinner-border text-secondary mb-3"></div>
+      <div class="small">Loading…</div>
+    </div>
   </div>
 </div>
 
-<div id="ordersGrid" class="kds-grid"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script @nonce>
+const API  = '{{ route("api.kitchen.orders") }}';
+const BASE = '{{ url("api/kitchen") }}';
+const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 
-<audio id="newOrderSound" preload="auto">
-  <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAA..." type="audio/wav">
-</audio>
+let knownIds = new Set(), soundOn = true, currentFilter = 'all', allOrders = [];
 
-<script>
-const API    = '{{ route("api.kitchen.orders") }}';
-const ACCEPT = (id) => `{{ url("api/kitchen") }}/${id}/accept`;
-const READY  = (id) => `{{ url("api/kitchen") }}/${id}/ready`;
-const SERVED = (id) => `{{ url("api/kitchen") }}/${id}/served`;
-const CANCEL = (id) => `{{ url("api/kitchen") }}/${id}/cancel`;
-const CSRF   = document.querySelector('meta[name="csrf-token"]').content;
-
-let knownIds    = new Set();
-let soundOn     = true;
-let pollInterval;
-
-/* ─── Clock ─── */
-function updateClock() {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+/* Clock */
+function tick() {
+  const n = new Date();
+  document.getElementById('clock').textContent     = n.toLocaleTimeString('en-GB');
+  document.getElementById('clockDate').textContent = n.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
 }
-setInterval(updateClock, 1000);
-updateClock();
+setInterval(tick, 1000); tick();
 
-/* ─── Sound toggle ─── */
+/* Sound */
 document.getElementById('soundToggle').addEventListener('click', function () {
   soundOn = !soundOn;
-  this.textContent = soundOn ? '🔔' : '🔕';
+  document.getElementById('soundIcon').className = soundOn ? 'fas fa-volume-high' : 'fas fa-volume-xmark';
+  this.classList.toggle('btn-outline-danger',   !soundOn);
+  this.classList.toggle('btn-outline-secondary', soundOn);
 });
-
-function playNewOrderSound() {
+function playAlert() {
   if (!soundOn) return;
   try {
-    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.5, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.5);
-  } catch (e) {}
+    const c = new (window.AudioContext||window.webkitAudioContext)();
+    [[880,0],[1100,.14],[880,.28]].forEach(([f,w])=>{
+      const o=c.createOscillator(),g=c.createGain();
+      o.connect(g);g.connect(c.destination);o.frequency.value=f;
+      g.gain.setValueAtTime(.35,c.currentTime+w);
+      g.gain.exponentialRampToValueAtTime(.001,c.currentTime+w+.11);
+      o.start(c.currentTime+w);o.stop(c.currentTime+w+.11);
+    });
+  } catch(e){}
 }
 
-/* ─── API helpers ─── */
-async function apiFetch(url, method = 'GET') {
-  const res = await fetch(url, {
-    method,
-    headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+/* Filter tabs */
+document.querySelectorAll('#filterTabs .nav-link').forEach(t => {
+  t.addEventListener('click', function(){
+    document.querySelectorAll('#filterTabs .nav-link').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+    currentFilter = this.dataset.filter;
+    renderGrid(allOrders);
   });
-  return res.json();
+});
+
+/* API */
+async function req(url, method='GET') {
+  const r = await fetch(url,{method,credentials:'same-origin',headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'}});
+  return r.json();
 }
 
-/* ─── Render ─── */
-function elapsedLabel(minutes, urgent) {
-  const cls = urgent ? 'elapsed urgent' : 'elapsed';
-  return `<span class="${cls}">${minutes}m</span>`;
+/* Helpers */
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function elapsedBadge(min, urgent) {
+  const cls = (urgent||min>=20) ? 'badge text-bg-danger elapsed-danger'
+            : (min>=10)         ? 'badge text-bg-warning'
+            : 'badge text-bg-secondary';
+  return `<span class="${cls}"><i class="fas fa-clock fa-xs me-1"></i>${min}m</span>`;
 }
 
-function statusLabel(status) {
-  const map = { pending: '⏳ Pending', preparing: '🔥 Cooking', ready: '✅ Ready' };
-  return map[status] ?? status;
-}
+const TYPE = {dine_in:'fa-utensils',takeaway:'fa-bag-shopping',delivery:'fa-motorcycle',qr_order:'fa-qrcode'};
+const STATUS = {
+  pending:   {color:'warning', label:'Pending',  icon:'fa-hourglass-half'},
+  preparing: {color:'primary', label:'Cooking',  icon:'fa-fire'},
+  ready:     {color:'success', label:'Ready',    icon:'fa-check-circle'},
+};
 
-function renderOrder(o) {
-  const urgent   = o.is_urgent_val;
-  const elapsed  = o.elapsed_minutes_val ?? 0;
-  const items    = (o.items ?? []).map(item => `
-    <li class="item-row">
-      <span class="item-qty">×${parseFloat(item.quantity)}</span>
-      <span class="item-name">
-        ${escHtml(item.product_name)}
-        ${item.notes ? `<span class="item-note">⚠ ${escHtml(item.notes)}</span>` : ''}
+/* Render card */
+function renderCard(o) {
+  const urgent = o.is_urgent_val;
+  const elapsed = o.elapsed_minutes_val ?? 0;
+  const sm = STATUS[o.status] ?? STATUS.pending;
+  const tIcon = TYPE[o.order_type] ?? 'fa-circle-dot';
+  const tLabel = (o.order_type??'').replace('_',' ');
+
+  const items = (o.items??[]).map(item=>`
+    <li class="list-group-item px-3 py-2 d-flex align-items-start gap-2 border-0 border-bottom${item.status==='done'?' text-muted':''}">
+      <span class="badge text-bg-warning rounded-2 fw-bold flex-shrink-0" style="font-size:.8rem;min-width:26px">
+        ${parseFloat(item.quantity)}
       </span>
-      ${item.status === 'done' ? '<span class="item-status done">Done</span>' : ''}
+      <div class="flex-grow-1">
+        <div class="small fw-medium${item.status==='done'?' text-decoration-line-through':''}">${esc(item.product_name)}</div>
+        ${item.notes?`<div class="badge text-bg-warning text-wrap text-start mt-1 fw-normal" style="font-size:.68rem"><i class="fas fa-triangle-exclamation fa-xs me-1"></i>${esc(item.notes)}</div>`:''}
+      </div>
+      ${item.status==='done'?`<span class="badge text-bg-success flex-shrink-0"><i class="fas fa-check fa-xs"></i></span>`:''}
     </li>`).join('');
 
-  const actions = (() => {
-    if (o.status === 'pending')   return `<button class="btn-kds btn-accept" onclick="accept(${o.id})">✓ Accept</button><button class="btn-kds btn-cancel" onclick="cancelOrder(${o.id})">✕ Cancel</button>`;
-    if (o.status === 'preparing') return `<button class="btn-kds btn-ready" onclick="markReady(${o.id})">🔔 Ready</button><button class="btn-kds btn-cancel" onclick="cancelOrder(${o.id})">✕ Cancel</button>`;
-    if (o.status === 'ready')     return `<button class="btn-kds btn-serve" onclick="serve(${o.id})">🍽 Served</button>`;
-    return '';
-  })();
+  let actions = '';
+  if (o.status==='pending')
+    actions=`<button class="btn btn-primary flex-fill" data-action="accept" data-id="${o.id}"><i class="fas fa-check me-1"></i>Accept</button>
+             <button class="btn btn-outline-danger" style="width:44px" data-action="cancel" data-id="${o.id}" title="Cancel"><i class="fas fa-xmark"></i></button>`;
+  else if (o.status==='preparing')
+    actions=`<button class="btn btn-success flex-fill" data-action="ready" data-id="${o.id}"><i class="fas fa-bell me-1"></i>Mark Ready</button>
+             <button class="btn btn-outline-danger" style="width:44px" data-action="cancel" data-id="${o.id}" title="Cancel"><i class="fas fa-xmark"></i></button>`;
+  else if (o.status==='ready')
+    actions=`<button class="btn btn-purple flex-fill btn-outline-secondary" data-action="serve" data-id="${o.id}"><i class="fas fa-concierge-bell me-1"></i>Mark Served</button>`;
 
   return `
-  <div class="order-card status-${o.status}${urgent ? ' urgent' : ''}" id="order-${o.id}" data-id="${o.id}">
-    <div class="card-header">
-      <span class="order-num">#${escHtml(o.order_number)}</span>
-      ${o.table_number ? `<span class="table-num">Table ${escHtml(o.table_number)}</span>` : ''}
-      ${elapsedLabel(elapsed, urgent)}
+<div class="card order-card h-100 shadow-sm border-${sm.color}${urgent?' urgent-card border-danger':''}" id="order-${o.id}" data-id="${o.id}">
+  <div class="card-top-bar bg-${urgent?'danger':sm.color}"></div>
+  <div class="card-header bg-${sm.color}-subtle border-bottom border-${sm.color} border-opacity-25 py-2 px-3">
+    <div class="d-flex justify-content-between align-items-start gap-2">
+      <div>
+        <div class="fw-black text-dark lh-1 mb-1" style="font-size:1.3rem">#${esc(o.order_number)}</div>
+        <div class="d-flex flex-wrap gap-1">
+          <span class="badge text-bg-secondary rounded-pill fw-normal" style="font-size:.68rem">
+            <i class="fas ${tIcon} fa-xs me-1"></i>${tLabel||'Order'}
+          </span>
+          <span class="badge text-bg-${sm.color} rounded-pill fw-normal" style="font-size:.68rem">
+            <i class="fas ${sm.icon} fa-xs me-1"></i>${sm.label}
+          </span>
+        </div>
+      </div>
+      <div class="d-flex flex-column align-items-end gap-1">
+        ${o.table_number?`<span class="badge text-bg-light border fw-normal" style="font-size:.68rem"><i class="fas fa-chair fa-xs me-1"></i>Table ${esc(o.table_number)}</span>`:''}
+        ${elapsedBadge(elapsed,urgent)}
+      </div>
     </div>
-    <div class="order-type">${o.order_type?.replace('_',' ').toUpperCase()} · ${statusLabel(o.status)}</div>
-    <ul class="items-list">${items}</ul>
-    ${o.notes ? `<div class="card-notes">📝 ${escHtml(o.notes)}</div>` : ''}
-    <div class="card-actions">${actions}</div>
-  </div>`;
+  </div>
+
+  <ul class="list-group list-group-flush flex-grow-1">${items}</ul>
+
+  ${o.notes?`<div class="card-body py-2 px-3 border-top bg-warning-subtle">
+    <small class="text-warning-emphasis"><i class="fas fa-note-sticky me-1"></i>${esc(o.notes)}</small>
+  </div>`:''}
+
+  ${actions?`<div class="card-footer bg-transparent pt-2 pb-2 border-top d-flex gap-2">${actions}</div>`:''}
+</div>`;
 }
 
-function escHtml(str) {
-  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-/* ─── Poll ─── */
-async function poll() {
-  try {
-    const { orders, stats } = await apiFetch(API);
-
-    // detect new orders
-    orders.forEach(o => {
-      if (!knownIds.has(o.id)) { playNewOrderSound(); }
-      knownIds.add(o.id);
+/* Render grid */
+function renderGrid(orders) {
+  const grid = document.getElementById('ordersGrid');
+  const list = (currentFilter==='all' ? [...orders] : orders.filter(o=>o.status===currentFilter))
+    .sort((a,b)=>{
+      if(a.is_urgent_val!==b.is_urgent_val) return a.is_urgent_val?-1:1;
+      return (b.elapsed_minutes_val??0)-(a.elapsed_minutes_val??0);
     });
 
-    // update stats
-    document.getElementById('statPending').textContent   = `Pending: ${stats.pending}`;
-    document.getElementById('statPreparing').textContent = `Cooking: ${stats.preparing}`;
-    document.getElementById('statReady').textContent     = `Ready: ${stats.ready}`;
-
-    // render grid
-    const grid = document.getElementById('ordersGrid');
-    if (orders.length === 0) {
-      grid.innerHTML = `
-        <div class="kds-empty" style="grid-column:1/-1">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
-          </svg>
-          <h2>No active orders</h2>
-          <p>Waiting for orders…</p>
-        </div>`;
-    } else {
-      grid.innerHTML = orders.map(renderOrder).join('');
-    }
-  } catch (e) {
-    console.error('KDS poll error', e);
+  if (!list.length) {
+    const msg = currentFilter==='all' ? 'No active orders' : 'No '+currentFilter+' orders';
+    grid.innerHTML=`
+      <div class="d-flex flex-column align-items-center justify-content-center gap-3 text-center py-5">
+        <div class="display-1">🍽️</div>
+        <div class="fw-semibold text-muted fs-5">${msg}</div>
+        <div class="text-muted small">Waiting for new orders…</div>
+      </div>`;
+    return;
   }
+
+  grid.innerHTML=`<div class="row g-3">${
+    list.map(o=>`<div class="col-12 col-sm-6 col-lg-4 col-xxl-3">${renderCard(o)}</div>`).join('')
+  }</div>`;
 }
 
-/* ─── Actions ─── */
-async function accept(id)      { await apiFetch(ACCEPT(id), 'POST'); await poll(); }
-async function markReady(id)   { await apiFetch(READY(id),  'POST'); await poll(); }
-async function serve(id)       { await apiFetch(SERVED(id), 'POST'); await poll(); }
-async function cancelOrder(id) { if (confirm('Cancel this order?')) { await apiFetch(CANCEL(id), 'POST'); await poll(); } }
+/* Event delegation */
+document.getElementById('ordersGrid').addEventListener('click', async function(e){
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const {action,id} = btn.dataset;
+  const orig = btn.innerHTML;
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner-border spinner-border-sm"></span>';
+  try {
+    if(action==='accept') await req(`${BASE}/${id}/accept`,'POST');
+    if(action==='ready')  await req(`${BASE}/${id}/ready`, 'POST');
+    if(action==='serve')  await req(`${BASE}/${id}/served`,'POST');
+    if(action==='cancel'){
+      if(!confirm('Cancel this order?')){btn.disabled=false;btn.innerHTML=orig;return;}
+      await req(`${BASE}/${id}/cancel`,'POST');
+    }
+    await poll();
+  } catch(err){ console.error(err); btn.disabled=false; btn.innerHTML=orig; }
+});
 
-/* ─── Start polling ─── */
+/* Poll */
+async function poll(){
+  try {
+    const {orders=[],stats={}} = await req(API);
+    orders.forEach(o=>{ if(!knownIds.has(o.id)) playAlert(); knownIds.add(o.id); });
+    document.getElementById('statPending').textContent = stats.pending??0;
+    document.getElementById('statCooking').textContent = stats.preparing??0;
+    document.getElementById('statReady').textContent   = stats.ready??0;
+    allOrders=orders; renderGrid(orders);
+    const d=document.getElementById('connDot');
+    d.className='conn-live ms-1';
+  } catch(e){
+    console.error(e);
+    document.getElementById('connDot').className='conn-dead ms-1';
+  }
+}
 poll();
-pollInterval = setInterval(poll, 8000); // refresh every 8 seconds
+setInterval(poll,8000);
 </script>
 </body>
 </html>

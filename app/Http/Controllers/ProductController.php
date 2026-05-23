@@ -33,19 +33,15 @@ class ProductController extends Controller
     public function all(Request $request)
     {
         $request->validate([
-            'search' => 'nullable|string|max:100',
-            'category' => 'nullable|string|max:100',
-            'low_stock' => 'nullable|boolean',
-            'per_page' => 'nullable|integer|min:10|max:200',
-            'all' => 'nullable|boolean',
+            'search'    => 'nullable|string|max:100',
+            'category'  => 'nullable|string|max:100',
+            'low_stock' => 'nullable|in:0,1,true,false',
+            'per_page'  => 'nullable|integer|min:10|max:200',
+            'all'       => 'nullable|in:0,1,true,false',
         ]);
 
-        $filters = $request->only(['search', 'category', 'low_stock', 'per_page']);
-        // Cap unbounded fetch: only honour all=true for filtered queries to avoid
-        // loading the entire catalogue into memory on large installations.
-        $fetchAll = $request->boolean('all') && (
-            ! empty($filters['search']) || ! empty($filters['category'])
-        );
+        $filters  = $request->only(['search', 'category', 'low_stock', 'per_page']);
+        $fetchAll = $request->boolean('all');
 
         $products = $this->productRepo->all($filters, $fetchAll);
 

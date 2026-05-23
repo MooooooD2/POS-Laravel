@@ -9,29 +9,33 @@ return new class extends Migration
     public function up(): void
     {
         // Cashback configuration
-        Schema::create('cashback_rules', function (Blueprint $table) {
-            $table->id();
-            $table->string('name', 100);
-            $table->decimal('percentage', 5, 2)->default(0);  // % of invoice total
-            $table->decimal('min_purchase', 15, 2)->default(0); // minimum purchase to earn
-            $table->decimal('max_cashback', 15, 2)->nullable(); // cap per transaction
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('cashback_rules')) {
+            Schema::create('cashback_rules', function (Blueprint $table) {
+                $table->id();
+                $table->string('name', 100);
+                $table->decimal('percentage', 5, 2)->default(0);  // % of invoice total
+                $table->decimal('min_purchase', 15, 2)->default(0); // minimum purchase to earn
+                $table->decimal('max_cashback', 15, 2)->nullable(); // cap per transaction
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+        }
 
         // Cashback ledger per customer
-        Schema::create('cashback_transactions', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('customer_id')->index();
-            $table->unsignedBigInteger('invoice_id')->nullable()->index();
-            $table->enum('type', ['earned', 'redeemed', 'expired', 'adjusted']);
-            $table->decimal('amount', 15, 2);
-            $table->decimal('balance_after', 15, 2);
-            $table->string('description', 255)->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('cashback_transactions')) {
+            Schema::create('cashback_transactions', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('customer_id')->index();
+                $table->unsignedBigInteger('invoice_id')->nullable()->index();
+                $table->enum('type', ['earned', 'redeemed', 'expired', 'adjusted']);
+                $table->decimal('amount', 15, 2);
+                $table->decimal('balance_after', 15, 2);
+                $table->string('description', 255)->nullable();
+                $table->timestamps();
 
-            $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
-        });
+                $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
+            });
+        }
 
         // Add cashback balance column to customers
         if (!Schema::hasColumn('customers', 'cashback_balance')) {

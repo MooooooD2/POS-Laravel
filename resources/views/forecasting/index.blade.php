@@ -9,10 +9,10 @@
     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#salesTab">📈 Sales Forecast</button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#productTab" onclick="loadProductForecast()">📦 Product Demand</button>
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#productTab" data-fn="loadProductForecast">📦 Product Demand</button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#stockTab" onclick="loadStockForecast()">⚠️ Stock Depletion</button>
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#stockTab" data-fn="loadStockForecast">⚠️ Stock Depletion</button>
   </li>
 </ul>
 
@@ -43,7 +43,7 @@
             </select>
           </div>
           <div class="col-md-3">
-            <button class="btn btn-primary w-100" onclick="loadSalesForecast()">
+            <button class="btn btn-primary w-100" data-fn="loadSalesForecast">
               <i class="fas fa-robot me-1"></i> Generate Forecast
             </button>
           </div>
@@ -116,7 +116,7 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script>
+<script @nonce>
 let salesChartObj = null;
 
 async function apiFetch(url) {
