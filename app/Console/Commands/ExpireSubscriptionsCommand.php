@@ -7,7 +7,8 @@ use Illuminate\Console\Command;
 
 class ExpireSubscriptionsCommand extends Command
 {
-    protected $signature   = 'subscription:expire';
+    protected $signature = 'subscription:expire';
+
     protected $description = 'Mark expired trials and subscriptions as expired';
 
     public function handle(): int

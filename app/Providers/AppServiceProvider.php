@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
@@ -36,30 +37,38 @@ class AppServiceProvider extends ServiceProvider
         // Custom Blade directives for permissions
         // Cast to App\Models\User so the IDE resolves Spatie HasRoles methods correctly.
         Blade::if('permission', function ($permission) {
-            /** @var \App\Models\User|null $user */
+            /** @var User|null $user */
             $user = auth()->user();
+
             return $user && $user->can($permission);
         });
 
         Blade::if('role', function ($role) {
-            /** @var \App\Models\User|null $user */
+            /** @var User|null $user */
             $user = auth()->user();
+
             return $user && $user->hasRole($role);
         });
 
         Blade::if('anyrole', function ($roles) {
-            /** @var \App\Models\User|null $user */
+            /** @var User|null $user */
             $user = auth()->user();
-            if (!$user) return false;
+            if (! $user) {
+                return false;
+            }
             $roles = \is_array($roles) ? $roles : \func_get_args();
+
             return $user->hasAnyRole($roles);
         });
 
         Blade::if('allroles', function ($roles) {
-            /** @var \App\Models\User|null $user */
+            /** @var User|null $user */
             $user = auth()->user();
-            if (!$user) return false;
+            if (! $user) {
+                return false;
+            }
             $roles = \is_array($roles) ? $roles : \func_get_args();
+
             return $user->hasAllRoles($roles);
         });
     }

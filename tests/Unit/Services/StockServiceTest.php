@@ -30,9 +30,9 @@ class StockServiceTest extends TestCase
 
         $this->assertEquals(15, $product->fresh()->quantity);
         $this->assertDatabaseHas('stock_movements', [
-            'product_id'    => $product->id,
+            'product_id' => $product->id,
             'movement_type' => 'add',
-            'quantity'      => 5,
+            'quantity' => 5,
         ]);
     }
 
@@ -44,9 +44,9 @@ class StockServiceTest extends TestCase
 
         $this->assertEquals(6, $product->fresh()->quantity);
         $this->assertDatabaseHas('stock_movements', [
-            'product_id'    => $product->id,
+            'product_id' => $product->id,
             'movement_type' => 'sale',
-            'quantity'      => 4,
+            'quantity' => 4,
         ]);
     }
 

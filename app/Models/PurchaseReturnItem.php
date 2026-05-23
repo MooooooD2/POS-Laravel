@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PurchaseReturnItem extends Model
 {
@@ -13,15 +14,15 @@ class PurchaseReturnItem extends Model
 
     protected $casts = [
         'unit_cost' => 'decimal:4',
-        'subtotal'  => 'decimal:2',
+        'subtotal' => 'decimal:2',
     ];
 
-    public function purchaseReturn(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function purchaseReturn(): BelongsTo
     {
         return $this->belongsTo(PurchaseReturn::class);
     }
 
-    public function product(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }

@@ -15,8 +15,8 @@ class EtaSubmission extends Model
     protected $casts = [
         'accepted_documents' => 'array',
         'rejected_documents' => 'array',
-        'raw_request'        => 'array',
-        'raw_response'       => 'array',
-        'submitted_at'       => 'datetime',
+        'raw_request' => 'array',
+        'raw_response' => 'array',
+        'submitted_at' => 'datetime',
     ];
 }

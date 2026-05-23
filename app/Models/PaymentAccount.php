@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 class PaymentAccount extends Model
@@ -18,7 +19,7 @@ class PaymentAccount extends Model
         'is_active' => 'boolean',
     ];
 
-    public static function configured(): \Illuminate\Database\Eloquent\Collection
+    public static function configured(): Collection
     {
         return static::where('is_active', true)
             ->whereNotNull('account_number')
@@ -27,7 +28,7 @@ class PaymentAccount extends Model
             ->get();
     }
 
-    public static function all_active(): \Illuminate\Database\Eloquent\Collection
+    public static function all_active(): Collection
     {
         return static::orderBy('sort_order')->get();
     }

@@ -36,15 +36,15 @@ return [
     ],
 
     'paymob' => [
-        'api_key'                 => env('PAYMOB_API_KEY'),
-        'hmac_secret'             => env('PAYMOB_HMAC_SECRET'),
-        'card_integration_id'     => env('PAYMOB_CARD_INTEGRATION_ID'),
-        'card_iframe_id'          => env('PAYMOB_CARD_IFRAME_ID'),
-        'fawry_integration_id'    => env('PAYMOB_FAWRY_INTEGRATION_ID'),
+        'api_key' => env('PAYMOB_API_KEY'),
+        'hmac_secret' => env('PAYMOB_HMAC_SECRET'),
+        'card_integration_id' => env('PAYMOB_CARD_INTEGRATION_ID'),
+        'card_iframe_id' => env('PAYMOB_CARD_IFRAME_ID'),
+        'fawry_integration_id' => env('PAYMOB_FAWRY_INTEGRATION_ID'),
         'vodafone_integration_id' => env('PAYMOB_VODAFONE_INTEGRATION_ID'),
         'etisalat_integration_id' => env('PAYMOB_ETISALAT_INTEGRATION_ID'),
-        'orange_integration_id'   => env('PAYMOB_ORANGE_INTEGRATION_ID'),
-        'instapay_id'             => env('PAYMOB_INSTAPAY_ID', '01000000000'),
+        'orange_integration_id' => env('PAYMOB_ORANGE_INTEGRATION_ID'),
+        'instapay_id' => env('PAYMOB_INSTAPAY_ID', '01000000000'),
     ],
 
 ];

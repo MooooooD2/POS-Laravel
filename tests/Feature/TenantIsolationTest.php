@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\InitializeTenancyBySession;
+use App\Models\JournalEntry;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -34,7 +38,7 @@ class TenantIsolationTest extends TestCase
     {
         $app = parent::createApplication();
 
-        $app['db']->extend('tenant', fn() => $app['db']->connection('sqlite'));
+        $app['db']->extend('tenant', fn () => $app['db']->connection('sqlite'));
 
         return $app;
     }
@@ -42,36 +46,37 @@ class TenantIsolationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
     }
 
     // ── Layer 1: Middleware behaviour ────────────────────────────────────────
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function middleware_skips_initialization_when_no_tenant_in_session(): void
     {
-        $middleware = new InitializeTenancyBySession();
-        $request    = Request::create('/api/dashboard-data', 'GET');
+        $middleware = new InitializeTenancyBySession;
+        $request = Request::create('/api/dashboard-data', 'GET');
         $request->setLaravelSession(app('session')->driver('array'));
 
         $called = false;
         $middleware->handle($request, function () use (&$called) {
             $called = true;
+
             return new Response('OK');
         });
 
         $this->assertTrue($called, 'Next middleware must be called when there is no tenant_id in session');
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function middleware_removes_stale_session_when_tenant_is_deleted(): void
     {
         $request = Request::create('/api/dashboard-data', 'GET');
         $request->setLaravelSession(app('session')->driver('array'));
         $request->session()->put('tenant_id', 'nonexistent-uuid-9999');
 
-        $middleware = new InitializeTenancyBySession();
-        $middleware->handle($request, fn() => new Response('OK'));
+        $middleware = new InitializeTenancyBySession;
+        $middleware->handle($request, fn () => new Response('OK'));
 
         $this->assertFalse(
             $request->session()->has('tenant_id'),
@@ -79,7 +84,7 @@ class TenantIsolationTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function unauthenticated_request_to_any_api_returns_401(): void
     {
         $endpoints = [
@@ -99,7 +104,7 @@ class TenantIsolationTest extends TestCase
 
     // ── Layer 2: Permission-based isolation ──────────────────────────────────
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function cashier_cannot_access_accounting_endpoints(): void
     {
         /** @var User $cashier */
@@ -111,7 +116,7 @@ class TenantIsolationTest extends TestCase
         $this->actingAs($cashier)->getJson('/api/reports/balance-sheet')->assertStatus(403);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function cashier_cannot_access_user_management(): void
     {
         /** @var User $cashier */
@@ -122,7 +127,7 @@ class TenantIsolationTest extends TestCase
         $this->actingAs($cashier)->getJson('/api/roles')->assertStatus(403);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function cashier_cannot_manage_roles_or_permissions(): void
     {
         /** @var User $cashier */
@@ -138,7 +143,7 @@ class TenantIsolationTest extends TestCase
             ->assertStatus(403);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function cashier_cannot_access_sales_reports(): void
     {
         /** @var User $cashier */
@@ -150,7 +155,7 @@ class TenantIsolationTest extends TestCase
             ->assertStatus(403);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function protected_admin_role_returns_404_on_sync_by_name(): void
     {
         /** @var User $admin */
@@ -163,7 +168,7 @@ class TenantIsolationTest extends TestCase
             ->assertStatus(404);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function inactive_user_cannot_access_protected_api(): void
     {
         /** @var User $inactive */
@@ -173,7 +178,7 @@ class TenantIsolationTest extends TestCase
         $this->actingAs($inactive)->getJson('/api/products')->assertStatus(403);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function deactivated_user_loses_api_access_immediately(): void
     {
         /** @var User $user */
@@ -184,7 +189,7 @@ class TenantIsolationTest extends TestCase
         $this->actingAs($user)->getJson('/api/products')->assertStatus(403);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function password_is_never_exposed_in_user_api_responses(): void
     {
         /** @var User $admin */
@@ -201,7 +206,7 @@ class TenantIsolationTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function products_are_visible_to_authenticated_warehouse_user(): void
     {
         /** @var User $warehouse */
@@ -217,7 +222,7 @@ class TenantIsolationTest extends TestCase
         $this->assertContains($product->id, $ids->all());
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function audit_logs_endpoint_requires_accounting_permission(): void
     {
         /** @var User $cashier */
@@ -227,7 +232,7 @@ class TenantIsolationTest extends TestCase
         $this->actingAs($cashier)->getJson('/api/audit-logs')->assertStatus(403);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function permissions_audit_report_requires_reports_permission(): void
     {
         /** @var User $cashier */
@@ -237,7 +242,7 @@ class TenantIsolationTest extends TestCase
         $this->actingAs($cashier)->getJson('/api/reports/permissions-audit')->assertStatus(403);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function post_and_reverse_journal_entry_require_accounting_permission(): void
     {
         /** @var User $cashier */
@@ -246,10 +251,10 @@ class TenantIsolationTest extends TestCase
 
         // SubstituteBindings resolves {entry} before permission middleware fires,
         // so a real entry must exist to get 403 rather than 404.
-        $entry = \App\Models\JournalEntry::create([
+        $entry = JournalEntry::create([
             'entry_number' => 'JE-PERM-TEST-001',
-            'entry_date'   => '2026-01-01',
-            'description'  => 'Permission test entry',
+            'entry_date' => '2026-01-01',
+            'description' => 'Permission test entry',
         ]);
 
         $this->actingAs($cashier)->postJson("/api/journal-entries/{$entry->id}/post")->assertStatus(403);
@@ -258,7 +263,7 @@ class TenantIsolationTest extends TestCase
             ->assertStatus(403);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    #[Test]
     public function inventory_valuation_report_requires_reports_permission(): void
     {
         /** @var User $cashier */
@@ -272,8 +277,8 @@ class TenantIsolationTest extends TestCase
     // Run: php artisan test --group=integration
     // These verify actual DB-level data isolation between two separate tenant databases.
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('integration')]
+    #[Test]
+    #[Group('integration')]
     public function tenant_a_products_are_not_visible_in_tenant_b_context(): void
     {
         if (config('database.default') === 'sqlite') {
@@ -296,8 +301,8 @@ class TenantIsolationTest extends TestCase
         $tenantB->delete();
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('integration')]
+    #[Test]
+    #[Group('integration')]
     public function users_from_different_tenants_share_no_data(): void
     {
         if (config('database.default') === 'sqlite') {

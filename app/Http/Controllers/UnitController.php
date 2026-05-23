@@ -19,12 +19,14 @@ class UnitController extends Controller
     public function store(StoreUnitRequest $request)
     {
         $unit = Unit::create($request->validated());
+
         return $this->success(['unit' => $unit], '', 201);
     }
 
     public function update(UpdateUnitRequest $request, Unit $unit)
     {
         $unit->update($request->validated());
+
         return $this->success(['unit' => $unit->fresh()]);
     }
 
@@ -35,6 +37,7 @@ class UnitController extends Controller
         }
 
         $unit->delete();
+
         return $this->success(message: __('pos.unit_deleted'));
     }
 }

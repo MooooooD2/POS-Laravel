@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\Repositories\SupplierAccountRepositoryInterface;
@@ -14,7 +15,7 @@ class SupplierPaymentService
     public function __construct(
         private SupplierPaymentRepositoryInterface $paymentRepo,
         private SupplierAccountRepositoryInterface $accountRepo,
-        private SupplierRepositoryInterface        $supplierRepo,
+        private SupplierRepositoryInterface $supplierRepo,
     ) {}
 
     public function all(array $filters): LengthAwarePaginator
@@ -28,9 +29,9 @@ class SupplierPaymentService
 
         return DB::transaction(function () use ($data, $supplier) {
             // Lock the latest account entry to get an authoritative balance
-            $last        = $this->accountRepo->latestEntry($data['supplier_id']);
-            $balance     = $last ? (float) $last->balance : 0.0;
-            $payAmount   = (float) $data['amount'];
+            $last = $this->accountRepo->latestEntry($data['supplier_id']);
+            $balance = $last ? (float) $last->balance : 0.0;
+            $payAmount = (float) $data['amount'];
 
             if ($balance <= 0) {
                 throw new \DomainException(__('pos.supplier_no_outstanding_balance'));
@@ -38,7 +39,7 @@ class SupplierPaymentService
 
             if ($payAmount > $balance) {
                 throw new \DomainException(__('pos.supplier_payment_exceeds_balance', [
-                    'amount'  => number_format($payAmount, 2),
+                    'amount' => number_format($payAmount, 2),
                     'balance' => number_format($balance, 2),
                 ]));
             }
@@ -46,23 +47,23 @@ class SupplierPaymentService
             $paymentNumber = SequenceService::next('payment');
 
             $payment = $this->paymentRepo->create(array_merge($data, [
-                'payment_number'  => $paymentNumber,
-                'supplier_name'   => $supplier->name,
-                'created_by'      => Auth::id(),
+                'payment_number' => $paymentNumber,
+                'supplier_name' => $supplier->name,
+                'created_by' => Auth::id(),
                 'created_by_name' => Auth::user()?->full_name ?? '',
             ]));
 
             // $balance already resolved above; use it directly for the account entry
             $this->accountRepo->create([
-                'supplier_id'      => $data['supplier_id'],
+                'supplier_id' => $data['supplier_id'],
                 'transaction_type' => 'payment',
-                'reference_id'     => (int) $payment->id,
+                'reference_id' => (int) $payment->id,
                 'reference_number' => $paymentNumber,
-                'debit'            => 0,
-                'credit'           => $data['amount'],
-                'balance'          => $balance - $payAmount,
-                'notes'            => $data['notes'] ?? null,
-                'created_by'       => Auth::id(),
+                'debit' => 0,
+                'credit' => $data['amount'],
+                'balance' => $balance - $payAmount,
+                'notes' => $data['notes'] ?? null,
+                'created_by' => Auth::id(),
             ]);
 
             return $payment;

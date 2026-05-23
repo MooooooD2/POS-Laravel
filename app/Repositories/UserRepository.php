@@ -1,15 +1,17 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\UserRepositoryInterface;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 
 class UserRepository extends BaseRepository implements UserRepositoryInterface
 {
     public function __construct()
     {
-        $this->model = new User();
+        $this->model = new User;
     }
 
     public function allWithRoles(): Collection
@@ -27,20 +29,22 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
         return User::create($data);
     }
 
-    public function update(User|\Illuminate\Database\Eloquent\Model $user, array $data): User
+    public function update(User|Model $user, array $data): User
     {
         $user->update($data);
+
         return $user->fresh()->load('roles');
     }
 
-    public function delete(User|\Illuminate\Database\Eloquent\Model $user): void
+    public function delete(User|Model $user): void
     {
         $user->delete();
     }
 
     public function toggleActive(User $user): User
     {
-        $user->update(['is_active' => !$user->is_active]);
+        $user->update(['is_active' => ! $user->is_active]);
+
         return $user->fresh();
     }
 

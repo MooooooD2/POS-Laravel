@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\PurchaseOrder;
 use App\Models\TaxCategory;
@@ -21,15 +20,15 @@ class TaxCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name_ar'    => 'required|string|max:100',
-            'name_en'    => 'required|string|max:100',
-            'code'       => 'required|string|max:20|unique:tax_categories,code',
-            'rate'       => 'required|numeric|min:0|max:100',
+            'name_ar' => 'required|string|max:100',
+            'name_en' => 'required|string|max:100',
+            'code' => 'required|string|max:20|unique:tax_categories,code',
+            'rate' => 'required|numeric|min:0|max:100',
             'is_default' => 'boolean',
-            'is_active'  => 'boolean',
+            'is_active' => 'boolean',
         ]);
 
-        if (!empty($data['is_default'])) {
+        if (! empty($data['is_default'])) {
             TaxCategory::where('is_default', true)->update(['is_default' => false]);
         }
 
@@ -41,15 +40,15 @@ class TaxCategoryController extends Controller
     public function update(Request $request, TaxCategory $taxCategory): JsonResponse
     {
         $data = $request->validate([
-            'name_ar'    => 'sometimes|string|max:100',
-            'name_en'    => 'sometimes|string|max:100',
-            'code'       => ['sometimes', 'string', 'max:20', Rule::unique('tax_categories', 'code')->ignore($taxCategory->id)],
-            'rate'       => 'sometimes|numeric|min:0|max:100',
+            'name_ar' => 'sometimes|string|max:100',
+            'name_en' => 'sometimes|string|max:100',
+            'code' => ['sometimes', 'string', 'max:20', Rule::unique('tax_categories', 'code')->ignore($taxCategory->id)],
+            'rate' => 'sometimes|numeric|min:0|max:100',
             'is_default' => 'boolean',
-            'is_active'  => 'boolean',
+            'is_active' => 'boolean',
         ]);
 
-        if (!empty($data['is_default'])) {
+        if (! empty($data['is_default'])) {
             TaxCategory::where('is_default', true)->where('id', '!=', $taxCategory->id)->update(['is_default' => false]);
         }
 
@@ -77,7 +76,7 @@ class TaxCategoryController extends Controller
     {
         $request->validate([
             'from' => 'required|date',
-            'to'   => 'required|date|after_or_equal:from',
+            'to' => 'required|date|after_or_equal:from',
         ]);
 
         $rows = InvoiceItem::query()
@@ -95,17 +94,17 @@ class TaxCategoryController extends Controller
             ->get();
 
         return response()->json([
-            'from'    => $request->from,
-            'to'      => $request->to,
-            'by_rate' => $rows->map(fn($r) => [
-                'tax_rate'      => (float) $r->tax_rate,
+            'from' => $request->from,
+            'to' => $request->to,
+            'by_rate' => $rows->map(fn ($r) => [
+                'tax_rate' => (float) $r->tax_rate,
                 'taxable_amount' => round((float) $r->taxable_amount, 2),
                 'tax_collected' => round((float) $r->tax_collected, 2),
                 'invoice_count' => (int) $r->invoice_count,
             ])->values(),
-            'totals'  => [
+            'totals' => [
                 'taxable_amount' => round($rows->sum('taxable_amount'), 2),
-                'tax_collected'  => round($rows->sum('tax_collected'), 2),
+                'tax_collected' => round($rows->sum('tax_collected'), 2),
             ],
         ]);
     }
@@ -145,33 +144,33 @@ class TaxCategoryController extends Controller
 
         $months = [];
         for ($m = 1; $m <= 12; $m++) {
-            $row       = $rows->get($m);
-            $poRow     = $poRows->get($m);
+            $row = $rows->get($m);
+            $poRow = $poRows->get($m);
             $collected = round((float) ($row->tax_collected ?? 0), 2);
-            $inputTax  = round((float) ($poRow->input_tax  ?? 0), 2);
-            $months[]  = [
-                'month'           => $m,
-                'taxable_amount'  => round((float) ($row->taxable_amount ?? 0), 2),
-                'tax_collected'   => $collected,
-                'input_tax'       => $inputTax,
+            $inputTax = round((float) ($poRow->input_tax ?? 0), 2);
+            $months[] = [
+                'month' => $m,
+                'taxable_amount' => round((float) ($row->taxable_amount ?? 0), 2),
+                'tax_collected' => $collected,
+                'input_tax' => $inputTax,
                 'net_tax_payable' => round($collected - $inputTax, 2),
-                'gross_revenue'   => round((float) ($row->gross_revenue  ?? 0), 2),
-                'invoice_count'   => (int) ($row->invoice_count ?? 0),
+                'gross_revenue' => round((float) ($row->gross_revenue ?? 0), 2),
+                'invoice_count' => (int) ($row->invoice_count ?? 0),
             ];
         }
 
         $totalCollected = round(collect($months)->sum('tax_collected'), 2);
-        $totalInputTax  = round(collect($months)->sum('input_tax'), 2);
+        $totalInputTax = round(collect($months)->sum('input_tax'), 2);
 
         return response()->json([
-            'year'   => $year,
+            'year' => $year,
             'months' => $months,
             'totals' => [
-                'taxable_amount'  => round($rows->sum('taxable_amount'), 2),
-                'tax_collected'   => $totalCollected,
-                'input_tax'       => $totalInputTax,
+                'taxable_amount' => round($rows->sum('taxable_amount'), 2),
+                'tax_collected' => $totalCollected,
+                'input_tax' => $totalInputTax,
                 'net_tax_payable' => round($totalCollected - $totalInputTax, 2),
-                'gross_revenue'   => round($rows->sum('gross_revenue'), 2),
+                'gross_revenue' => round($rows->sum('gross_revenue'), 2),
             ],
         ]);
     }

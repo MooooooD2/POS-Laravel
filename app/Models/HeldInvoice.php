@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HeldInvoice extends Model
 {
@@ -14,19 +15,19 @@ class HeldInvoice extends Model
     ];
 
     protected $casts = [
-        'cart_data'       => 'array',
-        'subtotal'        => 'float',
+        'cart_data' => 'array',
+        'subtotal' => 'float',
         'discount_amount' => 'float',
-        'total'           => 'float',
-        'expires_at'      => 'datetime',
+        'total' => 'float',
+        'expires_at' => 'datetime',
     ];
 
-    public function cashier(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function cashier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cashier_id');
     }
 
-    public function customer(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }

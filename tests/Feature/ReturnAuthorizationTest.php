@@ -1,10 +1,12 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -18,7 +20,7 @@ class ReturnAuthorizationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
     }
 
     /** @test */
@@ -28,8 +30,8 @@ class ReturnAuthorizationTest extends TestCase
         $user = User::factory()->create(['is_active' => true]);
 
         $response = $this->actingAs($user)->postJson('/api/returns', [
-            'invoice_id'    => 1,
-            'items'         => [['product_id' => 1, 'quantity' => 1]],
+            'invoice_id' => 1,
+            'items' => [['product_id' => 1, 'quantity' => 1]],
             'refund_method' => 'cash',
         ]);
 
@@ -47,13 +49,13 @@ class ReturnAuthorizationTest extends TestCase
         InvoiceItem::factory()->create([
             'invoice_id' => $invoice->id,
             'product_id' => $product->id,
-            'quantity'   => 5,
-            'price'      => 100,
+            'quantity' => 5,
+            'price' => 100,
         ]);
 
         $response = $this->actingAs($cashier)->postJson('/api/returns', [
-            'invoice_id'    => $invoice->id,
-            'items'         => [['product_id' => $product->id, 'quantity' => 1]],
+            'invoice_id' => $invoice->id,
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'refund_method' => 'cash',
         ]);
 

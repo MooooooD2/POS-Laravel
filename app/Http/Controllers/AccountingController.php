@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Contracts\Repositories\AccountRepositoryInterface;
@@ -19,12 +20,15 @@ class AccountingController extends Controller
     use ApiResponse, AuditLog;
 
     public function __construct(
-        private AccountingService              $accountingService,
-        private AccountRepositoryInterface     $accountRepo,
+        private AccountingService $accountingService,
+        private AccountRepositoryInterface $accountRepo,
         private JournalEntryRepositoryInterface $journalRepo,
     ) {}
 
-    public function index() { return view('accounting.index'); }
+    public function index()
+    {
+        return view('accounting.index');
+    }
 
     public function allAccounts()
     {
@@ -36,18 +40,20 @@ class AccountingController extends Controller
         $this->authorize('create', Account::class);
         $account = $this->accountRepo->create($request->validated());
         $this->audit('account.created', Account::class, (int) $account->id);
+
         return $this->success(['account' => $account], '', 201);
     }
 
     public function updateAccount(Request $request, Account $account)
     {
         $this->authorize('update', $account);
-        $data    = $request->validate([
+        $data = $request->validate([
             'account_name' => 'required|string|max:255',
-            'description'  => 'nullable|string|max:500',
+            'description' => 'nullable|string|max:500',
         ]);
         $updated = $this->accountRepo->update($account, $data);
         $this->audit('account.updated', Account::class, (int) $updated->id);
+
         return $this->success(['account' => $updated]);
     }
 
@@ -59,6 +65,7 @@ class AccountingController extends Controller
         }
         $this->accountRepo->delete($account);
         $this->audit('account.deleted', Account::class, (int) $account->id);
+
         return $this->success();
     }
 
@@ -66,9 +73,10 @@ class AccountingController extends Controller
     {
         $request->validate([
             'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
         $entries = $this->journalRepo->paginate($request->only(['start_date', 'end_date']));
+
         return $this->success(['entries' => $entries]);
     }
 
@@ -83,6 +91,7 @@ class AccountingController extends Controller
         try {
             $entry = $this->accountingService->createJournalEntry($data);
             $this->audit('journal.created', JournalEntry::class, (int) $entry->id);
+
             return $this->success(['entry' => $entry], '', 201);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -99,6 +108,7 @@ class AccountingController extends Controller
         try {
             $posted = $this->accountingService->postEntry($entry);
             $this->audit('journal.posted', JournalEntry::class, (int) $entry->id);
+
             return $this->success(['entry' => $posted->load('lines.account')]);
         } catch (\DomainException $e) {
             return $this->error($e->getMessage(), 422);
@@ -121,6 +131,7 @@ class AccountingController extends Controller
             $this->audit('journal.reversed', JournalEntry::class, (int) $entry->id, [
                 'reversal_entry_id' => $reversal->id,
             ]);
+
             return $this->success(['reversal' => $reversal], '', 201);
         } catch (\DomainException $e) {
             return $this->error($e->getMessage(), 422);
@@ -139,6 +150,7 @@ class AccountingController extends Controller
         try {
             $count = $this->accountingService->recalculateAllBalances();
             $this->audit('accounting.balances_recalculated', Account::class, 0, ['accounts_updated' => $count]);
+
             return $this->success(['accounts_updated' => $count]);
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 500);
@@ -151,20 +163,20 @@ class AccountingController extends Controller
     public function auditLogs(Request $request)
     {
         $data = $request->validate([
-            'action'     => 'nullable|string|max:100',
-            'model'      => 'nullable|string|max:150',
-            'user_id'    => 'nullable|integer|exists:users,id',
+            'action' => 'nullable|string|max:100',
+            'model' => 'nullable|string|max:150',
+            'user_id' => 'nullable|integer|exists:users,id',
             'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
-            'per_page'   => 'nullable|integer|min:10|max:200',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'per_page' => 'nullable|integer|min:10|max:200',
         ]);
 
         $logs = AuditLogModel::query()
-            ->when($data['action']     ?? null, fn($q, $v) => $q->where('action', 'like', '%' . Str::escapeLike($v) . '%'))
-            ->when($data['model']      ?? null, fn($q, $v) => $q->where('model', $v))
-            ->when($data['user_id']    ?? null, fn($q, $v) => $q->where('user_id', $v))
-            ->when($data['start_date'] ?? null, fn($q, $v) => $q->whereDate('created_at', '>=', $v))
-            ->when($data['end_date']   ?? null, fn($q, $v) => $q->whereDate('created_at', '<=', $v))
+            ->when($data['action'] ?? null, fn ($q, $v) => $q->where('action', 'like', '%'.Str::escapeLike($v).'%'))
+            ->when($data['model'] ?? null, fn ($q, $v) => $q->where('model', $v))
+            ->when($data['user_id'] ?? null, fn ($q, $v) => $q->where('user_id', $v))
+            ->when($data['start_date'] ?? null, fn ($q, $v) => $q->whereDate('created_at', '>=', $v))
+            ->when($data['end_date'] ?? null, fn ($q, $v) => $q->whereDate('created_at', '<=', $v))
             ->orderByDesc('created_at')
             ->paginate($data['per_page'] ?? 50);
 

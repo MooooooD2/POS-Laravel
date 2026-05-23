@@ -14,7 +14,7 @@ class PrintJob extends Model
     ];
 
     protected $casts = [
-        'attempts'     => 'integer',
+        'attempts' => 'integer',
         'max_attempts' => 'integer',
         'processed_at' => 'datetime',
         'completed_at' => 'datetime',
@@ -22,8 +22,15 @@ class PrintJob extends Model
 
     // ── Relationships ──────────────────────────────────────────────────────────
 
-    public function printer()   { return $this->belongsTo(Printer::class); }
-    public function createdBy() { return $this->belongsTo(User::class, 'created_by'); }
+    public function printer()
+    {
+        return $this->belongsTo(Printer::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 
     // ── Scopes ─────────────────────────────────────────────────────────────────
 
@@ -40,7 +47,7 @@ class PrintJob extends Model
     public function scopeRetryable($query)
     {
         return $query->where('status', 'failed')
-                     ->whereColumn('attempts', '<', 'max_attempts');
+            ->whereColumn('attempts', '<', 'max_attempts');
     }
 
     // ── State Transitions ──────────────────────────────────────────────────────
@@ -48,7 +55,7 @@ class PrintJob extends Model
     public function markAsProcessing(): void
     {
         $this->update([
-            'status'       => 'processing',
+            'status' => 'processing',
             'processed_at' => now(),
         ]);
     }
@@ -56,7 +63,7 @@ class PrintJob extends Model
     public function markAsCompleted(): void
     {
         $this->update([
-            'status'       => 'completed',
+            'status' => 'completed',
             'completed_at' => now(),
         ]);
     }
@@ -65,7 +72,7 @@ class PrintJob extends Model
     {
         $this->increment('attempts');
         $this->update([
-            'status'        => $this->attempts >= $this->max_attempts ? 'failed' : 'pending',
+            'status' => $this->attempts >= $this->max_attempts ? 'failed' : 'pending',
             'error_message' => $error,
         ]);
     }
@@ -76,6 +83,7 @@ class PrintJob extends Model
             return false;
         }
         $this->update(['status' => 'pending', 'error_message' => null]);
+
         return true;
     }
 }

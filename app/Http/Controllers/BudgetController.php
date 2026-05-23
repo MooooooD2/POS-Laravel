@@ -17,12 +17,12 @@ class BudgetController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'year'  => 'required|integer|min:2000|max:2100',
+            'year' => 'required|integer|min:2000|max:2100',
             'month' => 'nullable|integer|min:1|max:12',
         ]);
 
         $budgets = Budget::where('year', $request->year)
-            ->when($request->month, fn($q) => $q->where('month', $request->month))
+            ->when($request->month, fn ($q) => $q->where('month', $request->month))
             ->orderBy('month')
             ->orderBy('type')
             ->get();
@@ -33,27 +33,27 @@ class BudgetController extends Controller
     public function upsert(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'entries'                => 'required|array|min:1',
-            'entries.*.year'         => 'required|integer|min:2000|max:2100',
-            'entries.*.month'        => 'required|integer|min:1|max:12',
-            'entries.*.type'         => 'required|in:revenue,expense',
-            'entries.*.category'     => 'nullable|string|max:150',
-            'entries.*.amount'       => 'required|numeric|min:0',
-            'entries.*.notes'        => 'nullable|string|max:500',
+            'entries' => 'required|array|min:1',
+            'entries.*.year' => 'required|integer|min:2000|max:2100',
+            'entries.*.month' => 'required|integer|min:1|max:12',
+            'entries.*.type' => 'required|in:revenue,expense',
+            'entries.*.category' => 'nullable|string|max:150',
+            'entries.*.amount' => 'required|numeric|min:0',
+            'entries.*.notes' => 'nullable|string|max:500',
         ]);
 
         $saved = [];
         foreach ($data['entries'] as $entry) {
             $saved[] = Budget::updateOrCreate(
                 [
-                    'year'     => $entry['year'],
-                    'month'    => $entry['month'],
-                    'type'     => $entry['type'],
+                    'year' => $entry['year'],
+                    'month' => $entry['month'],
+                    'type' => $entry['type'],
                     'category' => $entry['category'] ?? null,
                 ],
                 [
                     'amount' => $entry['amount'],
-                    'notes'  => $entry['notes'] ?? null,
+                    'notes' => $entry['notes'] ?? null,
                 ]
             );
         }
@@ -64,13 +64,14 @@ class BudgetController extends Controller
     public function destroy(Budget $budget): JsonResponse
     {
         $budget->delete();
+
         return $this->success([], __('pos.budget_deleted'));
     }
 
     public function report(Request $request): JsonResponse
     {
         $request->validate([
-            'year'  => 'required|integer|min:2000|max:2100',
+            'year' => 'required|integer|min:2000|max:2100',
             'month' => 'nullable|integer|min:1|max:12',
         ]);
 

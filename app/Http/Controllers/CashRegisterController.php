@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\CashRegisterSession;
@@ -15,17 +16,20 @@ class CashRegisterController extends Controller
     use ApiResponse, AuditLog;
 
     public function __construct(
-        private CashRegisterService   $cashRegisterService,
+        private CashRegisterService $cashRegisterService,
         private ThermalPrinterService $printerService,
-        private SettingService        $settingService,
+        private SettingService $settingService,
     ) {}
 
     public function currentSession()
     {
         $session = $this->cashRegisterService->currentSession();
-        if (!$session) return $this->success(['session' => null]);
+        if (! $session) {
+            return $this->success(['session' => null]);
+        }
 
         $stats = $session->getRelation('stats');
+
         return $this->success(['session' => array_merge($session->toArray(), (array) $stats)]);
     }
 
@@ -33,7 +37,7 @@ class CashRegisterController extends Controller
     {
         $request->validate([
             'opening_amount' => 'required|numeric|min:0',
-            'notes'          => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         try {
@@ -53,12 +57,12 @@ class CashRegisterController extends Controller
     {
         $request->validate([
             'actual_cash' => 'required|numeric|min:0',
-            'notes'       => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $session = CashRegisterSession::findOrFail($id);
 
-        if ($session->cashier_id !== auth()->id() && !auth()->user()?->hasRole('admin')) {
+        if ($session->cashier_id !== auth()->id() && ! auth()->user()?->hasRole('admin')) {
             return $this->error(__('pos.cash_session_not_yours'), 403);
         }
 
@@ -66,6 +70,7 @@ class CashRegisterController extends Controller
             $closed = $this->cashRegisterService->close($session, $request->only(['actual_cash', 'notes']));
         } catch (\Exception $e) {
             $code = str_contains($e->getMessage(), 'آخر') ? 403 : 422;
+
             return $this->error($e->getMessage(), $code);
         }
 
@@ -80,14 +85,14 @@ class CashRegisterController extends Controller
             } catch (\Throwable $e) {
                 Log::warning('Auto-print failed for shift report', [
                     'session_id' => $closed->id,
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
                 $printResult = ['success' => false, 'fallback' => 'browser', 'message' => $e->getMessage()];
             }
         }
 
         return $this->success(array_filter([
-            'session'      => $closed,
+            'session' => $closed,
             'print_result' => $printResult,
         ]));
     }
@@ -95,14 +100,14 @@ class CashRegisterController extends Controller
     public function recordMovement(Request $request, int $id)
     {
         $request->validate([
-            'type'   => 'required|in:deposit,withdrawal',
+            'type' => 'required|in:deposit,withdrawal',
             'amount' => 'required|numeric|min:0.01',
             'reason' => 'nullable|string|max:500',
         ]);
 
         $session = CashRegisterSession::findOrFail($id);
 
-        if ($session->cashier_id !== auth()->id() && !auth()->user()?->hasRole('admin')) {
+        if ($session->cashier_id !== auth()->id() && ! auth()->user()?->hasRole('admin')) {
             return $this->error(__('pos.cash_session_not_yours'), 403);
         }
 
@@ -118,7 +123,7 @@ class CashRegisterController extends Controller
         }
 
         $this->audit('cash_session.movement', CashRegisterSession::class, $session->id, [
-            'type'   => $request->type,
+            'type' => $request->type,
             'amount' => $request->amount,
         ]);
 
@@ -129,9 +134,9 @@ class CashRegisterController extends Controller
     {
         $request->validate([
             'cashier_id' => 'nullable|exists:users,id',
-            'date_from'  => 'nullable|date',
-            'date_to'    => 'nullable|date',
-            'status'     => 'nullable|in:open,closed',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'status' => 'nullable|in:open,closed',
         ]);
 
         return $this->success(['sessions' => $this->cashRegisterService->history(

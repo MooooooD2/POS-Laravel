@@ -1,12 +1,20 @@
 <?php
+
 namespace App\Policies;
 
 use App\Models\User;
 
 class UserPolicy
 {
-    public function viewAny(User $user): bool { return $user->can('manage_roles'); }
-    public function create(User $user): bool  { return $user->can('manage_roles'); }
+    public function viewAny(User $user): bool
+    {
+        return $user->can('manage_roles');
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->can('manage_roles');
+    }
 
     public function update(User $auth, User $target): bool
     {

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserRequest;
@@ -18,6 +19,7 @@ class UserController extends Controller
     public function all()
     {
         $this->authorize('viewAny', User::class);
+
         return $this->success(['users' => $this->userService->all()]);
     }
 
@@ -26,6 +28,7 @@ class UserController extends Controller
         $this->authorize('create', User::class);
         $user = $this->userService->create($request->validated());
         $this->audit('user.created', User::class, (int) $user->id, ['username' => $user->username]);
+
         return $this->success(['user' => new UserResource($user)], '', 201);
     }
 
@@ -34,6 +37,7 @@ class UserController extends Controller
         $this->authorize('update', $user);
         $updated = $this->userService->update($user, $request->validated());
         $this->audit('user.updated', User::class, (int) $updated->id);
+
         return $this->success(['user' => new UserResource($updated)]);
     }
 
@@ -46,6 +50,7 @@ class UserController extends Controller
             return $this->error($e->getMessage(), 403);
         }
         $this->audit('user.deleted', User::class, (int) $user->id, ['username' => (string) $user->username]);
+
         return $this->success();
     }
 
@@ -58,6 +63,7 @@ class UserController extends Controller
             return $this->error($e->getMessage(), 403);
         }
         $this->audit('user.toggled', User::class, (int) $user->id, ['is_active' => $updated->is_active]);
+
         return $this->success(['is_active' => $updated->is_active]);
     }
 }

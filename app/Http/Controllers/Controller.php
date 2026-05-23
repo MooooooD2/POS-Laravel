@@ -1,4 +1,5 @@
 <?php
+
 // app/Http/Controllers/Controller.php
 
 namespace App\Http\Controllers;
@@ -16,7 +17,7 @@ class Controller extends BaseController
      */
     protected function checkPermission($permission)
     {
-        if (!auth()->user()->can($permission)) {
+        if (! auth()->user()->can($permission)) {
             abort(403, 'Unauthorized action.');
         }
     }

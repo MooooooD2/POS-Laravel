@@ -29,12 +29,12 @@ class ImpersonateController extends Controller
         $request->session()->put('impersonator_id', $admin->id);
 
         Log::channel('audit')->info('impersonate.start', [
-            'admin_id'    => $admin->id,
-            'admin_name'  => $admin->username,
-            'target_id'   => $user->id,
+            'admin_id' => $admin->id,
+            'admin_name' => $admin->username,
+            'target_id' => $user->id,
             'target_name' => $user->username,
-            'ip'          => $request->ip(),
-            'timestamp'   => now()->toIso8601String(),
+            'ip' => $request->ip(),
+            'timestamp' => now()->toIso8601String(),
         ]);
 
         Auth::login($user);
@@ -46,16 +46,17 @@ class ImpersonateController extends Controller
     {
         $adminId = $request->session()->pull('impersonator_id');
 
-        if (!$adminId) {
+        if (! $adminId) {
             return redirect()->route('dashboard');
         }
 
         $admin = User::find($adminId);
 
-        if (!$admin) {
+        if (! $admin) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+
             return redirect()->route('login');
         }
 

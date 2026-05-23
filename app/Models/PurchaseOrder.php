@@ -15,18 +15,44 @@ class PurchaseOrder extends Model
     ];
 
     protected $casts = [
-        'order_date'  => 'date',
+        'order_date' => 'date',
         'expected_date' => 'date',
         'received_date' => 'date',
-        'approved_at'   => 'datetime',
+        'approved_at' => 'datetime',
     ];
 
-    public function supplier()  { return $this->belongsTo(Supplier::class); }
-    public function items()     { return $this->hasMany(PurchaseOrderItem::class, 'po_id'); }
-    public function creator()   { return $this->belongsTo(User::class, 'created_by'); }
-    public function approver()  { return $this->belongsTo(User::class, 'approved_by'); }
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
 
-    public function isDraft(): bool    { return $this->status === 'draft'; }
-    public function isPending(): bool  { return $this->status === 'pending'; }
-    public function isApproved(): bool { return $this->status === 'approved'; }
+    public function items()
+    {
+        return $this->hasMany(PurchaseOrderItem::class, 'po_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
 }

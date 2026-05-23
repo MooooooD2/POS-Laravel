@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Product;
@@ -31,7 +32,7 @@ class BatchService
     {
         return ProductBatch::with('warehouse:id,name,code')
             ->where('product_id', $productId)
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->when($warehouseId, fn ($q) => $q->where('warehouse_id', $warehouseId))
             ->orderByRaw('expiry_date IS NULL, expiry_date ASC')
             ->get();
     }
@@ -44,7 +45,7 @@ class BatchService
         return ProductBatch::with('warehouse:id,name')
             ->active()
             ->where('product_id', $productId)
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->when($warehouseId, fn ($q) => $q->where('warehouse_id', $warehouseId))
             ->where('remaining_qty', '>', 0)
             ->fefo()
             ->get();
@@ -68,18 +69,18 @@ class BatchService
             $product = Product::findOrFail($data['product_id']);
 
             $batch = ProductBatch::create([
-                'product_id'       => $data['product_id'],
-                'warehouse_id'     => $data['warehouse_id'],
-                'batch_number'     => $data['batch_number'],
-                'lot_number'       => $data['lot_number'] ?? null,
+                'product_id' => $data['product_id'],
+                'warehouse_id' => $data['warehouse_id'],
+                'batch_number' => $data['batch_number'],
+                'lot_number' => $data['lot_number'] ?? null,
                 'manufacture_date' => $data['manufacture_date'] ?? null,
-                'expiry_date'      => $data['expiry_date'] ?? null,
-                'original_qty'     => $data['original_qty'],
-                'remaining_qty'    => $data['original_qty'],
-                'cost_price'       => $data['cost_price'] ?? null,
-                'supplier_id'      => $data['supplier_id'] ?? null,
-                'notes'            => $data['notes'] ?? null,
-                'status'           => 'active',
+                'expiry_date' => $data['expiry_date'] ?? null,
+                'original_qty' => $data['original_qty'],
+                'remaining_qty' => $data['original_qty'],
+                'cost_price' => $data['cost_price'] ?? null,
+                'supplier_id' => $data['supplier_id'] ?? null,
+                'notes' => $data['notes'] ?? null,
+                'status' => 'active',
             ]);
 
             // Route through StockService → logs movement, creates cost layer, updates avg_cost
@@ -97,13 +98,13 @@ class BatchService
             );
 
             Log::channel('audit')->info('batch.created', [
-                'batch_id'     => $batch->id,
+                'batch_id' => $batch->id,
                 'batch_number' => $batch->batch_number,
-                'product_id'   => $batch->product_id,
-                'qty'          => $batch->original_qty,
+                'product_id' => $batch->product_id,
+                'qty' => $batch->original_qty,
                 'warehouse_id' => $batch->warehouse_id,
-                'user_id'      => Auth::id(),
-                'timestamp'    => now()->toIso8601String(),
+                'user_id' => Auth::id(),
+                'timestamp' => now()->toIso8601String(),
             ]);
 
             return $batch->fresh();
@@ -125,10 +126,12 @@ class BatchService
         return DB::transaction(function () use ($batch, $newQty, $reason) {
             /** @var Product $product */
             $product = Product::findOrFail($batch->product_id);
-            $oldQty  = $batch->remaining_qty;
-            $diff    = $newQty - $oldQty;
+            $oldQty = $batch->remaining_qty;
+            $diff = $newQty - $oldQty;
 
-            if ($diff === 0) return $batch;
+            if ($diff === 0) {
+                return $batch;
+            }
 
             if ($diff > 0) {
                 $this->stockService->addStock(
@@ -149,16 +152,16 @@ class BatchService
 
             $batch->update([
                 'remaining_qty' => $newQty,
-                'status'        => $newQty <= 0 ? 'exhausted' : 'active',
+                'status' => $newQty <= 0 ? 'exhausted' : 'active',
             ]);
 
             Log::channel('audit')->info('batch.adjusted', [
-                'batch_id'  => $batch->id,
-                'old_qty'   => $oldQty,
-                'new_qty'   => $newQty,
-                'diff'      => $diff,
-                'reason'    => $reason,
-                'user_id'   => Auth::id(),
+                'batch_id' => $batch->id,
+                'old_qty' => $oldQty,
+                'new_qty' => $newQty,
+                'diff' => $diff,
+                'reason' => $reason,
+                'user_id' => Auth::id(),
                 'timestamp' => now()->toIso8601String(),
             ]);
 
@@ -174,23 +177,23 @@ class BatchService
      * than the batch's remaining_qty (data inconsistency), deducts only what is
      * actually available.
      *
-     * @return array  Summary of what was written off.
+     * @return array Summary of what was written off.
      */
     public function writeOff(ProductBatch $batch, ?string $reason = null): array
     {
         return DB::transaction(function () use ($batch, $reason) {
             /** @var Product $product */
             $product = Product::lockForUpdate()->findOrFail($batch->product_id);
-            $qty     = min($batch->remaining_qty, $product->quantity);
+            $qty = min($batch->remaining_qty, $product->quantity);
 
             if ($batch->remaining_qty <= 0) {
                 return [
-                    'batch_id'       => $batch->id,
-                    'batch_number'   => $batch->batch_number,
-                    'product_id'     => $product->id,
-                    'product_name'   => $product->name,
-                    'qty_written_off'=> 0,
-                    'status'         => 'already_empty',
+                    'batch_id' => $batch->id,
+                    'batch_number' => $batch->batch_number,
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'qty_written_off' => 0,
+                    'status' => 'already_empty',
                 ];
             }
 
@@ -213,21 +216,21 @@ class BatchService
             $batch->update(['status' => 'exhausted', 'remaining_qty' => 0]);
 
             Log::channel('audit')->info('batch.written_off', [
-                'batch_id'   => $batch->id,
+                'batch_id' => $batch->id,
                 'product_id' => $product->id,
-                'qty'        => $qty,
-                'reason'     => $writeOffReason,
-                'user_id'    => Auth::id(),
-                'timestamp'  => now()->toIso8601String(),
+                'qty' => $qty,
+                'reason' => $writeOffReason,
+                'user_id' => Auth::id(),
+                'timestamp' => now()->toIso8601String(),
             ]);
 
             return [
-                'batch_id'       => $batch->id,
-                'batch_number'   => $batch->batch_number,
-                'product_id'     => $product->id,
-                'product_name'   => $product->name,
-                'qty_written_off'=> $qty,
-                'status'         => 'written_off',
+                'batch_id' => $batch->id,
+                'batch_number' => $batch->batch_number,
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'qty_written_off' => $qty,
+                'status' => 'written_off',
             ];
         });
     }
@@ -238,7 +241,7 @@ class BatchService
      * This does NOT deduct stock — expired stock is still physically present until
      * written off via writeOff() or StockAlertService::writeOffExpiredBatches().
      *
-     * @return int  Number of batches transitioned to 'expired' status.
+     * @return int Number of batches transitioned to 'expired' status.
      */
     public function markExpired(): int
     {

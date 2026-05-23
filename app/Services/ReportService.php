@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\Repositories\ReportRepositoryInterface;
@@ -9,8 +10,10 @@ use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\PurchaseReturn;
 use App\Models\SalesReturn;
+use App\Models\Setting;
 use App\Models\SupplierPayment;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -18,20 +21,22 @@ class ReportService
 {
     public function __construct(
         private ReportRepositoryInterface $reportRepo,
-        private AccountingService         $accountingService,
+        private AccountingService $accountingService,
     ) {}
 
     public function salesReport(array $filters): array
     {
         $start = $filters['start_date'];
-        $end   = $filters['end_date'] . ' 23:59:59';
+        $end = $filters['end_date'].' 23:59:59';
+
         return $this->reportRepo->salesReport($start, $end, $filters);
     }
 
-    public function salesReportForExport(array $filters): \Illuminate\Support\Collection
+    public function salesReportForExport(array $filters): Collection
     {
         $start = $filters['start_date'];
-        $end   = $filters['end_date'] . ' 23:59:59';
+        $end = $filters['end_date'].' 23:59:59';
+
         return $this->reportRepo->salesReportAll($start, $end, $filters);
     }
 
@@ -44,7 +49,7 @@ class ReportService
         );
     }
 
-    public function returnsReportForExport(array $filters): \Illuminate\Support\Collection
+    public function returnsReportForExport(array $filters): Collection
     {
         return $this->reportRepo->returnsReportAll(
             $filters['start_date'],
@@ -89,8 +94,8 @@ class ReportService
 
     public function inventoryMovements(array $filters): array
     {
-        $start   = $filters['start_date'];
-        $end     = $filters['end_date'] . ' 23:59:59';
+        $start = $filters['start_date'];
+        $end = $filters['end_date'].' 23:59:59';
         $perPage = (int) ($filters['per_page'] ?? 50);
 
         $query = DB::table('stock_movements')
@@ -98,19 +103,19 @@ class ReportService
             ->leftJoin('warehouses', 'warehouses.id', '=', 'stock_movements.warehouse_id')
             ->whereBetween('stock_movements.created_at', [$start, $end]);
 
-        if (!empty($filters['product_id'])) {
+        if (! empty($filters['product_id'])) {
             $query->where('stock_movements.product_id', $filters['product_id']);
         }
-        if (!empty($filters['warehouse_id'])) {
+        if (! empty($filters['warehouse_id'])) {
             $query->where('stock_movements.warehouse_id', $filters['warehouse_id']);
         }
-        if (!empty($filters['movement_type'])) {
+        if (! empty($filters['movement_type'])) {
             $query->where('stock_movements.movement_type', $filters['movement_type']);
         }
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             // FIX: escape LIKE wildcards to prevent injection via user-supplied % or _
-            $s = '%' . Str::escapeLike($filters['search']) . '%';
-            $query->where(fn($q) => $q
+            $s = '%'.Str::escapeLike($filters['search']).'%';
+            $query->where(fn ($q) => $q
                 ->where('stock_movements.product_name', 'like', $s)
                 ->orWhere('stock_movements.reason', 'like', $s)
             );
@@ -143,31 +148,31 @@ class ReportService
             ->paginate($perPage);
 
         return [
-            'movements'  => $rows,
-            'totals'     => [
-                'total_in'   => (int) ($totals->total_in ?? 0),
-                'total_out'  => (int) ($totals->total_out ?? 0),
+            'movements' => $rows,
+            'totals' => [
+                'total_in' => (int) ($totals->total_in ?? 0),
+                'total_out' => (int) ($totals->total_out ?? 0),
                 'total_rows' => (int) ($totals->total_rows ?? 0),
             ],
             'start_date' => $start,
-            'end_date'   => $filters['end_date'],
+            'end_date' => $filters['end_date'],
         ];
     }
 
     public function agedReceivables(): array
     {
         $buckets = [
-            'current'  => [0, 30],
-            '31_60'    => [31, 60],
-            '61_90'    => [61, 90],
-            'over_90'  => [91, PHP_INT_MAX],
+            'current' => [0, 30],
+            '31_60' => [31, 60],
+            '61_90' => [61, 90],
+            'over_90' => [91, PHP_INT_MAX],
         ];
 
         $rows = DB::table('customers')
             ->join('customer_accounts', 'customers.id', '=', 'customer_accounts.customer_id')
             ->join('invoices', function ($j) {
                 $j->on('invoices.id', '=', 'customer_accounts.reference_id')
-                  ->where('customer_accounts.reference_type', 'invoice');
+                    ->where('customer_accounts.reference_type', 'invoice');
             })
             ->where('customer_accounts.debit', '>', 0)
             ->where('customers.balance', '>', 0)
@@ -185,7 +190,7 @@ class ReportService
         foreach ($rows as $row) {
             // FIX: compute age in PHP — DATEDIFF() is MySQL-only and breaks SQLite/PostgreSQL tests
             $ageDays = now()->startOfDay()->diffInDays(Carbon::parse($row->invoice_date)->startOfDay());
-            $bucket  = 'over_90';
+            $bucket = 'over_90';
             foreach ($buckets as $key => [$min, $max]) {
                 if ($ageDays >= $min && $ageDays <= $max) {
                     $bucket = $key;
@@ -193,26 +198,26 @@ class ReportService
                 }
             }
             $cid = $row->id;
-            if (!isset($result[$cid])) {
+            if (! isset($result[$cid])) {
                 $result[$cid] = [
                     'customer_id' => $cid,
-                    'name'        => $row->name,
-                    'phone'       => $row->phone,
-                    'current'     => 0, '31_60' => 0, '61_90' => 0, 'over_90' => 0, 'total' => 0,
+                    'name' => $row->name,
+                    'phone' => $row->phone,
+                    'current' => 0, '31_60' => 0, '61_90' => 0, 'over_90' => 0, 'total' => 0,
                 ];
             }
             $result[$cid][$bucket] += $row->amount;
-            $result[$cid]['total']  += $row->amount;
+            $result[$cid]['total'] += $row->amount;
         }
 
         return [
-            'rows'   => array_values($result),
+            'rows' => array_values($result),
             'totals' => [
                 'current' => collect($result)->sum('current'),
-                '31_60'   => collect($result)->sum('31_60'),
-                '61_90'   => collect($result)->sum('61_90'),
+                '31_60' => collect($result)->sum('31_60'),
+                '61_90' => collect($result)->sum('61_90'),
                 'over_90' => collect($result)->sum('over_90'),
-                'total'   => collect($result)->sum('total'),
+                'total' => collect($result)->sum('total'),
             ],
         ];
     }
@@ -220,17 +225,17 @@ class ReportService
     public function agedPayables(): array
     {
         $buckets = [
-            'current'  => [0, 30],
-            '31_60'    => [31, 60],
-            '61_90'    => [61, 90],
-            'over_90'  => [91, PHP_INT_MAX],
+            'current' => [0, 30],
+            '31_60' => [31, 60],
+            '61_90' => [61, 90],
+            'over_90' => [91, PHP_INT_MAX],
         ];
 
         $rows = DB::table('suppliers')
             ->join('supplier_accounts', 'suppliers.id', '=', 'supplier_accounts.supplier_id')
             ->join('purchase_orders', function ($j) {
                 $j->on('purchase_orders.id', '=', 'supplier_accounts.reference_id')
-                  ->where('supplier_accounts.transaction_type', 'purchase_order');
+                    ->where('supplier_accounts.transaction_type', 'purchase_order');
             })
             ->where('supplier_accounts.debit', '>', 0)
             ->selectRaw('
@@ -247,7 +252,7 @@ class ReportService
         foreach ($rows as $row) {
             // FIX: compute age in PHP — DATEDIFF() is MySQL-only
             $ageDays = now()->startOfDay()->diffInDays(Carbon::parse($row->po_order_date)->startOfDay());
-            $bucket  = 'over_90';
+            $bucket = 'over_90';
             foreach ($buckets as $key => [$min, $max]) {
                 if ($ageDays >= $min && $ageDays <= $max) {
                     $bucket = $key;
@@ -255,33 +260,33 @@ class ReportService
                 }
             }
             $sid = $row->id;
-            if (!isset($result[$sid])) {
+            if (! isset($result[$sid])) {
                 $result[$sid] = [
                     'supplier_id' => $sid,
-                    'name'        => $row->name,
-                    'phone'       => $row->phone,
-                    'current'     => 0, '31_60' => 0, '61_90' => 0, 'over_90' => 0, 'total' => 0,
+                    'name' => $row->name,
+                    'phone' => $row->phone,
+                    'current' => 0, '31_60' => 0, '61_90' => 0, 'over_90' => 0, 'total' => 0,
                 ];
             }
             $result[$sid][$bucket] += $row->amount;
-            $result[$sid]['total']  += $row->amount;
+            $result[$sid]['total'] += $row->amount;
         }
 
         return [
-            'rows'   => array_values($result),
+            'rows' => array_values($result),
             'totals' => [
                 'current' => collect($result)->sum('current'),
-                '31_60'   => collect($result)->sum('31_60'),
-                '61_90'   => collect($result)->sum('61_90'),
+                '31_60' => collect($result)->sum('31_60'),
+                '61_90' => collect($result)->sum('61_90'),
                 'over_90' => collect($result)->sum('over_90'),
-                'total'   => collect($result)->sum('total'),
+                'total' => collect($result)->sum('total'),
             ],
         ];
     }
 
     public function bestSellingProducts(string $start, string $end, int $limit = 20): array
     {
-        $endOfDay = $end . ' 23:59:59';
+        $endOfDay = $end.' 23:59:59';
 
         $products = DB::table('invoice_items')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
@@ -302,23 +307,23 @@ class ReportService
             ->orderByDesc('total_qty')
             ->limit($limit)
             ->get()
-            ->map(fn($r) => array_merge((array) $r, [
-                'gross_profit'        => round($r->total_revenue - $r->total_cost, 2),
+            ->map(fn ($r) => array_merge((array) $r, [
+                'gross_profit' => round($r->total_revenue - $r->total_cost, 2),
                 'gross_profit_margin' => $r->total_revenue > 0
                     ? round(($r->total_revenue - $r->total_cost) / $r->total_revenue * 100, 2)
                     : 0,
             ]));
 
         return [
-            'products'   => $products,
+            'products' => $products,
             'start_date' => $start,
-            'end_date'   => $end,
+            'end_date' => $end,
         ];
     }
 
     public function cashierPerformance(string $start, string $end): array
     {
-        $endOfDay = $end . ' 23:59:59';
+        $endOfDay = $end.' 23:59:59';
 
         $stats = DB::table('invoices')
             ->whereBetween('created_at', [$start, $endOfDay])
@@ -347,30 +352,31 @@ class ReportService
 
         $result = $stats->map(function ($row) use ($returnsByUser) {
             $ret = $returnsByUser->get($row->cashier_id);
+
             return [
-                'cashier_id'     => $row->cashier_id,
-                'cashier_name'   => $row->cashier_name,
-                'invoice_count'  => (int) $row->invoice_count,
-                'total_sales'    => round($row->total_sales, 2),
-                'avg_invoice'    => round($row->avg_invoice, 2),
-                'max_invoice'    => round($row->max_invoice, 2),
+                'cashier_id' => $row->cashier_id,
+                'cashier_name' => $row->cashier_name,
+                'invoice_count' => (int) $row->invoice_count,
+                'total_sales' => round($row->total_sales, 2),
+                'avg_invoice' => round($row->avg_invoice, 2),
+                'max_invoice' => round($row->max_invoice, 2),
                 'total_discount' => round($row->total_discount, 2),
-                'total_tax'      => round($row->total_tax, 2),
-                'total_returns'  => $ret ? round($ret->total_returns, 2) : 0,
-                'return_count'   => $ret ? (int) $ret->return_count : 0,
-                'net_sales'      => round($row->total_sales - ($ret ? $ret->total_returns : 0), 2),
+                'total_tax' => round($row->total_tax, 2),
+                'total_returns' => $ret ? round($ret->total_returns, 2) : 0,
+                'return_count' => $ret ? (int) $ret->return_count : 0,
+                'net_sales' => round($row->total_sales - ($ret ? $ret->total_returns : 0), 2),
             ];
         });
 
         return [
-            'cashiers'   => $result,
+            'cashiers' => $result,
             'start_date' => $start,
-            'end_date'   => $end,
-            'totals'     => [
-                'invoice_count'  => $result->sum('invoice_count'),
-                'total_sales'    => round($result->sum('total_sales'), 2),
-                'total_returns'  => round($result->sum('total_returns'), 2),
-                'net_sales'      => round($result->sum('net_sales'), 2),
+            'end_date' => $end,
+            'totals' => [
+                'invoice_count' => $result->sum('invoice_count'),
+                'total_sales' => round($result->sum('total_sales'), 2),
+                'total_returns' => round($result->sum('total_returns'), 2),
+                'net_sales' => round($result->sum('net_sales'), 2),
             ],
         ];
     }
@@ -408,30 +414,31 @@ class ReportService
                     Carbon::parse($batch->expiry_date)->startOfDay(),
                     false
                 );
+
                 return $batch;
             });
 
-        $expired  = $batches->where('days_to_expiry', '<', 0);
+        $expired = $batches->where('days_to_expiry', '<', 0);
         $expiring = $batches->where('days_to_expiry', '>=', 0);
 
         return [
-            'days_window'    => $days,
-            'expired_count'  => $expired->count(),
+            'days_window' => $days,
+            'expired_count' => $expired->count(),
             'expiring_count' => $expiring->count(),
-            'expired'        => $expired->values(),
-            'expiring_soon'  => $expiring->values(),
+            'expired' => $expired->values(),
+            'expiring_soon' => $expiring->values(),
         ];
     }
 
     public function cashFlowReport(string $start, string $end): array
     {
-        $endOfDay = $end . ' 23:59:59';
+        $endOfDay = $end.' 23:59:59';
 
         // Inflows: sales by payment method (all methods shown; 'credit' is AR, not cash)
         $salesInflows = InvoicePayment::whereHas(
             'invoice',
-            fn($q) => $q->whereBetween('created_at', [$start, $endOfDay])
-                        ->whereNotIn('status', ['cancelled', 'draft'])
+            fn ($q) => $q->whereBetween('created_at', [$start, $endOfDay])
+                ->whereNotIn('status', ['cancelled', 'draft'])
         )->selectRaw('method, SUM(amount) as total')
             ->groupBy('method')
             ->pluck('total', 'method');
@@ -454,7 +461,7 @@ class ReportService
             ->selectRaw('category_id, SUM(amount) as total')
             ->groupBy('category_id')
             ->get()
-            ->mapWithKeys(fn($r) => [
+            ->mapWithKeys(fn ($r) => [
                 ($r->category?->name ?? __('pos.uncategorized')) => (float) $r->total,
             ]);
 
@@ -467,19 +474,19 @@ class ReportService
 
         // FIX: 'credit' method payments are accounts-receivable entries, not cash received.
         //      Keep the per-method breakdown intact for display; exclude 'credit' from the total.
-        $totalCashSalesInflow  = (float) $salesInflows->reject(fn($v, $k) => $k === 'credit')->sum();
-        $totalSupplierOutflow  = (float) $supplierPaymentsByMethod->sum();
-        $totalExpenseOutflow   = (float) $expensesByCategory->sum();
-        $totalInflows          = $totalCashSalesInflow + $purchaseReturnRefunds;
+        $totalCashSalesInflow = (float) $salesInflows->reject(fn ($v, $k) => $k === 'credit')->sum();
+        $totalSupplierOutflow = (float) $supplierPaymentsByMethod->sum();
+        $totalExpenseOutflow = (float) $expensesByCategory->sum();
+        $totalInflows = $totalCashSalesInflow + $purchaseReturnRefunds;
         // FIX: include sales-return cash refunds in total outflows
-        $totalOutflows         = $totalSupplierOutflow + $totalExpenseOutflow + $salesReturnCashRefunds;
+        $totalOutflows = $totalSupplierOutflow + $totalExpenseOutflow + $salesReturnCashRefunds;
 
         // Daily breakdown
         // FIX: exclude 'credit' method so daily inflows reflect only actual cash received
         $dailyInflows = InvoicePayment::whereHas(
             'invoice',
-            fn($q) => $q->whereBetween('created_at', [$start, $endOfDay])
-                        ->whereNotIn('status', ['cancelled', 'draft'])
+            fn ($q) => $q->whereBetween('created_at', [$start, $endOfDay])
+                ->whereNotIn('status', ['cancelled', 'draft'])
         )->where('method', '!=', 'credit')
             ->selectRaw('DATE(created_at) as day, SUM(amount) as total')
             ->groupBy('day')
@@ -517,43 +524,43 @@ class ReportService
                 ->sort()
         );
 
-        $dailyRows = $dailyDates->map(fn($date) => [
-            'date'    => $date,
-            'inflow'  => round((float) ($dailyInflows[$date] ?? 0), 2),
+        $dailyRows = $dailyDates->map(fn ($date) => [
+            'date' => $date,
+            'inflow' => round((float) ($dailyInflows[$date] ?? 0), 2),
             'outflow' => round(
-                (float) ($dailyExpenses[$date]          ?? 0)
-                + (float) ($dailySupplierPayments[$date]   ?? 0)
+                (float) ($dailyExpenses[$date] ?? 0)
+                + (float) ($dailySupplierPayments[$date] ?? 0)
                 + (float) ($dailySalesReturnRefunds[$date] ?? 0),
                 2
             ),
-            'net'     => round(
-                (float) ($dailyInflows[$date]            ?? 0)
-                - (float) ($dailyExpenses[$date]          ?? 0)
-                - (float) ($dailySupplierPayments[$date]   ?? 0)
+            'net' => round(
+                (float) ($dailyInflows[$date] ?? 0)
+                - (float) ($dailyExpenses[$date] ?? 0)
+                - (float) ($dailySupplierPayments[$date] ?? 0)
                 - (float) ($dailySalesReturnRefunds[$date] ?? 0),
                 2
             ),
         ])->values();
 
         return [
-            'period'        => ['from' => $start, 'to' => $end],
-            'inflows'       => [
+            'period' => ['from' => $start, 'to' => $end],
+            'inflows' => [
                 // Full per-method breakdown (includes 'credit' for AR visibility)
-                'sales'            => $salesInflows->map(fn($v) => round((float) $v, 2))->toArray(),
+                'sales' => $salesInflows->map(fn ($v) => round((float) $v, 2))->toArray(),
                 // FIX: expose AR total so consumers can distinguish cash vs. credit-sale AR
-                'credit_sales_ar'  => round((float) ($salesInflows->get('credit', 0)), 2),
+                'credit_sales_ar' => round((float) ($salesInflows->get('credit', 0)), 2),
                 'purchase_refunds' => round($purchaseReturnRefunds, 2),
-                'total'            => round($totalInflows, 2),
+                'total' => round($totalInflows, 2),
             ],
-            'outflows'      => [
-                'supplier_payments'    => $supplierPaymentsByMethod->map(fn($v) => round((float) $v, 2))->toArray(),
-                'expenses'             => $expensesByCategory->map(fn($v) => round($v, 2))->toArray(),
+            'outflows' => [
+                'supplier_payments' => $supplierPaymentsByMethod->map(fn ($v) => round((float) $v, 2))->toArray(),
+                'expenses' => $expensesByCategory->map(fn ($v) => round($v, 2))->toArray(),
                 // FIX: was missing
                 'sales_return_refunds' => round($salesReturnCashRefunds, 2),
-                'total'                => round($totalOutflows, 2),
+                'total' => round($totalOutflows, 2),
             ],
             'net_cash_flow' => round($totalInflows - $totalOutflows, 2),
-            'daily'         => $dailyRows,
+            'daily' => $dailyRows,
         ];
     }
 
@@ -564,8 +571,8 @@ class ReportService
         $rows = [];
         foreach ($months as $m) {
             $startDate = sprintf('%04d-%02d-01', $year, $m);
-            $endDate   = date('Y-m-t', strtotime($startDate));
-            $endOfDay  = $endDate . ' 23:59:59';
+            $endDate = date('Y-m-t', strtotime($startDate));
+            $endOfDay = $endDate.' 23:59:59';
 
             // Actual revenue: completed invoices final_total
             $actualRevenue = (float) Invoice::whereBetween('date', [$startDate, $endOfDay])
@@ -578,7 +585,7 @@ class ReportService
                 ->selectRaw('category_id, SUM(amount) as total')
                 ->groupBy('category_id')
                 ->get()
-                ->mapWithKeys(fn($r) => [
+                ->mapWithKeys(fn ($r) => [
                     ($r->category?->name ?? __('pos.uncategorized')) => (float) $r->total,
                 ]);
 
@@ -587,32 +594,32 @@ class ReportService
             // Budgeted amounts for this month
             $budgets = Budget::where('year', $year)->where('month', $m)->get();
 
-            $budgetRevenue       = (float) $budgets->where('type', 'revenue')->sum('amount');
+            $budgetRevenue = (float) $budgets->where('type', 'revenue')->sum('amount');
             $budgetExpenseByType = $budgets->where('type', 'expense')
-                ->mapWithKeys(fn($b) => [$b->category ?? __('pos.general') => (float) $b->amount]);
-            $budgetTotalExpense  = (float) $budgetExpenseByType->sum();
+                ->mapWithKeys(fn ($b) => [$b->category ?? __('pos.general') => (float) $b->amount]);
+            $budgetTotalExpense = (float) $budgetExpenseByType->sum();
 
             $revenueVariance = $actualRevenue - $budgetRevenue;
             $expenseVariance = $budgetTotalExpense - $actualTotalExpense; // positive = underspent (good)
 
             $rows[] = [
-                'year'                   => $year,
-                'month'                  => $m,
-                'month_label'            => date('F', mktime(0, 0, 0, $m, 1)),
+                'year' => $year,
+                'month' => $m,
+                'month_label' => date('F', mktime(0, 0, 0, $m, 1)),
                 'revenue' => [
-                    'budget'          => round($budgetRevenue, 2),
-                    'actual'          => round($actualRevenue, 2),
-                    'variance'        => round($revenueVariance, 2),
-                    'variance_pct'    => $budgetRevenue > 0 ? round($revenueVariance / $budgetRevenue * 100, 2) : null,
+                    'budget' => round($budgetRevenue, 2),
+                    'actual' => round($actualRevenue, 2),
+                    'variance' => round($revenueVariance, 2),
+                    'variance_pct' => $budgetRevenue > 0 ? round($revenueVariance / $budgetRevenue * 100, 2) : null,
                 ],
                 'expenses' => [
-                    'budget'          => round($budgetTotalExpense, 2),
-                    'actual'          => round($actualTotalExpense, 2),
-                    'variance'        => round($expenseVariance, 2),
-                    'variance_pct'    => $budgetTotalExpense > 0 ? round($expenseVariance / $budgetTotalExpense * 100, 2) : null,
-                    'by_category'     => [
-                        'budget' => $budgetExpenseByType->map(fn($v) => round($v, 2))->toArray(),
-                        'actual' => $actualExpenses->map(fn($v) => round($v, 2))->toArray(),
+                    'budget' => round($budgetTotalExpense, 2),
+                    'actual' => round($actualTotalExpense, 2),
+                    'variance' => round($expenseVariance, 2),
+                    'variance_pct' => $budgetTotalExpense > 0 ? round($expenseVariance / $budgetTotalExpense * 100, 2) : null,
+                    'by_category' => [
+                        'budget' => $budgetExpenseByType->map(fn ($v) => round($v, 2))->toArray(),
+                        'actual' => $actualExpenses->map(fn ($v) => round($v, 2))->toArray(),
                     ],
                 ],
                 'net' => [
@@ -623,9 +630,9 @@ class ReportService
         }
 
         return [
-            'year'   => $year,
-            'month'  => $month,
-            'rows'   => $rows,
+            'year' => $year,
+            'month' => $month,
+            'rows' => $rows,
             'totals' => [
                 'revenue' => [
                     'budget' => round(collect($rows)->sum('revenue.budget'), 2),
@@ -645,7 +652,7 @@ class ReportService
      */
     public function inventoryTurnover(string $start, string $end): array
     {
-        $endOfDay = $end . ' 23:59:59';
+        $endOfDay = $end.' 23:59:59';
 
         $sold = DB::table('invoice_items')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
@@ -677,13 +684,13 @@ class ReportService
             ->groupBy('product_id');
 
         $openingQtys = DB::table('stock_movements')
-            ->joinSub($lastMovementIds, 'lm', fn($j) => $j->on('stock_movements.id', '=', 'lm.last_id'))
+            ->joinSub($lastMovementIds, 'lm', fn ($j) => $j->on('stock_movements.id', '=', 'lm.last_id'))
             ->pluck('balance_after', 'stock_movements.product_id');
 
         $rows = $products->map(function ($p) use ($sold, $openingQtys) {
-            $s          = $sold[$p->id];
-            $cogs       = (float) $s->cogs;
-            $unitCost   = $p->avg_cost > 0 ? (float) $p->avg_cost : (float) $p->cost_price;
+            $s = $sold[$p->id];
+            $cogs = (float) $s->cogs;
+            $unitCost = $p->avg_cost > 0 ? (float) $p->avg_cost : (float) $p->cost_price;
             $closingQty = (int) $p->quantity;
 
             // If no movement exists before the period, fall back to closing qty as the estimate
@@ -691,19 +698,19 @@ class ReportService
                 ? (int) $openingQtys[$p->id]
                 : $closingQty;
 
-            $avgQty      = ($openingQty + $closingQty) / 2;
+            $avgQty = ($openingQty + $closingQty) / 2;
             $avgStockVal = $avgQty * $unitCost;
-            $turnover    = $avgStockVal > 0 ? round($cogs / $avgStockVal, 2) : null;
+            $turnover = $avgStockVal > 0 ? round($cogs / $avgStockVal, 2) : null;
 
             return [
-                'product_id'     => $p->id,
-                'product_name'   => $p->name,
-                'units_sold'     => (int) $s->units_sold,
-                'cogs'           => round($cogs, 2),
-                'opening_stock'  => $openingQty,
-                'closing_stock'  => $closingQty,
-                'avg_stock_value'=> round($avgStockVal, 2),
-                'turnover_rate'  => $turnover,
+                'product_id' => $p->id,
+                'product_name' => $p->name,
+                'units_sold' => (int) $s->units_sold,
+                'cogs' => round($cogs, 2),
+                'opening_stock' => $openingQty,
+                'closing_stock' => $closingQty,
+                'avg_stock_value' => round($avgStockVal, 2),
+                'turnover_rate' => $turnover,
             ];
         })->sortByDesc('turnover_rate')->values()->toArray();
 
@@ -717,35 +724,35 @@ class ReportService
      */
     public function netProfitReport(string $start, string $end): array
     {
-        $current  = $this->netProfitData($start, $end);
-        $days     = \Carbon\Carbon::parse($start)->diffInDays(\Carbon\Carbon::parse($end)) + 1;
-        $prevEnd  = \Carbon\Carbon::parse($start)->subDay()->toDateString();
-        $prevStart= \Carbon\Carbon::parse($prevEnd)->subDays($days - 1)->toDateString();
+        $current = $this->netProfitData($start, $end);
+        $days = Carbon::parse($start)->diffInDays(Carbon::parse($end)) + 1;
+        $prevEnd = Carbon::parse($start)->subDay()->toDateString();
+        $prevStart = Carbon::parse($prevEnd)->subDays($days - 1)->toDateString();
         $previous = $this->netProfitData($prevStart, $prevEnd);
 
-        $pct = fn($cur, $prev) => $prev != 0 ? round(($cur - $prev) / abs($prev) * 100, 1) : null;
+        $pct = fn ($cur, $prev) => $prev != 0 ? round(($cur - $prev) / abs($prev) * 100, 1) : null;
 
-        $marginTarget = (float) \App\Models\Setting::get('profit_margin_target', 0);
+        $marginTarget = (float) Setting::get('profit_margin_target', 0);
 
         return array_merge($current, [
-            'start_date'        => $start,
-            'end_date'          => $end,
+            'start_date' => $start,
+            'end_date' => $end,
             'margin_target_pct' => $marginTarget,
-            'below_target'      => $marginTarget > 0 && $current['gross_margin_pct'] < $marginTarget,
+            'below_target' => $marginTarget > 0 && $current['gross_margin_pct'] < $marginTarget,
             'comparison' => [
-                'prev_start_date'       => $prevStart,
-                'prev_end_date'         => $prevEnd,
-                'prev_net_sales'        => $previous['net_sales'],
-                'prev_cogs'             => $previous['cogs'],
-                'prev_gross_profit'     => $previous['gross_profit'],
+                'prev_start_date' => $prevStart,
+                'prev_end_date' => $prevEnd,
+                'prev_net_sales' => $previous['net_sales'],
+                'prev_cogs' => $previous['cogs'],
+                'prev_gross_profit' => $previous['gross_profit'],
                 'prev_operating_expenses' => $previous['operating_expenses'],
-                'prev_net_profit'       => $previous['net_profit'],
+                'prev_net_profit' => $previous['net_profit'],
                 'prev_gross_margin_pct' => $previous['gross_margin_pct'],
-                'net_sales_change_pct'        => $pct($current['net_sales'],    $previous['net_sales']),
-                'cogs_change_pct'             => $pct($current['cogs'],         $previous['cogs']),
-                'gross_profit_change_pct'     => $pct($current['gross_profit'], $previous['gross_profit']),
+                'net_sales_change_pct' => $pct($current['net_sales'], $previous['net_sales']),
+                'cogs_change_pct' => $pct($current['cogs'], $previous['cogs']),
+                'gross_profit_change_pct' => $pct($current['gross_profit'], $previous['gross_profit']),
                 'operating_expenses_change_pct' => $pct($current['operating_expenses'], $previous['operating_expenses']),
-                'net_profit_change_pct'       => $pct($current['net_profit'],   $previous['net_profit']),
+                'net_profit_change_pct' => $pct($current['net_profit'], $previous['net_profit']),
             ],
         ]);
     }
@@ -765,38 +772,38 @@ class ReportService
             ->selectRaw('SUM(invoice_items.quantity * invoice_items.cost_price) AS cogs')
             ->value('cogs');
 
-        $returns  = (float) DB::table('sales_returns')->where('status', 'completed')->whereBetween('return_date', [$start, $end])->sum('total_amount');
+        $returns = (float) DB::table('sales_returns')->where('status', 'completed')->whereBetween('return_date', [$start, $end])->sum('total_amount');
         $expenses = (float) DB::table('expenses')->whereBetween('expense_date', [$start, $end])->sum('amount');
 
         $grossSales = round((float) ($inv->gross_sales ?? 0), 2);
-        $discounts  = round((float) ($inv->discounts  ?? 0), 2);
-        $tax        = round((float) ($inv->tax        ?? 0), 2);
-        $netSales   = round((float) ($inv->net_sales  ?? 0), 2);
-        $cogs       = round($cogs, 2);
-        $returns    = round($returns, 2);
-        $expenses   = round($expenses, 2);
+        $discounts = round((float) ($inv->discounts ?? 0), 2);
+        $tax = round((float) ($inv->tax ?? 0), 2);
+        $netSales = round((float) ($inv->net_sales ?? 0), 2);
+        $cogs = round($cogs, 2);
+        $returns = round($returns, 2);
+        $expenses = round($expenses, 2);
 
-        $netRevenue     = round($netSales - $returns, 2);
-        $netRevExTax    = round($netRevenue - $tax, 2);
-        $grossProfit    = round($netRevExTax - $cogs, 2);
-        $netProfit      = round($grossProfit - $expenses, 2);
+        $netRevenue = round($netSales - $returns, 2);
+        $netRevExTax = round($netRevenue - $tax, 2);
+        $grossProfit = round($netRevExTax - $cogs, 2);
+        $netProfit = round($grossProfit - $expenses, 2);
         $grossMarginPct = $netRevExTax > 0 ? round($grossProfit / $netRevExTax * 100, 2) : 0.0;
-        $netMarginPct   = $netRevenue  > 0 ? round($netProfit   / $netRevenue  * 100, 2) : 0.0;
+        $netMarginPct = $netRevenue > 0 ? round($netProfit / $netRevenue * 100, 2) : 0.0;
 
         return [
-            'invoice_count'      => (int) ($inv->invoice_count ?? 0),
-            'gross_sales'        => $grossSales,
-            'discounts'          => $discounts,
-            'tax'                => $tax,
-            'net_sales'          => $netSales,
-            'returns'            => $returns,
-            'net_revenue'        => $netRevenue,
-            'cogs'               => $cogs,
-            'gross_profit'       => $grossProfit,
+            'invoice_count' => (int) ($inv->invoice_count ?? 0),
+            'gross_sales' => $grossSales,
+            'discounts' => $discounts,
+            'tax' => $tax,
+            'net_sales' => $netSales,
+            'returns' => $returns,
+            'net_revenue' => $netRevenue,
+            'cogs' => $cogs,
+            'gross_profit' => $grossProfit,
             'operating_expenses' => $expenses,
-            'net_profit'         => $netProfit,
-            'gross_margin_pct'   => $grossMarginPct,
-            'net_margin_pct'     => $netMarginPct,
+            'net_profit' => $netProfit,
+            'gross_margin_pct' => $grossMarginPct,
+            'net_margin_pct' => $netMarginPct,
         ];
     }
 
@@ -826,9 +833,10 @@ class ReportService
             ->map(function ($r) {
                 $r->profit_margin = round((float) $r->gross_profit / (float) $r->total_revenue * 100, 2);
                 $r->total_revenue = round((float) $r->total_revenue, 2);
-                $r->total_cost    = round((float) $r->total_cost, 2);
-                $r->gross_profit  = round((float) $r->gross_profit, 2);
-                $r->total_qty     = (int) $r->total_qty;
+                $r->total_cost = round((float) $r->total_cost, 2);
+                $r->gross_profit = round((float) $r->gross_profit, 2);
+                $r->total_qty = (int) $r->total_qty;
+
                 return $r;
             })
             ->sortByDesc('profit_margin')
@@ -836,9 +844,9 @@ class ReportService
             ->values();
 
         return [
-            'products'   => $rows,
+            'products' => $rows,
             'start_date' => $start,
-            'end_date'   => $end,
+            'end_date' => $end,
         ];
     }
 
@@ -850,40 +858,40 @@ class ReportService
         $rows = DB::table('expenses')
             ->leftJoin('expense_categories', 'expense_categories.id', '=', 'expenses.category_id')
             ->whereBetween('expense_date', [$start, $end])
-            ->selectRaw("
+            ->selectRaw('
                 YEARWEEK(expense_date, 1)   AS week_key,
                 MIN(expense_date)           AS week_start,
                 expense_categories.name     AS category,
                 SUM(amount)                 AS total,
                 COUNT(*)                    AS expense_count
-            ")
-            ->groupByRaw("YEARWEEK(expense_date, 1), expense_categories.name")
+            ')
+            ->groupByRaw('YEARWEEK(expense_date, 1), expense_categories.name')
             ->orderBy('week_key')
             ->get();
 
-        $weeks = $rows->groupBy('week_key')->map(fn($g) => [
-            'week_key'    => $g->first()->week_key,
-            'week_start'  => $g->first()->week_start,
-            'total'       => round((float) $g->sum('total'), 2),
-            'by_category' => $g->map(fn($r) => [
+        $weeks = $rows->groupBy('week_key')->map(fn ($g) => [
+            'week_key' => $g->first()->week_key,
+            'week_start' => $g->first()->week_start,
+            'total' => round((float) $g->sum('total'), 2),
+            'by_category' => $g->map(fn ($r) => [
                 'category' => $r->category ?? 'غير مصنف',
-                'total'    => round((float) $r->total, 2),
-                'count'    => (int) $r->expense_count,
+                'total' => round((float) $r->total, 2),
+                'count' => (int) $r->expense_count,
             ])->values(),
         ])->values();
 
-        $byCategory = $rows->groupBy('category')->map(fn($g, $cat) => [
+        $byCategory = $rows->groupBy('category')->map(fn ($g, $cat) => [
             'category' => $cat ?? 'غير مصنف',
-            'total'    => round((float) $g->sum('total'), 2),
-            'count'    => (int) $g->sum('expense_count'),
+            'total' => round((float) $g->sum('total'), 2),
+            'count' => (int) $g->sum('expense_count'),
         ])->sortByDesc('total')->values();
 
         return [
-            'start_date'  => $start,
-            'end_date'    => $end,
-            'weeks'       => $weeks,
+            'start_date' => $start,
+            'end_date' => $end,
+            'weeks' => $weeks,
             'by_category' => $byCategory,
-            'total'       => round((float) $rows->sum('total'), 2),
+            'total' => round((float) $rows->sum('total'), 2),
         ];
     }
 
@@ -909,38 +917,38 @@ class ReportService
             ->whereBetween('expense_date', [$start, $end])
             ->sum('amount');
 
-        $revenue      = round((float) ($inv->revenue ?? 0), 2);
-        $tax          = round((float) ($inv->tax ?? 0), 2);
-        $cogs         = round($cogs, 2);
-        $fixed        = round($fixedCosts, 2);
+        $revenue = round((float) ($inv->revenue ?? 0), 2);
+        $tax = round((float) ($inv->tax ?? 0), 2);
+        $cogs = round($cogs, 2);
+        $fixed = round($fixedCosts, 2);
         $revenueExTax = max(0.0, $revenue - $tax);
 
-        $vcRatio  = $revenueExTax > 0 ? $cogs / $revenueExTax : 0;
-        $cmRatio  = 1 - $vcRatio;
-        $beRev    = $cmRatio > 0 ? round($fixed / $cmRatio, 2) : null;
+        $vcRatio = $revenueExTax > 0 ? $cogs / $revenueExTax : 0;
+        $cmRatio = 1 - $vcRatio;
+        $beRev = $cmRatio > 0 ? round($fixed / $cmRatio, 2) : null;
 
-        $days = max(1, \Carbon\Carbon::parse($start)->diffInDays(\Carbon\Carbon::parse($end)) + 1);
-        $dailyBE   = $beRev !== null ? round($beRev / $days, 2) : null;
-        $avgOrder  = round((float) ($inv->avg_order ?? 0), 2);
-        $beOrders  = ($beRev !== null && $avgOrder > 0) ? (int) ceil($beRev / $avgOrder) : null;
+        $days = max(1, Carbon::parse($start)->diffInDays(Carbon::parse($end)) + 1);
+        $dailyBE = $beRev !== null ? round($beRev / $days, 2) : null;
+        $avgOrder = round((float) ($inv->avg_order ?? 0), 2);
+        $beOrders = ($beRev !== null && $avgOrder > 0) ? (int) ceil($beRev / $avgOrder) : null;
 
         return [
-            'start_date'                    => $start,
-            'end_date'                      => $end,
-            'period_days'                   => $days,
-            'revenue'                       => $revenue,
-            'revenue_ex_tax'                => round($revenueExTax, 2),
-            'cogs'                          => $cogs,
-            'fixed_costs'                   => $fixed,
-            'variable_cost_ratio_pct'       => round($vcRatio * 100, 2),
+            'start_date' => $start,
+            'end_date' => $end,
+            'period_days' => $days,
+            'revenue' => $revenue,
+            'revenue_ex_tax' => round($revenueExTax, 2),
+            'cogs' => $cogs,
+            'fixed_costs' => $fixed,
+            'variable_cost_ratio_pct' => round($vcRatio * 100, 2),
             'contribution_margin_ratio_pct' => round($cmRatio * 100, 2),
-            'break_even_revenue'            => $beRev,
-            'daily_break_even'              => $dailyBE,
-            'break_even_orders'             => $beOrders,
-            'avg_order_value'               => $avgOrder,
-            'invoice_count'                 => (int) ($inv->count ?? 0),
-            'is_profitable'                 => $beRev !== null && $revenue >= $beRev,
-            'margin_of_safety'              => $beRev !== null ? round($revenue - $beRev, 2) : null,
+            'break_even_revenue' => $beRev,
+            'daily_break_even' => $dailyBE,
+            'break_even_orders' => $beOrders,
+            'avg_order_value' => $avgOrder,
+            'invoice_count' => (int) ($inv->count ?? 0),
+            'is_profitable' => $beRev !== null && $revenue >= $beRev,
+            'margin_of_safety' => $beRev !== null ? round($revenue - $beRev, 2) : null,
         ];
     }
 
@@ -949,7 +957,7 @@ class ReportService
      */
     public function kpiDashboard(?string $date = null): array
     {
-        $date       = $date ?? now()->toDateString();
+        $date = $date ?? now()->toDateString();
         $monthStart = now()->startOfMonth()->toDateString();
 
         $today = DB::table('invoices')
@@ -972,43 +980,43 @@ class ReportService
             ->value('cogs');
 
         $todayExpenses = (float) DB::table('expenses')->where('expense_date', $date)->sum('amount');
-        $todayReturns  = (float) DB::table('sales_returns')->where('status', 'completed')->where('return_date', $date)->sum('total_amount');
+        $todayReturns = (float) DB::table('sales_returns')->where('status', 'completed')->where('return_date', $date)->sum('total_amount');
 
-        $lowStock    = DB::table('products')->whereColumn('quantity', '<=', 'min_stock')->where('quantity', '>', 0)->count();
-        $outOfStock  = DB::table('products')->where('quantity', '<=', 0)->count();
+        $lowStock = DB::table('products')->whereColumn('quantity', '<=', 'min_stock')->where('quantity', '>', 0)->count();
+        $outOfStock = DB::table('products')->where('quantity', '<=', 0)->count();
 
-        $rev   = round((float) ($today->revenue ?? 0), 2);
-        $cogs  = round($todayCogs, 2);
+        $rev = round((float) ($today->revenue ?? 0), 2);
+        $cogs = round($todayCogs, 2);
         $gross = round($rev - $cogs, 2);
-        $net   = round($gross - $todayExpenses, 2);
-        $pct   = $rev > 0 ? round($gross / $rev * 100, 2) : 0;
+        $net = round($gross - $todayExpenses, 2);
+        $pct = $rev > 0 ? round($gross / $rev * 100, 2) : 0;
 
-        $marginTarget = (float) \App\Models\Setting::get('profit_margin_target', 0);
+        $marginTarget = (float) Setting::get('profit_margin_target', 0);
 
         return [
-            'date'         => $date,
-            'today'        => [
-                'revenue'          => $rev,
-                'invoice_count'    => (int) ($today->cnt ?? 0),
-                'avg_invoice'      => round((float) ($today->avg_val ?? 0), 2),
-                'cogs'             => $cogs,
-                'gross_profit'     => $gross,
-                'expenses'         => round($todayExpenses, 2),
-                'net_profit'       => $net,
-                'returns'          => round($todayReturns, 2),
-                'tax_collected'    => round((float) ($today->tax ?? 0), 2),
+            'date' => $date,
+            'today' => [
+                'revenue' => $rev,
+                'invoice_count' => (int) ($today->cnt ?? 0),
+                'avg_invoice' => round((float) ($today->avg_val ?? 0), 2),
+                'cogs' => $cogs,
+                'gross_profit' => $gross,
+                'expenses' => round($todayExpenses, 2),
+                'net_profit' => $net,
+                'returns' => round($todayReturns, 2),
+                'tax_collected' => round((float) ($today->tax ?? 0), 2),
                 'gross_margin_pct' => $pct,
             ],
-            'month'        => [
-                'revenue'       => round((float) ($month->revenue ?? 0), 2),
+            'month' => [
+                'revenue' => round((float) ($month->revenue ?? 0), 2),
                 'invoice_count' => (int) ($month->cnt ?? 0),
-                'avg_invoice'   => round((float) ($month->avg_val ?? 0), 2),
+                'avg_invoice' => round((float) ($month->avg_val ?? 0), 2),
             ],
-            'alerts'       => [
-                'low_stock_count'    => $lowStock,
+            'alerts' => [
+                'low_stock_count' => $lowStock,
                 'out_of_stock_count' => $outOfStock,
-                'below_margin_target'=> $marginTarget > 0 && $pct < $marginTarget,
-                'margin_target_pct'  => $marginTarget,
+                'below_margin_target' => $marginTarget > 0 && $pct < $marginTarget,
+                'margin_target_pct' => $marginTarget,
             ],
         ];
     }
@@ -1034,20 +1042,20 @@ class ReportService
 
         $rows = [];
         for ($m = 1; $m <= 12; $m++) {
-            $waste     = (float) ($wasteByMonth[$m] ?? 0);
+            $waste = (float) ($wasteByMonth[$m] ?? 0);
             $purchases = (float) ($purchasesByMonth[$m] ?? 0);
             $rows[] = [
-                'month'          => $m,
-                'waste_value'    => round($waste, 2),
+                'month' => $m,
+                'waste_value' => round($waste, 2),
                 'purchase_value' => round($purchases, 2),
-                'waste_ratio_pct'=> $purchases > 0 ? round($waste / $purchases * 100, 2) : null,
+                'waste_ratio_pct' => $purchases > 0 ? round($waste / $purchases * 100, 2) : null,
             ];
         }
 
         return [
-            'year'            => $year,
-            'rows'            => $rows,
-            'total_waste'     => round($wasteByMonth->sum(), 2),
+            'year' => $year,
+            'rows' => $rows,
+            'total_waste' => round($wasteByMonth->sum(), 2),
             'total_purchases' => round($purchasesByMonth->sum(), 2),
         ];
     }
@@ -1089,22 +1097,23 @@ class ReportService
                 $onTimePct = $r->with_deadline_count > 0
                     ? round($r->on_time_count / $r->with_deadline_count * 100, 1)
                     : null;
+
                 return [
-                    'supplier_id'      => $r->supplier_id,
-                    'supplier_name'    => $r->supplier_name,
-                    'total_pos'        => (int) $r->total_pos,
-                    'received_count'   => (int) $r->received_count,
-                    'cancelled_count'  => (int) $r->cancelled_count,
-                    'on_time_pct'      => $onTimePct,
-                    'avg_lead_days'    => $r->avg_lead_days !== null ? round((float) $r->avg_lead_days, 1) : null,
-                    'total_value'      => round((float) $r->total_value, 2),
+                    'supplier_id' => $r->supplier_id,
+                    'supplier_name' => $r->supplier_name,
+                    'total_pos' => (int) $r->total_pos,
+                    'received_count' => (int) $r->received_count,
+                    'cancelled_count' => (int) $r->cancelled_count,
+                    'on_time_pct' => $onTimePct,
+                    'avg_lead_days' => $r->avg_lead_days !== null ? round((float) $r->avg_lead_days, 1) : null,
+                    'total_value' => round((float) $r->total_value, 2),
                 ];
             });
 
         return [
             'start_date' => $start,
-            'end_date'   => $end,
-            'suppliers'  => $rows->values(),
+            'end_date' => $end,
+            'suppliers' => $rows->values(),
         ];
     }
 
@@ -1114,8 +1123,8 @@ class ReportService
      * Returns a portable SQL expression for (dateA - dateB) in whole days.
      * Works on MySQL/MariaDB (default), SQLite, and PostgreSQL.
      *
-     * @param  string $dateA  Column or SQL expression for the minuend date
-     * @param  string $dateB  Column or SQL expression for the subtrahend date
+     * @param  string  $dateA  Column or SQL expression for the minuend date
+     * @param  string  $dateB  Column or SQL expression for the subtrahend date
      */
     private function datediffSql(string $dateA, string $dateB): string
     {
@@ -1129,7 +1138,7 @@ class ReportService
                 $nowB ? "'now'" : $dateB
             ),
             'pgsql' => sprintf(
-                "EXTRACT(EPOCH FROM (%s::date - %s::date))::INTEGER",
+                'EXTRACT(EPOCH FROM (%s::date - %s::date))::INTEGER',
                 $nowA ? 'CURRENT_DATE' : $dateA,
                 $nowB ? 'CURRENT_DATE' : $dateB
             ),

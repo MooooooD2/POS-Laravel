@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\Repositories\ProductRepositoryInterface;
@@ -15,9 +16,9 @@ use Illuminate\Support\Facades\Request;
 class StockService
 {
     public function __construct(
-        private ProductRepositoryInterface       $productRepo,
+        private ProductRepositoryInterface $productRepo,
         private StockMovementRepositoryInterface $movementRepo,
-        private InventoryValuationService        $valuationService,
+        private InventoryValuationService $valuationService,
     ) {}
 
     // ── Public API ───────────────────────────────────────────────────────────
@@ -44,13 +45,13 @@ class StockService
             if ($unitCost !== null && $unitCost > 0) {
                 $currentQty = $fresh->quantity;
                 $currentAvg = (float) ($fresh->avg_cost ?? $fresh->cost_price ?? 0);
-                $newQty     = $currentQty + $quantity;
+                $newQty = $currentQty + $quantity;
                 $newAvgCost = $newQty > 0
                     ? ($currentQty * $currentAvg + $quantity * $unitCost) / $newQty
                     : $unitCost;
 
                 // Cast to string: Eloquent declares these columns as decimal (stored as string)
-                $fresh->avg_cost  = (string) round($newAvgCost, 4);
+                $fresh->avg_cost = (string) round($newAvgCost, 4);
                 $fresh->last_cost = (string) round($unitCost, 4);
                 $fresh->save();
 
@@ -189,7 +190,7 @@ class StockService
 
             // FEFO: nearest expiry first, nulls last
             $batches = ProductBatch::where('product_id', $fresh->id)
-                ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+                ->when($warehouseId, fn ($q) => $q->where('warehouse_id', $warehouseId))
                 ->fefo()
                 ->lockForUpdate()
                 ->get();
@@ -204,7 +205,9 @@ class StockService
             $remaining = $quantity;
             foreach ($batches as $batch) {
                 /** @var ProductBatch $batch */
-                if ($remaining <= 0) break;
+                if ($remaining <= 0) {
+                    break;
+                }
 
                 $take = min($batch->remaining_qty, $remaining);
 
@@ -243,10 +246,12 @@ class StockService
     public function adjustStock(Product $product, int $newQuantity, string $reason, ?int $warehouseId = null): void
     {
         DB::transaction(function () use ($product, $newQuantity, $reason, $warehouseId) {
-            $fresh      = $this->productRepo->lockForUpdate([$product->id])->firstOrFail();
+            $fresh = $this->productRepo->lockForUpdate([$product->id])->firstOrFail();
             $difference = $newQuantity - $fresh->quantity;
 
-            if ($difference === 0) return;
+            if ($difference === 0) {
+                return;
+            }
 
             // FIX: consume / restore cost layers on adjustment
             if ($difference < 0) {
@@ -278,35 +283,35 @@ class StockService
         $balance = $product->quantity;
 
         $this->movementRepo->create([
-            'product_id'     => $product->id,
-            'product_name'   => $product->name,
-            'quantity'       => $quantity,
-            'balance_after'  => $balance,
-            'movement_type'  => 'transfer_out',
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'quantity' => $quantity,
+            'balance_after' => $balance,
+            'movement_type' => 'transfer_out',
             'reference_type' => 'transfer',
-            'reference_id'   => $transferId,
-            'warehouse_id'   => $fromWarehouseId,
-            'batch_id'       => $batchId,
-            'reason'         => "Transfer to warehouse #{$toWarehouseId}",
-            'employee_id'    => Auth::id(),
-            'employee_name'  => Auth::user()?->full_name,
-            'ip_address'     => Request::ip(),
+            'reference_id' => $transferId,
+            'warehouse_id' => $fromWarehouseId,
+            'batch_id' => $batchId,
+            'reason' => "Transfer to warehouse #{$toWarehouseId}",
+            'employee_id' => Auth::id(),
+            'employee_name' => Auth::user()?->full_name,
+            'ip_address' => Request::ip(),
         ]);
 
         $this->movementRepo->create([
-            'product_id'     => $product->id,
-            'product_name'   => $product->name,
-            'quantity'       => $quantity,
-            'balance_after'  => $balance,
-            'movement_type'  => 'transfer_in',
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'quantity' => $quantity,
+            'balance_after' => $balance,
+            'movement_type' => 'transfer_in',
             'reference_type' => 'transfer',
-            'reference_id'   => $transferId,
-            'warehouse_id'   => $toWarehouseId,
-            'batch_id'       => $batchId,
-            'reason'         => "Transfer from warehouse #{$fromWarehouseId}",
-            'employee_id'    => Auth::id(),
-            'employee_name'  => Auth::user()?->full_name,
-            'ip_address'     => Request::ip(),
+            'reference_id' => $transferId,
+            'warehouse_id' => $toWarehouseId,
+            'batch_id' => $batchId,
+            'reason' => "Transfer from warehouse #{$fromWarehouseId}",
+            'employee_id' => Auth::id(),
+            'employee_name' => Auth::user()?->full_name,
+            'ip_address' => Request::ip(),
         ]);
     }
 
@@ -314,10 +319,14 @@ class StockService
 
     private function syncWarehouseStock(int $productId, ?int $warehouseId, int $delta): void
     {
-        if ($delta === 0) return;
+        if ($delta === 0) {
+            return;
+        }
 
         $wid = $warehouseId ?? Warehouse::where('is_default', true)->value('id');
-        if (!$wid) return;
+        if (! $wid) {
+            return;
+        }
 
         WarehouseStock::updateOrCreate(
             ['warehouse_id' => $wid, 'product_id' => $productId],
@@ -348,19 +357,19 @@ class StockService
         ?int $balanceAfter = null
     ): void {
         $this->movementRepo->create([
-            'product_id'     => $product->id,
-            'product_name'   => $product->name,
-            'quantity'       => $quantity,
-            'balance_after'  => $balanceAfter ?? $product->quantity,
-            'movement_type'  => $type,
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'quantity' => $quantity,
+            'balance_after' => $balanceAfter ?? $product->quantity,
+            'movement_type' => $type,
             'reference_type' => $referenceType,
-            'reference_id'   => $referenceId,
-            'warehouse_id'   => $warehouseId,
-            'batch_id'       => $batchId,
-            'reason'         => $reason,
-            'employee_id'    => Auth::id(),
-            'employee_name'  => Auth::user()?->full_name,
-            'ip_address'     => Request::ip(),
+            'reference_id' => $referenceId,
+            'warehouse_id' => $warehouseId,
+            'batch_id' => $batchId,
+            'reason' => $reason,
+            'employee_id' => Auth::id(),
+            'employee_name' => Auth::user()?->full_name,
+            'ip_address' => Request::ip(),
         ]);
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -12,13 +13,28 @@ class WasteRecord extends Model
     ];
 
     protected $casts = [
-        'quantity'    => 'float',
-        'unit_cost'   => 'float',
+        'quantity' => 'float',
+        'unit_cost' => 'float',
         'total_value' => 'float',
     ];
 
-    public function product()   { return $this->belongsTo(Product::class); }
-    public function warehouse() { return $this->belongsTo(Warehouse::class); }
-    public function batch()     { return $this->belongsTo(ProductBatch::class, 'batch_id'); }
-    public function recorder()  { return $this->belongsTo(User::class, 'recorded_by'); }
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function batch()
+    {
+        return $this->belongsTo(ProductBatch::class, 'batch_id');
+    }
+
+    public function recorder()
+    {
+        return $this->belongsTo(User::class, 'recorded_by');
+    }
 }

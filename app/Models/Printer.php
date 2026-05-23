@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Printing\Connectors\ConnectorFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -19,21 +20,32 @@ class Printer extends Model
     ];
 
     protected $casts = [
-        'auto_cut'           => 'boolean',
-        'auto_open_drawer'   => 'boolean',
-        'is_active'          => 'boolean',
-        'is_default'         => 'boolean',
-        'capabilities'       => 'array',
-        'port'               => 'integer',
-        'characters_per_line'=> 'integer',
-        'copies'             => 'integer',
+        'auto_cut' => 'boolean',
+        'auto_open_drawer' => 'boolean',
+        'is_active' => 'boolean',
+        'is_default' => 'boolean',
+        'capabilities' => 'array',
+        'port' => 'integer',
+        'characters_per_line' => 'integer',
+        'copies' => 'integer',
     ];
 
     // ── Relationships ──────────────────────────────────────────────────────────
 
-    public function branch()    { return $this->belongsTo(Branch::class); }
-    public function printJobs() { return $this->hasMany(PrintJob::class); }
-    public function printLogs() { return $this->hasMany(PrintLog::class); }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function printJobs()
+    {
+        return $this->hasMany(PrintJob::class);
+    }
+
+    public function printLogs()
+    {
+        return $this->hasMany(PrintLog::class);
+    }
 
     // ── Scopes ─────────────────────────────────────────────────────────────────
 
@@ -50,7 +62,7 @@ class Printer extends Model
     public function scopeForBranch($query, $branchId)
     {
         return $query->where('branch_id', $branchId)
-                     ->orWhereNull('branch_id');
+            ->orWhereNull('branch_id');
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -77,10 +89,11 @@ class Printer extends Model
     public function testConnection(): array
     {
         try {
-            $connector = \App\Services\Printing\Connectors\ConnectorFactory::make($this);
+            $connector = ConnectorFactory::make($this);
             $connector->open();
-            $connector->send(chr(0x1B) . chr(0x40)); // ESC @ = Initialize
+            $connector->send(chr(0x1B).chr(0x40)); // ESC @ = Initialize
             $connector->close();
+
             return ['success' => true, 'message' => 'Connection OK'];
         } catch (\Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
@@ -102,8 +115,8 @@ class Printer extends Model
         static::saving(function (self $printer) {
             if ($printer->is_default) {
                 static::where('branch_id', $printer->branch_id)
-                      ->where('id', '!=', $printer->id ?? 0)
-                      ->update(['is_default' => false]);
+                    ->where('id', '!=', $printer->id ?? 0)
+                    ->update(['is_default' => false]);
             }
         });
     }

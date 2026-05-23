@@ -1,10 +1,13 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
@@ -15,25 +18,26 @@ class DiscountCapTest extends TestCase
     use RefreshDatabase;
 
     protected User $cashier;
+
     protected Product $product;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
         $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
 
         $this->product = Product::factory()->create([
-            'price'    => 100,
+            'price' => 100,
             'quantity' => 50,
         ]);
 
         // إعداد حد الخصم بـ 20%
         Setting::updateOrCreate(['key' => 'max_discount_percent'], [
             'value' => '20',
-            'type'  => 'number',
+            'type' => 'number',
             'group' => 'pos',
         ]);
     }
@@ -42,8 +46,8 @@ class DiscountCapTest extends TestCase
     public function discount_within_limit_is_accepted()
     {
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
-            'discount'       => 15, // 15% من 100 = مسموح (الحد 20%)
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'discount' => 15, // 15% من 100 = مسموح (الحد 20%)
             'payment_method' => 'cash',
         ]);
 
@@ -55,8 +59,8 @@ class DiscountCapTest extends TestCase
     public function discount_exceeding_limit_is_rejected()
     {
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
-            'discount'       => 50, // 50% من 100 — يتجاوز الحد 20%
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'discount' => 50, // 50% من 100 — يتجاوز الحد 20%
             'payment_method' => 'cash',
         ]);
 
@@ -68,8 +72,8 @@ class DiscountCapTest extends TestCase
     public function zero_discount_is_always_accepted()
     {
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
-            'discount'       => 0,
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'discount' => 0,
             'payment_method' => 'cash',
         ]);
 
@@ -81,11 +85,11 @@ class DiscountCapTest extends TestCase
     {
         // تغيير الحد إلى 10%
         Setting::where('key', 'max_discount_percent')->update(['value' => '10']);
-        \Illuminate\Support\Facades\Cache::flush();
+        Cache::flush();
 
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
-            'discount'       => 15, // 15 > 10% من 100
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'discount' => 15, // 15 > 10% من 100
             'payment_method' => 'cash',
         ]);
 

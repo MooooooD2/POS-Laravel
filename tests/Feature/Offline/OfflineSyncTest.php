@@ -4,6 +4,7 @@ namespace Tests\Feature\Offline;
 
 use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Ramsey\Uuid\Uuid;
@@ -17,13 +18,15 @@ class OfflineSyncTest extends TestCase
     use RefreshDatabase;
 
     private User $cashier;
+
     private User $admin;
+
     private Product $product;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
         $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
@@ -44,8 +47,8 @@ class OfflineSyncTest extends TestCase
         $response = $this->actingAs($this->cashier)->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => $uuid,
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                    'offline_uuid' => $uuid,
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
             ],
@@ -64,8 +67,8 @@ class OfflineSyncTest extends TestCase
         $payload = [
             'invoices' => [
                 [
-                    'offline_uuid'   => $uuid,
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                    'offline_uuid' => $uuid,
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
             ],
@@ -87,13 +90,13 @@ class OfflineSyncTest extends TestCase
     public function stock_is_deducted_only_once_for_duplicate_uuid(): void
     {
         $initialQty = $this->product->quantity;
-        $uuid       = Uuid::uuid4()->toString();
+        $uuid = Uuid::uuid4()->toString();
 
         $payload = [
             'invoices' => [
                 [
-                    'offline_uuid'   => $uuid,
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 2]],
+                    'offline_uuid' => $uuid,
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 2]],
                     'payment_method' => 'cash',
                 ],
             ],
@@ -114,13 +117,13 @@ class OfflineSyncTest extends TestCase
         $response = $this->actingAs($this->cashier)->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => Uuid::uuid4()->toString(),
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                    'offline_uuid' => Uuid::uuid4()->toString(),
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
                 [
-                    'offline_uuid'   => Uuid::uuid4()->toString(),
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 2]],
+                    'offline_uuid' => Uuid::uuid4()->toString(),
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 2]],
                     'payment_method' => 'card',
                 ],
             ],
@@ -139,8 +142,8 @@ class OfflineSyncTest extends TestCase
         $this->actingAs($this->cashier)->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => $existingUuid,
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                    'offline_uuid' => $existingUuid,
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
             ],
@@ -150,13 +153,13 @@ class OfflineSyncTest extends TestCase
         $response = $this->actingAs($this->cashier)->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => $existingUuid, // duplicate
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                    'offline_uuid' => $existingUuid, // duplicate
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
                 [
-                    'offline_uuid'   => Uuid::uuid4()->toString(), // new
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                    'offline_uuid' => Uuid::uuid4()->toString(), // new
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
             ],
@@ -181,8 +184,8 @@ class OfflineSyncTest extends TestCase
         $this->actingAs($this->cashier)->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => 'not-a-valid-uuid',
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                    'offline_uuid' => 'not-a-valid-uuid',
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
             ],
@@ -195,8 +198,8 @@ class OfflineSyncTest extends TestCase
         $this->actingAs($this->cashier)->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => Uuid::uuid4()->toString(),
-                    'items'          => [], // empty items
+                    'offline_uuid' => Uuid::uuid4()->toString(),
+                    'items' => [], // empty items
                     'payment_method' => 'cash',
                 ],
             ],
@@ -209,8 +212,8 @@ class OfflineSyncTest extends TestCase
         $this->actingAs($this->cashier)->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => Uuid::uuid4()->toString(),
-                    'items'          => [['product_id' => 99999, 'quantity' => 1]],
+                    'offline_uuid' => Uuid::uuid4()->toString(),
+                    'items' => [['product_id' => 99999, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
             ],
@@ -223,8 +226,8 @@ class OfflineSyncTest extends TestCase
         $invoices = [];
         for ($i = 0; $i < 101; $i++) {
             $invoices[] = [
-                'offline_uuid'   => Uuid::uuid4()->toString(),
-                'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                'offline_uuid' => Uuid::uuid4()->toString(),
+                'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                 'payment_method' => 'cash',
             ];
         }
@@ -239,8 +242,8 @@ class OfflineSyncTest extends TestCase
         $this->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => Uuid::uuid4()->toString(),
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                    'offline_uuid' => Uuid::uuid4()->toString(),
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
             ],
@@ -255,12 +258,12 @@ class OfflineSyncTest extends TestCase
         $response = $this->actingAs($this->cashier)->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => Uuid::uuid4()->toString(),
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 2]],
+                    'offline_uuid' => Uuid::uuid4()->toString(),
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 2]],
                     'payment_method' => 'cash',
-                    'discount'       => 10.00,
-                    'cash_received'  => 90.00,
-                    'notes'          => 'عميل مميز',
+                    'discount' => 10.00,
+                    'cash_received' => 90.00,
+                    'notes' => 'عميل مميز',
                 ],
             ],
         ]);
@@ -277,8 +280,8 @@ class OfflineSyncTest extends TestCase
         $response = $this->actingAs($this->cashier)->postJson('/api/offline/sync', [
             'invoices' => [
                 [
-                    'offline_uuid'   => $uuid,
-                    'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+                    'offline_uuid' => $uuid,
+                    'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
                     'payment_method' => 'cash',
                 ],
             ],

@@ -1,15 +1,18 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\ProductResource;
 use App\Models\Invoice;
+use App\Models\Product;
 use App\Services\InvoiceService;
 use App\Services\Printing\ThermalPrinterService;
 use App\Services\SettingService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -19,8 +22,8 @@ class InvoiceController extends Controller
     use ApiResponse, AuditLog;
 
     public function __construct(
-        private InvoiceService        $invoiceService,
-        private SettingService        $settingService,
+        private InvoiceService $invoiceService,
+        private SettingService $settingService,
         private ThermalPrinterService $printerService,
     ) {}
 
@@ -28,15 +31,17 @@ class InvoiceController extends Controller
     {
         $settings = $this->settingService->getPosSettings();
         $waEnabled = (bool) (config('whatsapp.enabled') && config('whatsapp.phone_number_id'));
+
         return view('pos.index', compact('settings', 'waEnabled'));
     }
 
     public function productsForCache()
     {
-        $products = \App\Models\Product::query()
+        $products = Product::query()
             ->where('is_active', true)
             ->with('unit')
             ->get();
+
         return $this->success(['products' => ProductResource::collection($products)]);
     }
 
@@ -52,7 +57,7 @@ class InvoiceController extends Controller
             return $this->error(__('pos.product_not_found'), 404);
         }
 
-        if ($result instanceof \App\Models\Product) {
+        if ($result instanceof Product) {
             return $this->success(['single' => true, 'product' => new ProductResource($result)]);
         }
 
@@ -80,21 +85,22 @@ class InvoiceController extends Controller
                 } catch (\Throwable $e) {
                     Log::warning('Auto-print failed for invoice', [
                         'invoice_id' => $invoice->id,
-                        'error'      => $e->getMessage(),
+                        'error' => $e->getMessage(),
                     ]);
                     $printResult = ['success' => false, 'fallback' => 'browser', 'message' => $e->getMessage()];
                 }
             }
 
             return $this->success(array_filter([
-                'invoice'      => new InvoiceResource($invoice),
+                'invoice' => new InvoiceResource($invoice),
                 'print_result' => $printResult,
             ]), '', 201);
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (QueryException $e) {
             Log::error('invoice.create_db_error', [
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
                 'user_id' => Auth::id(),
             ]);
+
             return $this->error(__('pos.invoice_creation_failed'), 500);
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
@@ -105,13 +111,19 @@ class InvoiceController extends Controller
     {
         $request->validate(['number' => 'required|string|max:50']);
         $invoice = $this->invoiceService->getByNumber($request->string('number')->toString());
-        if (!$invoice) return $this->error(__('pos.invoice_not_found'), 404);
+        if (! $invoice) {
+            return $this->error(__('pos.invoice_not_found'), 404);
+        }
+
         return $this->success(['invoice' => new InvoiceResource($invoice)]);
     }
 
     public function returnableItems(Invoice $invoice)
     {
-        if ($invoice->status !== 'completed') return $this->error(__('pos.invoice_not_completed'), 422);
+        if ($invoice->status !== 'completed') {
+            return $this->error(__('pos.invoice_not_completed'), 422);
+        }
+
         return $this->success(['items' => $this->invoiceService->getReturnableItems($invoice)]);
     }
 
@@ -121,6 +133,7 @@ class InvoiceController extends Controller
         try {
             $cancelled = $this->invoiceService->cancelInvoice($invoice);
             $this->audit('invoice.cancelled', Invoice::class, $invoice->id, ['total' => $invoice->final_total]);
+
             return $this->success(['invoice' => new InvoiceResource($cancelled)]);
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
@@ -134,15 +147,15 @@ class InvoiceController extends Controller
     public function etaSubmissionLog(Request $request)
     {
         $request->validate([
-            'status'     => 'nullable|in:pending,submitted,valid,invalid,cancelled,rejected',
+            'status' => 'nullable|in:pending,submitted,valid,invalid,cancelled,rejected',
             'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date|after_or_equal:start_date',
-            'per_page'   => 'nullable|integer|min:10|max:100',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'per_page' => 'nullable|integer|min:10|max:100',
         ]);
 
         $query = Invoice::query()
             ->select('id', 'invoice_number', 'final_total', 'tax_amount', 'status',
-                     'eta_status', 'eta_uuid', 'eta_submitted_at', 'date', 'cashier_name')
+                'eta_status', 'eta_uuid', 'eta_submitted_at', 'date', 'cashier_name')
             ->orderByDesc('date');
 
         if ($request->filled('status')) {

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Branch;
@@ -9,7 +10,7 @@ class BranchService
     public function all(bool $activeOnly = false)
     {
         return Branch::with('manager:id,full_name')
-            ->when($activeOnly, fn($q) => $q->where('is_active', true))
+            ->when($activeOnly, fn ($q) => $q->where('is_active', true))
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get();
@@ -18,9 +19,10 @@ class BranchService
     public function create(array $data): Branch
     {
         return DB::transaction(function () use ($data) {
-            if (!empty($data['is_default'])) {
+            if (! empty($data['is_default'])) {
                 Branch::where('is_default', true)->update(['is_default' => false]);
             }
+
             return Branch::create($data);
         });
     }
@@ -28,10 +30,11 @@ class BranchService
     public function update(Branch $branch, array $data): Branch
     {
         return DB::transaction(function () use ($branch, $data) {
-            if (!empty($data['is_default'])) {
+            if (! empty($data['is_default'])) {
                 Branch::where('id', '!=', $branch->id)->update(['is_default' => false]);
             }
             $branch->update($data);
+
             return $branch->fresh();
         });
     }

@@ -16,7 +16,7 @@ class TenantController extends Controller
 
     private function guardMasterTenant(): void
     {
-        $masterId  = config('tenancy.master_tenant');
+        $masterId = config('tenancy.master_tenant');
         $currentId = tenancy()->tenant?->id;
 
         // Block only when both IDs are known and they don't match.
@@ -32,9 +32,9 @@ class TenantController extends Controller
         $tenants = Tenant::orderBy('created_at')->get();
 
         $stats = [
-            'total'   => $tenants->count(),
-            'active'  => $tenants->where('subscription_status', 'active')->count(),
-            'trial'   => $tenants->where('subscription_status', 'trial')->count(),
+            'total' => $tenants->count(),
+            'active' => $tenants->where('subscription_status', 'active')->count(),
+            'trial' => $tenants->where('subscription_status', 'trial')->count(),
             'expired' => $tenants->whereIn('subscription_status', ['expired', 'cancelled', 'suspended'])->count(),
         ];
 
@@ -45,27 +45,27 @@ class TenantController extends Controller
     {
         $this->guardMasterTenant();
 
-        $tenants    = Tenant::orderBy('created_at')->get();
+        $tenants = Tenant::orderBy('created_at')->get();
         $planModels = Plan::orderBy('sort_order')->get()->keyBy('id');
         // Fall back to 0 for any plan not yet in the DB
-        $planPrices = $planModels->mapWithKeys(fn($p) => [$p->id => $p->monthly_price])->toArray();
+        $planPrices = $planModels->mapWithKeys(fn ($p) => [$p->id => $p->monthly_price])->toArray();
 
         // ── Revenue ──────────────────────────────────────────────────────
-        $activeByPlan = $planModels->mapWithKeys(fn($p) => [
+        $activeByPlan = $planModels->mapWithKeys(fn ($p) => [
             $p->id => $tenants->where('subscription_status', 'active')->where('plan', $p->id)->count(),
         ])->toArray();
 
         $mrr = array_sum(array_map(
-            fn($planId, $count) => ($planPrices[$planId] ?? 0) * $count,
+            fn ($planId, $count) => ($planPrices[$planId] ?? 0) * $count,
             array_keys($activeByPlan), $activeByPlan
         ));
         $arr = $mrr * 12;
 
         // ── Status breakdown ─────────────────────────────────────────────
         $statusCounts = [
-            'trial'     => $tenants->where('subscription_status', 'trial')->count(),
-            'active'    => $tenants->where('subscription_status', 'active')->count(),
-            'expired'   => $tenants->where('subscription_status', 'expired')->count(),
+            'trial' => $tenants->where('subscription_status', 'trial')->count(),
+            'active' => $tenants->where('subscription_status', 'active')->count(),
+            'expired' => $tenants->where('subscription_status', 'expired')->count(),
             'suspended' => $tenants->where('subscription_status', 'suspended')->count(),
             'cancelled' => $tenants->where('subscription_status', 'cancelled')->count(),
         ];
@@ -76,18 +76,16 @@ class TenantController extends Controller
             $month = now()->startOfMonth()->subMonths($i);
             $monthlyGrowth[] = [
                 'label' => $month->format('M Y'),
-                'count' => $tenants->filter(fn($t) =>
-                    $t->created_at &&
+                'count' => $tenants->filter(fn ($t) => $t->created_at &&
                     $t->created_at->format('Y-m') === $month->format('Y-m')
                 )->count(),
             ];
         }
 
         // ── Expiring soon (30 days) ───────────────────────────────────────
-        $expiringSoon = $tenants->filter(fn($t) =>
-            ($t->subscription_ends_at || $t->trial_ends_at) &&
+        $expiringSoon = $tenants->filter(fn ($t) => ($t->subscription_ends_at || $t->trial_ends_at) &&
             ($t->subscription_ends_at ?? $t->trial_ends_at)->between(now(), now()->addDays(30))
-        )->sortBy(fn($t) => $t->subscription_ends_at ?? $t->trial_ends_at);
+        )->sortBy(fn ($t) => $t->subscription_ends_at ?? $t->trial_ends_at);
 
         // ── Recent signups ────────────────────────────────────────────────
         $recentTenants = $tenants->sortByDesc('created_at')->take(5);
@@ -104,20 +102,20 @@ class TenantController extends Controller
         $this->guardMasterTenant();
 
         $data = $request->validate([
-            'name'          => 'required|string|max:100',
-            'code'          => 'required|string|max:30|alpha_dash|unique:tenants,code',
-            'plan'          => 'nullable|string|in:basic,pro,enterprise',
-            'trial_days'    => 'nullable|integer|min:0|max:365',
+            'name' => 'required|string|max:100',
+            'code' => 'required|string|max:30|alpha_dash|unique:tenants,code',
+            'plan' => 'nullable|string|in:basic,pro,enterprise',
+            'trial_days' => 'nullable|integer|min:0|max:365',
         ]);
 
         $trialDays = $data['trial_days'] ?? 14;
         $tenant = Tenant::create([
-            'name'                => $data['name'],
-            'code'                => Str::lower($data['code']),
-            'plan'                => $data['plan'] ?? 'basic',
-            'is_active'           => true,
+            'name' => $data['name'],
+            'code' => Str::lower($data['code']),
+            'plan' => $data['plan'] ?? 'basic',
+            'is_active' => true,
             'subscription_status' => 'trial',
-            'trial_ends_at'       => now()->addDays($trialDays),
+            'trial_ends_at' => now()->addDays($trialDays),
         ]);
         // CreateDatabase + MigrateDatabase listeners fire automatically via TenancyServiceProvider
 
@@ -135,6 +133,7 @@ class TenantController extends Controller
         ]);
 
         $tenant->update($data);
+
         return $this->success(['tenant' => $tenant->fresh()], __('pos.tenant_updated'));
     }
 
@@ -169,6 +168,7 @@ class TenantController extends Controller
 
         $tenant = Tenant::findOrFail($id);
         $tenant->update(['subscription_status' => 'suspended', 'is_active' => false]);
+
         return $this->success([], __('pos.subscription_suspended'));
     }
 
@@ -182,6 +182,7 @@ class TenantController extends Controller
 
         $tenant = Tenant::findOrFail($id);
         $tenant->update(['subscription_status' => 'cancelled']);
+
         return $this->success([], __('pos.subscription_cancelled'));
     }
 
@@ -191,22 +192,21 @@ class TenantController extends Controller
 
         $tenants = Tenant::all();
         $planRevenue = [
-            'basic'      => $tenants->where('plan', 'basic')->where('subscription_status', 'active')->count() * 49,
-            'pro'        => $tenants->where('plan', 'pro')->where('subscription_status', 'active')->count() * 99,
+            'basic' => $tenants->where('plan', 'basic')->where('subscription_status', 'active')->count() * 49,
+            'pro' => $tenants->where('plan', 'pro')->where('subscription_status', 'active')->count() * 99,
             'enterprise' => $tenants->where('plan', 'enterprise')->where('subscription_status', 'active')->count() * 199,
         ];
 
         return $this->success([
-            'total'          => $tenants->count(),
-            'active'         => $tenants->where('subscription_status', 'active')->count(),
-            'trial'          => $tenants->where('subscription_status', 'trial')->count(),
-            'expired'        => $tenants->where('subscription_status', 'expired')->count(),
-            'suspended'      => $tenants->where('subscription_status', 'suspended')->count(),
-            'cancelled'      => $tenants->where('subscription_status', 'cancelled')->count(),
-            'mrr'            => array_sum($planRevenue),
-            'plan_revenue'   => $planRevenue,
-            'expiring_soon'  => $tenants->filter(fn($t) =>
-                $t->subscription_ends_at &&
+            'total' => $tenants->count(),
+            'active' => $tenants->where('subscription_status', 'active')->count(),
+            'trial' => $tenants->where('subscription_status', 'trial')->count(),
+            'expired' => $tenants->where('subscription_status', 'expired')->count(),
+            'suspended' => $tenants->where('subscription_status', 'suspended')->count(),
+            'cancelled' => $tenants->where('subscription_status', 'cancelled')->count(),
+            'mrr' => array_sum($planRevenue),
+            'plan_revenue' => $planRevenue,
+            'expiring_soon' => $tenants->filter(fn ($t) => $t->subscription_ends_at &&
                 $t->subscription_ends_at->between(now(), now()->addDays(30))
             )->count(),
         ]);
@@ -221,7 +221,8 @@ class TenantController extends Controller
         }
 
         $tenant = Tenant::findOrFail($id);
-        $tenant->update(['is_active' => !$tenant->is_active]);
+        $tenant->update(['is_active' => ! $tenant->is_active]);
+
         return $this->success([], $tenant->is_active ? __('pos.tenant_activated') : __('pos.tenant_deactivated'));
     }
 
@@ -253,8 +254,9 @@ class TenantController extends Controller
 
         // Re-initialize the master tenant so the response continues normally
         $master = Tenant::find(config('tenancy.master_tenant'));
-        if ($master)
+        if ($master) {
             tenancy()->initialize($master);
+        }
 
         return $this->success([], __('pos.tenant_seeded'));
     }
@@ -272,16 +274,20 @@ class TenantController extends Controller
             ->select('id', 'full_name', 'username', 'is_active', 'created_at')
             ->orderBy('id')
             ->get()
-            ->map(fn($u) => [
-                'id'         => $u->id,
-                'name'       => $u->full_name ?? '',
-                'username'   => $u->username ?? '',
-                'is_active'  => (bool) $u->is_active,
+            ->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->full_name ?? '',
+                'username' => $u->username ?? '',
+                'is_active' => (bool) $u->is_active,
                 'created_at' => $u->created_at,
             ]);
 
         // Restore the caller's tenant context
-        if ($caller) tenancy()->initialize($caller); else tenancy()->end();
+        if ($caller) {
+            tenancy()->initialize($caller);
+        } else {
+            tenancy()->end();
+        }
 
         return $this->success(['users' => $users]);
     }
@@ -296,15 +302,24 @@ class TenantController extends Controller
         tenancy()->initialize($tenant);
 
         $user = \DB::table('users')->where('id', $userId)->first();
-        if (!$user) {
-            if ($caller) tenancy()->initialize($caller); else tenancy()->end();
+        if (! $user) {
+            if ($caller) {
+                tenancy()->initialize($caller);
+            } else {
+                tenancy()->end();
+            }
+
             return $this->error('User not found', 404);
         }
 
-        $newState = !((bool) $user->is_active);
+        $newState = ! ((bool) $user->is_active);
         \DB::table('users')->where('id', $userId)->update(['is_active' => $newState]);
 
-        if ($caller) tenancy()->initialize($caller); else tenancy()->end();
+        if ($caller) {
+            tenancy()->initialize($caller);
+        } else {
+            tenancy()->end();
+        }
 
         return $this->success(
             ['is_active' => $newState],

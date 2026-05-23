@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Customer;
+use Illuminate\Database\Seeder;
 
 class CustomerSeeder extends Seeder
 {
@@ -20,30 +20,30 @@ class CustomerSeeder extends Seeder
 
             // businesses
             ['code' => 'CUST-0007', 'type' => 'business', 'name' => 'شركة النجم للتجارة',          'phone' => '01000111222', 'email' => 'star@company.eg',  'governate' => 'القاهرة',    'city' => 'مصر الجديدة',  'credit_limit' => 5000, 'is_active' => true,
-             'tax_number' => '123456789', 'commercial_register' => '987654'],
+                'tax_number' => '123456789', 'commercial_register' => '987654'],
             ['code' => 'CUST-0008', 'type' => 'business', 'name' => 'مؤسسة الرشيد',                'phone' => '01000333444', 'email' => null,               'governate' => 'الجيزة',     'city' => 'أكتوبر',       'credit_limit' => 3000, 'is_active' => true,
-             'tax_number' => '987654321', 'commercial_register' => '123456'],
+                'tax_number' => '987654321', 'commercial_register' => '123456'],
             ['code' => 'CUST-0009', 'type' => 'business', 'name' => 'مجموعة هلال للمواد الغذائية', 'phone' => '01000555666', 'email' => 'hilal@food.eg',    'governate' => 'الإسكندرية', 'city' => 'العجمي',       'credit_limit' => 8000, 'is_active' => true,
-             'tax_number' => '555444333', 'commercial_register' => '111222'],
+                'tax_number' => '555444333', 'commercial_register' => '111222'],
             ['code' => 'CUST-0010', 'type' => 'individual', 'name' => 'عمرو سعيد الحسيني',   'phone' => '01155667788', 'email' => null,                    'governate' => 'المنوفية',   'city' => 'شبين الكوم',   'credit_limit' => 200,  'is_active' => true],
         ];
 
         foreach ($customers as $c) {
             Customer::firstOrCreate(['code' => $c['code']], array_filter([
-                'code'                => $c['code'],
-                'type'                => $c['type'],
-                'name'                => $c['name'],
-                'phone'               => $c['phone'],
-                'email'               => $c['email'] ?? null,
-                'tax_number'          => $c['tax_number'] ?? null,
+                'code' => $c['code'],
+                'type' => $c['type'],
+                'name' => $c['name'],
+                'phone' => $c['phone'],
+                'email' => $c['email'] ?? null,
+                'tax_number' => $c['tax_number'] ?? null,
                 'commercial_register' => $c['commercial_register'] ?? null,
-                'governate'           => $c['governate'],
-                'city'                => $c['city'],
-                'credit_limit'        => $c['credit_limit'],
-                'balance'             => 0,
-                'loyalty_points'      => 0,
-                'is_active'           => $c['is_active'],
-            ], fn($v) => $v !== null));
+                'governate' => $c['governate'],
+                'city' => $c['city'],
+                'credit_limit' => $c['credit_limit'],
+                'balance' => 0,
+                'loyalty_points' => 0,
+                'is_active' => $c['is_active'],
+            ], fn ($v) => $v !== null));
         }
 
         $this->command->info('✅ Customers seeded (10 records).');

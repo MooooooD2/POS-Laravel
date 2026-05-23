@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\Repositories\AccountRepositoryInterface;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 class AccountingService
 {
     public function __construct(
-        private AccountRepositoryInterface      $accountRepo,
+        private AccountRepositoryInterface $accountRepo,
         private JournalEntryRepositoryInterface $journalRepo,
     ) {}
 
@@ -25,7 +26,7 @@ class AccountingService
                 throw new \DomainException(__('pos.period_is_closed', ['name' => $period->name]));
             }
 
-            $totalDebit  = collect($data['lines'])->sum('debit');
+            $totalDebit = collect($data['lines'])->sum('debit');
             $totalCredit = collect($data['lines'])->sum('credit');
 
             // FIX: standardize tolerance to 0.01 (1 cent) — previously used round() !== round()
@@ -36,20 +37,20 @@ class AccountingService
             }
 
             $entry = $this->journalRepo->create([
-                'entry_number'   => SequenceService::next('journal'),
-                'entry_date'     => $data['entry_date'],
-                'description'    => $data['description'],
+                'entry_number' => SequenceService::next('journal'),
+                'entry_date' => $data['entry_date'],
+                'description' => $data['description'],
                 'reference_type' => $data['reference_type'] ?? null,
-                'reference_id'   => $data['reference_id'] ?? null,
-                'created_by'     => Auth::id(),
+                'reference_id' => $data['reference_id'] ?? null,
+                'created_by' => Auth::id(),
             ]);
 
             foreach ($data['lines'] as $line) {
                 $this->journalRepo->createLine([
-                    'entry_id'    => $entry->id,
-                    'account_id'  => $line['account_id'],
-                    'debit'       => $line['debit'] ?? 0,
-                    'credit'      => $line['credit'] ?? 0,
+                    'entry_id' => $entry->id,
+                    'account_id' => $line['account_id'],
+                    'debit' => $line['debit'] ?? 0,
+                    'credit' => $line['credit'] ?? 0,
                     'description' => $line['description'] ?? null,
                 ]);
 
@@ -92,9 +93,9 @@ class AccountingService
             // Bypass the immutability guard — posting IS the one allowed state change
             JournalEntry::withoutEvents(function () use ($locked, $period) {
                 $locked->update([
-                    'is_posted'        => true,
-                    'posted_at'        => now(),
-                    'posted_by'        => Auth::id(),
+                    'is_posted' => true,
+                    'posted_at' => now(),
+                    'posted_by' => Auth::id(),
                     'fiscal_period_id' => $period?->id,
                 ]);
             });
@@ -109,7 +110,7 @@ class AccountingService
      */
     public function reverseEntry(JournalEntry $entry, string $description): JournalEntry
     {
-        if (!$entry->is_posted) {
+        if (! $entry->is_posted) {
             throw new \DomainException(__('pos.journal_entry_not_posted'));
         }
 
@@ -119,22 +120,22 @@ class AccountingService
 
         return DB::transaction(function () use ($entry, $description) {
             $reversal = $this->journalRepo->create([
-                'entry_number'   => SequenceService::next('journal'),
-                'entry_date'     => now()->toDateString(),
-                'description'    => $description,
+                'entry_number' => SequenceService::next('journal'),
+                'entry_date' => now()->toDateString(),
+                'description' => $description,
                 'reference_type' => 'reversal',
-                'reference_id'   => $entry->id,
-                'created_by'     => Auth::id(),
-                'reversal_of'    => $entry->id,
+                'reference_id' => $entry->id,
+                'created_by' => Auth::id(),
+                'reversal_of' => $entry->id,
             ]);
 
             foreach ($entry->lines as $line) {
                 // Swap debit ↔ credit to negate the effect
                 $this->journalRepo->createLine([
-                    'entry_id'    => $reversal->id,
-                    'account_id'  => $line->account_id,
-                    'debit'       => $line->credit,
-                    'credit'      => $line->debit,
+                    'entry_id' => $reversal->id,
+                    'account_id' => $line->account_id,
+                    'debit' => $line->credit,
+                    'credit' => $line->debit,
                     'description' => __('pos.reversal_of_entry', ['number' => $entry->entry_number]),
                 ]);
 
@@ -158,16 +159,16 @@ class AccountingService
 
         $totalRevenue = collect($revenues)->sum('total');
         $totalExpense = collect($expenses)->sum('total');
-        $netIncome    = $totalRevenue - $totalExpense;
+        $netIncome = $totalRevenue - $totalExpense;
 
         return compact('revenues', 'expenses', 'totalRevenue', 'totalExpense', 'netIncome');
     }
 
     public function balanceSheet(): array
     {
-        $assets      = $this->accountRepo->rootsByType('asset');
+        $assets = $this->accountRepo->rootsByType('asset');
         $liabilities = $this->accountRepo->rootsByType('liability');
-        $equity      = $this->accountRepo->rootsByType('equity');
+        $equity = $this->accountRepo->rootsByType('equity');
 
         return compact('assets', 'liabilities', 'equity');
     }
@@ -177,10 +178,10 @@ class AccountingService
      * journal-entry lines.  Wraps the bulk update in a transaction so balances are
      * never left in a partially-recalculated state.
      *
-     * @return int  Number of account rows processed.
+     * @return int Number of account rows processed.
      */
     public function recalculateAllBalances(): int
     {
-        return DB::transaction(fn() => $this->accountRepo->recalculateAllBalances());
+        return DB::transaction(fn () => $this->accountRepo->recalculateAllBalances());
     }
 }

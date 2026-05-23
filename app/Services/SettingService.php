@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\Repositories\SettingRepositoryInterface;
@@ -48,8 +49,8 @@ class SettingService
     public function updateBatch(array $settings): void
     {
         foreach ($settings as $item) {
-            if (!in_array($item['key'], self::ALLOWED_KEYS, true)) {
-                throw new \Exception('مفتاح الإعداد غير مسموح به: ' . $item['key']);
+            if (! in_array($item['key'], self::ALLOWED_KEYS, true)) {
+                throw new \Exception('مفتاح الإعداد غير مسموح به: '.$item['key']);
             }
             $value = $item['value'] ?? '';
             if (is_string($value)) {
@@ -67,26 +68,26 @@ class SettingService
              + $this->settingRepo->getGroup('general')
              + $this->settingRepo->getGroup('invoice');
 
-        $settings = array_map(fn($s) => match ($s['type'] ?? 'string') {
+        $settings = array_map(fn ($s) => match ($s['type'] ?? 'string') {
             'boolean' => (bool) $s['value'],
-            'number'  => (float) $s['value'],
-            'json'    => json_decode($s['value'], true),
-            default   => $s['value'],
+            'number' => (float) $s['value'],
+            'json' => json_decode($s['value'], true),
+            default => $s['value'],
         }, $raw);
 
         return $settings + [
             'currency_symbol' => 'ج.م',
-            'store_name'      => '',
-            'store_address'   => '',
-            'store_phone'     => '',
-            'tax_enabled'     => false,
-            'tax_rate'        => 0.0,
-            'tax_name_ar'     => 'ضريبة',
-            'tax_name_en'     => 'VAT',
-            'tax_inclusive'   => false,
-            'invoice_footer'  => '',
-            'auto_print'      => false,
-            'pos_sound'       => true,
+            'store_name' => '',
+            'store_address' => '',
+            'store_phone' => '',
+            'tax_enabled' => false,
+            'tax_rate' => 0.0,
+            'tax_name_ar' => 'ضريبة',
+            'tax_name_en' => 'VAT',
+            'tax_inclusive' => false,
+            'invoice_footer' => '',
+            'auto_print' => false,
+            'pos_sound' => true,
             'default_payment' => 'cash',
         ];
     }

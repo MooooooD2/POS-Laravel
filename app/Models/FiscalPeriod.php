@@ -3,16 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
- * @property int                             $id
- * @property string                          $name
- * @property \Illuminate\Support\Carbon      $start_date
- * @property \Illuminate\Support\Carbon      $end_date
- * @property string                          $status
- * @property int|null                        $closing_entry_id
- * @property \Illuminate\Support\Carbon|null $closed_at
- * @property int|null                        $closed_by
+ * @property int $id
+ * @property string $name
+ * @property Carbon $start_date
+ * @property Carbon $end_date
+ * @property string $status
+ * @property int|null $closing_entry_id
+ * @property Carbon|null $closed_at
+ * @property int|null $closed_by
  */
 class FiscalPeriod extends Model
 {
@@ -20,16 +21,34 @@ class FiscalPeriod extends Model
 
     protected $casts = [
         'start_date' => 'date',
-        'end_date'   => 'date',
-        'closed_at'  => 'datetime',
+        'end_date' => 'date',
+        'closed_at' => 'datetime',
     ];
 
-    public function closingEntry() { return $this->belongsTo(JournalEntry::class, 'closing_entry_id'); }
-    public function closedBy()     { return $this->belongsTo(User::class, 'closed_by'); }
-    public function entries()      { return $this->hasMany(JournalEntry::class); }
+    public function closingEntry()
+    {
+        return $this->belongsTo(JournalEntry::class, 'closing_entry_id');
+    }
 
-    public function isClosed(): bool { return $this->status === 'closed'; }
-    public function isOpen(): bool   { return $this->status === 'open'; }
+    public function closedBy()
+    {
+        return $this->belongsTo(User::class, 'closed_by');
+    }
+
+    public function entries()
+    {
+        return $this->hasMany(JournalEntry::class);
+    }
+
+    public function isClosed(): bool
+    {
+        return $this->status === 'closed';
+    }
+
+    public function isOpen(): bool
+    {
+        return $this->status === 'open';
+    }
 
     /**
      * Find the period (if any) that contains the given date.

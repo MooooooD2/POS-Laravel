@@ -7,13 +7,14 @@ use Illuminate\Console\Command;
 
 class GenerateSystemEvaluationPdf extends Command
 {
-    protected $signature   = 'report:system-evaluation {--out=system-evaluation.pdf : Output filename inside storage/app/}';
+    protected $signature = 'report:system-evaluation {--out=system-evaluation.pdf : Output filename inside storage/app/}';
+
     protected $description = 'Generate the system evaluation report as a PDF';
 
     public function handle(): int
     {
         $filename = $this->option('out');
-        $outPath  = storage_path('app/' . $filename);
+        $outPath = storage_path('app/'.$filename);
 
         $this->info('Rendering evaluation report…');
 
@@ -24,7 +25,7 @@ class GenerateSystemEvaluationPdf extends Command
             ->setOption('defaultFont', 'dejavu sans');
 
         $dir = dirname($outPath);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 

@@ -1,10 +1,12 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -25,7 +27,7 @@ class InvoiceServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
         $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
     }
@@ -38,7 +40,7 @@ class InvoiceServiceTest extends TestCase
         $product = Product::factory()->create(['price' => 150.00, 'cost_price' => 80.00, 'quantity' => 20]);
 
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 3]],
+            'items' => [['product_id' => $product->id, 'quantity' => 3]],
             'payment_method' => 'cash',
         ]);
 
@@ -55,7 +57,7 @@ class InvoiceServiceTest extends TestCase
         $product = Product::factory()->create(['price' => 50.00, 'quantity' => 3]);
 
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 10]],
+            'items' => [['product_id' => $product->id, 'quantity' => 10]],
             'payment_method' => 'cash',
         ]);
 
@@ -72,7 +74,7 @@ class InvoiceServiceTest extends TestCase
         $product = Product::factory()->create(['price' => 200.00, 'quantity' => 5]);
 
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 1, 'price' => 1.00]],
+            'items' => [['product_id' => $product->id, 'quantity' => 1, 'price' => 1.00]],
             'payment_method' => 'cash',
         ]);
 
@@ -89,12 +91,12 @@ class InvoiceServiceTest extends TestCase
         $product = Product::factory()->create(['price' => 50.00, 'quantity' => 10]);
 
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 0]],
+            'items' => [['product_id' => $product->id, 'quantity' => 0]],
             'payment_method' => 'cash',
         ])->assertStatus(422);
 
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => -5]],
+            'items' => [['product_id' => $product->id, 'quantity' => -5]],
             'payment_method' => 'cash',
         ])->assertStatus(422);
 
@@ -109,17 +111,17 @@ class InvoiceServiceTest extends TestCase
         $product = Product::factory()->create(['price' => 10.00, 'quantity' => 5]);
 
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 3]],
+            'items' => [['product_id' => $product->id, 'quantity' => 3]],
             'payment_method' => 'cash',
         ])->assertStatus(201);
 
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 2]],
+            'items' => [['product_id' => $product->id, 'quantity' => 2]],
             'payment_method' => 'cash',
         ])->assertStatus(201);
 
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
         ])->assertStatus(422);
 
@@ -135,22 +137,22 @@ class InvoiceServiceTest extends TestCase
         $product = Product::factory()->create(['price' => 100.00, 'quantity' => 10]);
 
         $invoice = Invoice::factory()->create([
-            'status'      => 'completed',
-            'total'       => 200.00,
+            'status' => 'completed',
+            'total' => 200.00,
             'final_total' => 200.00,
         ]);
         InvoiceItem::factory()->create([
-            'invoice_id'   => $invoice->id,
-            'product_id'   => $product->id,
+            'invoice_id' => $invoice->id,
+            'product_id' => $product->id,
             'product_name' => $product->name,
-            'quantity'     => 2,
-            'price'        => 100.00,
-            'subtotal'     => 200.00,
+            'quantity' => 2,
+            'price' => 100.00,
+            'subtotal' => 200.00,
         ]);
 
         $this->actingAs($this->cashier)->postJson('/api/returns', [
-            'invoice_id'    => $invoice->id,
-            'items'         => [['product_id' => $product->id, 'quantity' => 99]],
+            'invoice_id' => $invoice->id,
+            'items' => [['product_id' => $product->id, 'quantity' => 99]],
             'refund_method' => 'cash',
         ])->assertStatus(422);
     }
@@ -160,18 +162,18 @@ class InvoiceServiceTest extends TestCase
     #[Test]
     public function ec_return_02_return_from_cancelled_invoice_returns_422(): void
     {
-        $product   = Product::factory()->create(['price' => 50.00, 'quantity' => 5]);
+        $product = Product::factory()->create(['price' => 50.00, 'quantity' => 5]);
         $cancelled = Invoice::factory()->create(['status' => 'cancelled']);
         InvoiceItem::factory()->create([
-            'invoice_id'   => $cancelled->id,
-            'product_id'   => $product->id,
+            'invoice_id' => $cancelled->id,
+            'product_id' => $product->id,
             'product_name' => $product->name,
-            'quantity'     => 1,
+            'quantity' => 1,
         ]);
 
         $this->actingAs($this->cashier)->postJson('/api/returns', [
-            'invoice_id'    => $cancelled->id,
-            'items'         => [['product_id' => $product->id, 'quantity' => 1]],
+            'invoice_id' => $cancelled->id,
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'refund_method' => 'cash',
         ])->assertStatus(422);
     }

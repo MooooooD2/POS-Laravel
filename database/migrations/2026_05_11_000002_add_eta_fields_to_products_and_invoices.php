@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('eta_long_id', 100)->nullable()->after('eta_uuid');
             $table->string('eta_submission_id', 100)->nullable()->after('eta_long_id');
             $table->enum('eta_status', ['pending', 'submitted', 'valid', 'invalid', 'cancelled', 'rejected'])
-                  ->default('pending')->after('eta_submission_id');
+                ->default('pending')->after('eta_submission_id');
             $table->text('eta_response')->nullable()->after('eta_status');
             $table->timestamp('eta_submitted_at')->nullable()->after('eta_response');
             $table->string('eta_hash', 64)->nullable()->after('eta_submitted_at');

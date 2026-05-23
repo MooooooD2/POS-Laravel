@@ -1,8 +1,10 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Models\Supplier;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -11,13 +13,14 @@ class SupplierTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $cashier;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
-        $this->admin   = User::factory()->create(['is_active' => true]);
+        $this->seed(RolePermissionSeeder::class);
+        $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');
         $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
@@ -28,7 +31,7 @@ class SupplierTest extends TestCase
     {
         $this->actingAs($this->admin)
             ->postJson('/api/suppliers', [
-                'name'  => 'مورد اختبار',
+                'name' => 'مورد اختبار',
                 'phone' => '0512345678',
                 'email' => 'supplier@test.com',
             ])->assertStatus(201);

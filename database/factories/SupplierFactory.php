@@ -9,10 +9,10 @@ class SupplierFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'    => $this->faker->company(),
-            'phone'   => $this->faker->numerify('05########'),
+            'name' => $this->faker->company(),
+            'phone' => $this->faker->numerify('05########'),
             'address' => $this->faker->address(),
-            'email'   => $this->faker->unique()->safeEmail(),
+            'email' => $this->faker->unique()->safeEmail(),
         ];
     }
 }

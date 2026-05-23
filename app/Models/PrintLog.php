@@ -16,10 +16,17 @@ class PrintLog extends Model
     ];
 
     protected $casts = [
-        'copies'  => 'integer',
+        'copies' => 'integer',
         'success' => 'boolean',
     ];
 
-    public function printer()   { return $this->belongsTo(Printer::class); }
-    public function printedBy() { return $this->belongsTo(User::class, 'printed_by'); }
+    public function printer()
+    {
+        return $this->belongsTo(Printer::class);
+    }
+
+    public function printedBy()
+    {
+        return $this->belongsTo(User::class, 'printed_by');
+    }
 }

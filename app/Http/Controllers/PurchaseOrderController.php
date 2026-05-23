@@ -1,9 +1,10 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Contracts\Repositories\PurchaseOrderRepositoryInterface;
-use App\Http\Requests\StorePurchaseOrderRequest;
 use App\Http\Requests\ReceivePurchaseOrderRequest;
+use App\Http\Requests\StorePurchaseOrderRequest;
 use App\Models\PurchaseOrder;
 use App\Services\PurchaseOrderService;
 use App\Traits\ApiResponse;
@@ -16,17 +17,20 @@ class PurchaseOrderController extends Controller
     use ApiResponse, AuditLog;
 
     public function __construct(
-        private PurchaseOrderService            $poService,
+        private PurchaseOrderService $poService,
         private PurchaseOrderRepositoryInterface $poRepo,
     ) {}
 
-    public function index() { return view('purchase-orders.index'); }
+    public function index()
+    {
+        return view('purchase-orders.index');
+    }
 
     public function all(Request $request)
     {
         $request->validate([
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
-            'status'      => 'nullable|in:draft,pending,approved,partial,received,cancelled,rejected',
+            'status' => 'nullable|in:draft,pending,approved,partial,received,cancelled,rejected',
         ]);
 
         return $this->success(['purchase_orders' => $this->poRepo->paginate(
@@ -40,6 +44,7 @@ class PurchaseOrderController extends Controller
         try {
             $po = $this->poService->createPurchaseOrder($request->validated());
             $this->audit('po.created', PurchaseOrder::class, (int) $po->id, ['po_number' => $po->po_number]);
+
             return $this->success(['purchase_order' => $po], '', 201);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -74,7 +79,7 @@ class PurchaseOrderController extends Controller
         }
 
         $purchaseOrder->update([
-            'status'      => 'approved',
+            'status' => 'approved',
             'approved_by' => Auth::id(),
             'approved_at' => now(),
         ]);
@@ -100,13 +105,13 @@ class PurchaseOrderController extends Controller
         }
 
         $purchaseOrder->update([
-            'status'           => 'rejected',
+            'status' => 'rejected',
             'rejection_reason' => $data['reason'],
         ]);
 
         $this->audit('po.rejected', PurchaseOrder::class, $purchaseOrder->id, [
             'po_number' => $purchaseOrder->po_number,
-            'reason'    => $data['reason'],
+            'reason' => $data['reason'],
         ]);
 
         return $this->success(['purchase_order' => $purchaseOrder->fresh()]);
@@ -126,6 +131,7 @@ class PurchaseOrderController extends Controller
         try {
             $po = $this->poService->receivePurchaseOrder($purchaseOrder, $request->validated()['items']);
             $this->audit('po.received', PurchaseOrder::class, (int) $po->id);
+
             return $this->success(['purchase_order' => $po]);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());

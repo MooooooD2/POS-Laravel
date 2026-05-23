@@ -21,7 +21,7 @@ class SequenceServiceTest extends TestCase
     public function test_generates_invoice_number_with_correct_format(): void
     {
         $number = SequenceService::next('invoice');
-        $date   = now()->format('Ymd');
+        $date = now()->format('Ymd');
 
         $this->assertStringStartsWith("INV-{$date}-", $number);
         $this->assertStringEndsWith('000001', $number);
@@ -29,9 +29,9 @@ class SequenceServiceTest extends TestCase
 
     public function test_increments_correctly_on_each_call(): void
     {
-        $first  = SequenceService::next('invoice');
+        $first = SequenceService::next('invoice');
         $second = SequenceService::next('invoice');
-        $third  = SequenceService::next('invoice');
+        $third = SequenceService::next('invoice');
 
         $this->assertStringEndsWith('000001', $first);
         $this->assertStringEndsWith('000002', $second);
@@ -41,11 +41,11 @@ class SequenceServiceTest extends TestCase
     public function test_different_sequences_are_independent(): void
     {
         $inv = SequenceService::next('invoice');
-        $po  = SequenceService::next('purchase');
+        $po = SequenceService::next('purchase');
         $ret = SequenceService::next('return');
 
         $this->assertStringStartsWith('INV-', $inv);
-        $this->assertStringStartsWith('PO-',  $po);
+        $this->assertStringStartsWith('PO-', $po);
         $this->assertStringStartsWith('RET-', $ret);
 
         // All start at 1 independently

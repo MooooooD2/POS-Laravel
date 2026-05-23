@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\JournalEntryRepositoryInterface;
@@ -11,15 +12,19 @@ class JournalEntryRepository extends BaseRepository implements JournalEntryRepos
 {
     public function __construct()
     {
-        $this->model = new JournalEntry();
+        $this->model = new JournalEntry;
     }
 
     public function paginate(array $filters): LengthAwarePaginator
     {
         $query = JournalEntry::with('lines.account', 'creator')->orderByDesc('entry_date');
 
-        if (!empty($filters['start_date'])) $query->where('entry_date', '>=', $filters['start_date']);
-        if (!empty($filters['end_date']))   $query->where('entry_date', '<=', $filters['end_date']);
+        if (! empty($filters['start_date'])) {
+            $query->where('entry_date', '>=', $filters['start_date']);
+        }
+        if (! empty($filters['end_date'])) {
+            $query->where('entry_date', '<=', $filters['end_date']);
+        }
 
         return $query->paginate(20);
     }
@@ -38,7 +43,7 @@ class JournalEntryRepository extends BaseRepository implements JournalEntryRepos
     {
         return JournalEntryLine::where('account_id', $accountId)
             ->with('entry')
-            ->whereHas('entry', fn($q) => $q->whereBetween('entry_date', [$start, $end]))
+            ->whereHas('entry', fn ($q) => $q->whereBetween('entry_date', [$start, $end]))
             ->get();
     }
 }

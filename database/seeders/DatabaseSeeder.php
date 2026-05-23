@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             CustomerSeeder::class,
             TenantSeeder::class,
-            PlanSeeder::class
+            PlanSeeder::class,
         ]);
     }
 }

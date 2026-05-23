@@ -24,11 +24,11 @@ class ExpenseController extends Controller
     public function all(Request $request)
     {
         $request->validate([
-            'category_id'    => 'nullable|integer|exists:expense_categories,id',
+            'category_id' => 'nullable|integer|exists:expense_categories,id',
             'payment_method' => 'nullable|in:cash,card,transfer,wallet',
-            'date_from'      => 'nullable|date',
-            'date_to'        => 'nullable|date|after_or_equal:date_from',
-            'per_page'       => 'nullable|integer|min:1|max:100',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+            'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
         return $this->success([
@@ -45,8 +45,9 @@ class ExpenseController extends Controller
             $expense = $this->expenseService->create($request->validated());
             $this->audit('expense.created', Expense::class, (int) $expense->id, [
                 'expense_number' => $expense->expense_number,
-                'amount'         => $expense->amount,
+                'amount' => $expense->amount,
             ]);
+
             return $this->success(['expense' => $expense], '', 201);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -58,6 +59,7 @@ class ExpenseController extends Controller
         $this->authorize('update', $expense);
         try {
             $expense = $this->expenseService->update($expense, $request->validated());
+
             return $this->success(['expense' => $expense]);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -69,6 +71,7 @@ class ExpenseController extends Controller
         $this->authorize('delete', $expense);
         $this->expenseService->delete($expense);
         $this->audit('expense.deleted', Expense::class, (int) $expense->id);
+
         return $this->success([], __('pos.expense_deleted'));
     }
 
@@ -81,7 +84,7 @@ class ExpenseController extends Controller
     {
         $request->validate([
             'date_from' => 'required|date',
-            'date_to'   => 'required|date|after_or_equal:date_from',
+            'date_to' => 'required|date|after_or_equal:date_from',
         ]);
 
         return $this->success($this->expenseService->summary(

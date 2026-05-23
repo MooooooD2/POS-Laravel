@@ -22,15 +22,15 @@ class SettingsSeeder extends Seeder
             // Tax - الضريبة
             ['key' => 'tax_enabled',      'value' => '0',                  'type' => 'boolean', 'group' => 'tax',     'label_ar' => 'تفعيل الضريبة',        'label_en' => 'Enable Tax'],
             ['key' => 'tax_rate',         'value' => '14',                 'type' => 'number',  'group' => 'tax',     'label_ar' => 'نسبة الضريبة (%)',     'label_en' => 'Tax Rate (%)'],
-            ['key' => 'tax_name_ar',      'value' => 'ضريبة القيمة المضافة','type' => 'string', 'group' => 'tax',     'label_ar' => 'اسم الضريبة (عربي)',   'label_en' => 'Tax Name (Arabic)'],
-            ['key' => 'tax_name_en',      'value' => 'VAT',                'type' => 'string',  'group' => 'tax',     'label_ar' => 'اسم الضريبة (إنجليزي)','label_en' => 'Tax Name (English)'],
+            ['key' => 'tax_name_ar',      'value' => 'ضريبة القيمة المضافة', 'type' => 'string', 'group' => 'tax',     'label_ar' => 'اسم الضريبة (عربي)',   'label_en' => 'Tax Name (Arabic)'],
+            ['key' => 'tax_name_en',      'value' => 'VAT',                'type' => 'string',  'group' => 'tax',     'label_ar' => 'اسم الضريبة (إنجليزي)', 'label_en' => 'Tax Name (English)'],
             ['key' => 'tax_inclusive',    'value' => '0',                  'type' => 'boolean', 'group' => 'tax',     'label_ar' => 'السعر شامل الضريبة',   'label_en' => 'Price Includes Tax'],
             ['key' => 'tax_number',       'value' => '',                   'type' => 'string',  'group' => 'tax',     'label_ar' => 'الرقم الضريبي',        'label_en' => 'Tax Number'],
 
             // Invoice - الفاتورة
             ['key' => 'invoice_prefix',   'value' => 'INV',                'type' => 'string',  'group' => 'invoice', 'label_ar' => 'بادئة رقم الفاتورة',  'label_en' => 'Invoice Prefix'],
             ['key' => 'invoice_footer',   'value' => 'شكراً لتعاملكم معنا', 'type' => 'string', 'group' => 'invoice', 'label_ar' => 'تذييل الفاتورة',       'label_en' => 'Invoice Footer'],
-            ['key' => 'show_tax_invoice', 'value' => '1',                  'type' => 'boolean', 'group' => 'invoice', 'label_ar' => 'إظهار الضريبة في الفاتورة','label_en' => 'Show Tax on Invoice'],
+            ['key' => 'show_tax_invoice', 'value' => '1',                  'type' => 'boolean', 'group' => 'invoice', 'label_ar' => 'إظهار الضريبة في الفاتورة', 'label_en' => 'Show Tax on Invoice'],
             ['key' => 'auto_print',       'value' => '0',                  'type' => 'boolean', 'group' => 'invoice', 'label_ar' => 'طباعة تلقائية',        'label_en' => 'Auto Print'],
 
             // POS - نقطة البيع
@@ -43,8 +43,8 @@ class SettingsSeeder extends Seeder
             // Loyalty Points - نقاط الولاء
             ['key' => 'loyalty_enabled',    'value' => '0',   'type' => 'boolean', 'group' => 'loyalty', 'label_ar' => 'تفعيل نقاط الولاء',           'label_en' => 'Enable Loyalty Points'],
             ['key' => 'loyalty_earn_rate',  'value' => '10',  'type' => 'number',  'group' => 'loyalty', 'label_ar' => 'كل كم جنيه = نقطة',           'label_en' => 'Spend per Point (EGP)'],
-            ['key' => 'loyalty_redeem_value','value' => '0.5','type' => 'number',  'group' => 'loyalty', 'label_ar' => 'قيمة النقطة عند الاسترداد',   'label_en' => 'Point Redeem Value (EGP)'],
-            ['key' => 'loyalty_min_redeem', 'value' => '100', 'type' => 'number',  'group' => 'loyalty', 'label_ar' => 'الحد الأدنى للنقاط للاسترداد','label_en' => 'Minimum Points to Redeem'],
+            ['key' => 'loyalty_redeem_value', 'value' => '0.5', 'type' => 'number',  'group' => 'loyalty', 'label_ar' => 'قيمة النقطة عند الاسترداد',   'label_en' => 'Point Redeem Value (EGP)'],
+            ['key' => 'loyalty_min_redeem', 'value' => '100', 'type' => 'number',  'group' => 'loyalty', 'label_ar' => 'الحد الأدنى للنقاط للاسترداد', 'label_en' => 'Minimum Points to Redeem'],
 
             // POS extended
             ['key' => 'allow_cashier_price_change', 'value' => '0',  'type' => 'boolean', 'group' => 'pos',        'label_ar' => 'السماح للكاشير بتغيير السعر', 'label_en' => 'Allow Cashier Price Change'],

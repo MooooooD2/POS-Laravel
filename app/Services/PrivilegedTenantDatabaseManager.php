@@ -41,7 +41,7 @@ class PrivilegedTenantDatabaseManager implements TenantDatabaseManager
      */
     public function resolveDbName(string $name): string
     {
-        $sanitized  = str_replace('-', '', $name); // strip UUID hyphens
+        $sanitized = str_replace('-', '', $name); // strip UUID hyphens
         $cpanelUser = config('tenancy.cpanel_username');
 
         return $cpanelUser ? "{$cpanelUser}_{$sanitized}" : $sanitized;
@@ -56,15 +56,15 @@ class PrivilegedTenantDatabaseManager implements TenantDatabaseManager
     /** Validate a MySQL identifier contains only safe characters. */
     protected function assertSafeIdentifier(string $value, string $label): void
     {
-        if (!preg_match('/^[A-Za-z0-9_]+$/', $value)) {
+        if (! preg_match('/^[A-Za-z0-9_]+$/', $value)) {
             throw new \InvalidArgumentException("Unsafe MySQL identifier for {$label}: {$value}");
         }
     }
 
     public function createDatabase(TenantWithDatabase $tenant): bool
     {
-        $dbName    = $this->resolveDbName($tenant->database()->getName());
-        $charset   = DB::connection($this->connection ?? 'mysql')->getConfig('charset');
+        $dbName = $this->resolveDbName($tenant->database()->getName());
+        $charset = DB::connection($this->connection ?? 'mysql')->getConfig('charset');
         $collation = DB::connection($this->connection ?? 'mysql')->getConfig('collation');
 
         $this->assertSafeIdentifier($dbName, 'database name');
@@ -80,23 +80,26 @@ class PrivilegedTenantDatabaseManager implements TenantDatabaseManager
     {
         $dbName = $this->resolveDbName($tenant->database()->getName());
         $this->assertSafeIdentifier($dbName, 'database name');
+
         return $this->adminStatement("DROP DATABASE IF EXISTS `{$dbName}`");
     }
 
     public function databaseExists(string $name): bool
     {
         $dbName = $this->resolveDbName($name);
-        $rows   = DB::connection($this->connection ?? 'mysql')
+        $rows = DB::connection($this->connection ?? 'mysql')
             ->select(
                 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
                 [$dbName]
             );
+
         return count($rows) > 0;
     }
 
     public function makeConnectionConfig(array $baseConfig, string $databaseName): array
     {
         $baseConfig['database'] = $this->resolveDbName($databaseName);
+
         return $baseConfig;
     }
 }

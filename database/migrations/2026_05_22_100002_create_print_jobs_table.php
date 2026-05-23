@@ -15,7 +15,7 @@ return new class extends Migration
             $table->unsignedBigInteger('document_id');
             $table->string('document_number')->nullable();
             $table->enum('status', ['pending', 'processing', 'completed', 'failed', 'cancelled'])
-                  ->default('pending');
+                ->default('pending');
             $table->integer('attempts')->default(0);
             $table->integer('max_attempts')->default(3);
             $table->longText('raw_data')->nullable();

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Product;
@@ -23,9 +24,9 @@ class StockController extends Controller
     use ApiResponse, AuditLog;
 
     public function __construct(
-        private StockAlertService       $alertService,
+        private StockAlertService $alertService,
         private StockReservationService $reservationService,
-        private BatchService            $batchService,
+        private BatchService $batchService,
     ) {}
 
     // ── Health & Alerts ──────────────────────────────────────────────────────
@@ -58,7 +59,7 @@ class StockController extends Controller
         $this->authorize('view_reports');
 
         $request->validate(['warehouse_id' => 'nullable|integer|exists:warehouses,id']);
-        $wid   = $request->warehouse_id ? (int) $request->warehouse_id : null;
+        $wid = $request->warehouse_id ? (int) $request->warehouse_id : null;
         $items = $this->alertService->getLowStock($wid);
 
         return $this->success(['items' => $items->values(), 'count' => $items->count()]);
@@ -72,6 +73,7 @@ class StockController extends Controller
         $this->authorize('view_reports');
 
         $items = $this->alertService->getOutOfStock();
+
         return $this->success(['items' => $items->values(), 'count' => $items->count()]);
     }
 
@@ -86,17 +88,17 @@ class StockController extends Controller
         $this->authorize('view_reports');
 
         $request->validate([
-            'days'         => 'nullable|integer|min:1|max:365',
+            'days' => 'nullable|integer|min:1|max:365',
             'warehouse_id' => 'nullable|integer|exists:warehouses,id',
         ]);
 
-        $days  = (int) ($request->days ?? 30);
-        $wid   = $request->warehouse_id ? (int) $request->warehouse_id : null;
+        $days = (int) ($request->days ?? 30);
+        $wid = $request->warehouse_id ? (int) $request->warehouse_id : null;
         $items = $this->alertService->getNearExpiryBatches($days, $wid);
 
         return $this->success([
-            'items'          => $items->values(),
-            'count'          => $items->count(),
+            'items' => $items->values(),
+            'count' => $items->count(),
             'days_threshold' => $days,
         ]);
     }
@@ -112,7 +114,7 @@ class StockController extends Controller
         $this->authorize('view_reports');
 
         $request->validate(['warehouse_id' => 'nullable|integer|exists:warehouses,id']);
-        $wid   = $request->warehouse_id ? (int) $request->warehouse_id : null;
+        $wid = $request->warehouse_id ? (int) $request->warehouse_id : null;
         $items = $this->alertService->getExpiredBatches($wid);
 
         return $this->success(['items' => $items->values(), 'count' => $items->count()]);
@@ -129,13 +131,13 @@ class StockController extends Controller
         $this->authorize('view_reports');
 
         $request->validate(['lookback_days' => 'nullable|integer|min:1|max:90']);
-        $lookback    = (int) ($request->lookback_days ?? 7);
+        $lookback = (int) ($request->lookback_days ?? 7);
         $suggestions = $this->alertService->getReorderSuggestions($lookback);
 
         return $this->success([
-            'suggestions'  => $suggestions,
-            'count'        => count($suggestions),
-            'lookback_days'=> $lookback,
+            'suggestions' => $suggestions,
+            'count' => count($suggestions),
+            'lookback_days' => $lookback,
         ]);
     }
 
@@ -155,20 +157,20 @@ class StockController extends Controller
 
         $request->validate([
             'warehouse_id' => 'nullable|integer|exists:warehouses,id',
-            'reason'       => 'nullable|string|max:500',
+            'reason' => 'nullable|string|max:500',
         ]);
 
-        $wid     = $request->warehouse_id ? (int) $request->warehouse_id : null;
+        $wid = $request->warehouse_id ? (int) $request->warehouse_id : null;
         $results = $this->alertService->writeOffExpiredBatches($wid, $request->reason ?? '');
 
         $this->audit('stock.bulk_write_off_expired', 'ProductBatch', 0, [
-            'count'        => count($results),
+            'count' => count($results),
             'warehouse_id' => $wid,
         ]);
 
         return $this->success([
             'written_off' => $results,
-            'count'       => count($results),
+            'count' => count($results),
         ]);
     }
 
@@ -180,7 +182,7 @@ class StockController extends Controller
     public function batches(Request $request): JsonResponse
     {
         $request->validate([
-            'product_id'   => 'required|integer|exists:products,id',
+            'product_id' => 'required|integer|exists:products,id',
             'warehouse_id' => 'nullable|integer|exists:warehouses,id',
         ]);
 
@@ -203,24 +205,24 @@ class StockController extends Controller
 
         $conn = app('db')->getDefaultConnection();
         $data = $request->validate([
-            'product_id'       => "required|integer|exists:{$conn}.products,id",
-            'warehouse_id'     => "required|integer|exists:{$conn}.warehouses,id",
-            'batch_number'     => 'required|string|max:100',
-            'lot_number'       => 'nullable|string|max:100',
+            'product_id' => "required|integer|exists:{$conn}.products,id",
+            'warehouse_id' => "required|integer|exists:{$conn}.warehouses,id",
+            'batch_number' => 'required|string|max:100',
+            'lot_number' => 'nullable|string|max:100',
             'manufacture_date' => 'nullable|date|before_or_equal:today',
-            'expiry_date'      => 'nullable|date|after:today',
-            'original_qty'     => 'required|integer|min:1',
-            'cost_price'       => 'nullable|numeric|min:0',
-            'supplier_id'      => "nullable|integer|exists:{$conn}.suppliers,id",
-            'notes'            => 'nullable|string|max:500',
+            'expiry_date' => 'nullable|date|after:today',
+            'original_qty' => 'required|integer|min:1',
+            'cost_price' => 'nullable|numeric|min:0',
+            'supplier_id' => "nullable|integer|exists:{$conn}.suppliers,id",
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $batch = $this->batchService->create($data);
 
         $this->audit('batch.created', 'ProductBatch', $batch->id, [
             'batch_number' => $batch->batch_number,
-            'product_id'   => $batch->product_id,
-            'qty'          => $batch->original_qty,
+            'product_id' => $batch->product_id,
+            'qty' => $batch->original_qty,
         ]);
 
         return $this->success(['batch' => $batch], '', 201);
@@ -238,7 +240,7 @@ class StockController extends Controller
 
         $data = $request->validate([
             'new_quantity' => 'required|integer|min:0',
-            'reason'       => 'required|string|max:500',
+            'reason' => 'required|string|max:500',
         ]);
 
         $updated = $this->batchService->adjust($batch, $data['new_quantity'], $data['reason']);
@@ -257,7 +259,7 @@ class StockController extends Controller
     {
         $this->authorize('manage_roles');
 
-        $data   = $request->validate(['reason' => 'nullable|string|max:500']);
+        $data = $request->validate(['reason' => 'nullable|string|max:500']);
         $result = $this->batchService->writeOff($batch, $data['reason'] ?? null);
 
         $this->audit('batch.written_off', 'ProductBatch', $batch->id, $result);
@@ -278,11 +280,11 @@ class StockController extends Controller
         $wid = $request->warehouse_id ? (int) $request->warehouse_id : null;
 
         return $this->success([
-            'product_id'    => $product->id,
-            'product_name'  => $product->name,
-            'total_qty'     => $product->quantity,
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'total_qty' => $product->quantity,
             'available_qty' => $this->reservationService->getAvailableStock($product, $wid),
-            'warehouse_id'  => $wid,
+            'warehouse_id' => $wid,
         ]);
     }
 
@@ -297,14 +299,14 @@ class StockController extends Controller
         $this->authorize('add_stock');
 
         $data = $request->validate([
-            'product_id'   => 'required|integer|exists:products,id',
-            'quantity'     => 'required|integer|min:1',
+            'product_id' => 'required|integer|exists:products,id',
+            'quantity' => 'required|integer|min:1',
             'warehouse_id' => 'nullable|integer|exists:warehouses,id',
         ]);
 
         /** @var Product $product */
         $product = Product::findOrFail($data['product_id']);
-        $wid     = isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null;
+        $wid = isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null;
 
         $this->reservationService->reserve($product, $data['quantity'], $wid);
 
@@ -323,14 +325,14 @@ class StockController extends Controller
         $this->authorize('add_stock');
 
         $data = $request->validate([
-            'product_id'   => 'required|integer|exists:products,id',
-            'quantity'     => 'required|integer|min:1',
+            'product_id' => 'required|integer|exists:products,id',
+            'quantity' => 'required|integer|min:1',
             'warehouse_id' => 'nullable|integer|exists:warehouses,id',
         ]);
 
         /** @var Product $product */
         $product = Product::findOrFail($data['product_id']);
-        $wid     = isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null;
+        $wid = isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null;
 
         $this->reservationService->release($product, $data['quantity'], $wid);
 

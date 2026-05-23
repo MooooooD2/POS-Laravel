@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ class StockMovement extends Model
         'warehouse_id', 'batch_id',
         'reason', 'employee_id', 'employee_name', 'ip_address',
     ];
+
     protected static function boot(): void
     {
         parent::boot();
@@ -25,8 +27,23 @@ class StockMovement extends Model
         });
     }
 
-    public function product()   { return $this->belongsTo(Product::class); }
-    public function employee()  { return $this->belongsTo(User::class, 'employee_id'); }
-    public function warehouse() { return $this->belongsTo(Warehouse::class); }
-    public function batch()     { return $this->belongsTo(ProductBatch::class); }
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function employee()
+    {
+        return $this->belongsTo(User::class, 'employee_id');
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function batch()
+    {
+        return $this->belongsTo(ProductBatch::class);
+    }
 }

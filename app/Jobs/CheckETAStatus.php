@@ -14,7 +14,8 @@ class CheckETAStatus implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int   $tries  = 3;
+    public int $tries = 3;
+
     public array $backoff = [120, 300, 600];
 
     public function __construct(public int $invoiceId) {}
@@ -27,16 +28,16 @@ class CheckETAStatus implements ShouldQueue
             return;
         }
 
-        if (!$invoice->eta_uuid) {
+        if (! $invoice->eta_uuid) {
             return;
         }
 
-        $status   = $client->getDocumentStatus($invoice->eta_uuid);
+        $status = $client->getDocumentStatus($invoice->eta_uuid);
         $etaState = $status['status'] ?? null;
 
         if ($etaState) {
             $invoice->update([
-                'eta_status'   => strtolower($etaState),
+                'eta_status' => strtolower($etaState),
                 'eta_response' => json_encode($status),
             ]);
         }

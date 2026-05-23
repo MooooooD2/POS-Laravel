@@ -29,7 +29,7 @@ class PayPalController extends Controller
         $isAnnual = $data['billing_period'] === 'annual';
         $price = $isAnnual ? $plan->annual_price : $plan->monthly_price;
 
-        if (!$price || $price <= 0) {
+        if (! $price || $price <= 0) {
             return $this->error(__('pos.invalid_plan_price'), 422);
         }
 
@@ -46,12 +46,12 @@ class PayPalController extends Controller
                 'purchase_units' => [
                     [
                         'reference_id' => "{$tenant->id}|{$plan->id}|{$months}",
-                        'description' => $plan->name . ' — ' . ($isAnnual ? '12 months' : '1 month'),
+                        'description' => $plan->name.' — '.($isAnnual ? '12 months' : '1 month'),
                         'amount' => [
                             'currency_code' => $currency,
                             'value' => number_format($price, 2, '.', ''),
                         ],
-                    ]
+                    ],
                 ],
                 'application_context' => [
                     'return_url' => route('paypal.success'),
@@ -71,10 +71,12 @@ class PayPalController extends Controller
             }
 
             Log::error('PayPal order creation failed', ['response' => $order]);
+
             return $this->error(__('pos.payment_error'), 500);
 
         } catch (\Throwable $e) {
             Log::error('PayPal exception', ['message' => $e->getMessage()]);
+
             return $this->error(__('pos.payment_error'), 500);
         }
     }
@@ -85,7 +87,7 @@ class PayPalController extends Controller
     {
         $token = $request->query('token');
 
-        if (!$token) {
+        if (! $token) {
             return redirect()->route('subscribe');
         }
 
@@ -107,22 +109,24 @@ class PayPalController extends Controller
                     $plan = Plan::find($planId);
                     $months = (int) $months;
 
-                    if (!$plan) {
+                    if (! $plan) {
                         Log::warning('PayPal return: plan not found', ['plan_id' => $planId]);
+
                         return redirect()->route('subscribe')->withErrors(['payment' => __('pos.payment_plan_not_found')]);
                     }
 
-                    $isAnnual      = $months >= 12;
+                    $isAnnual = $months >= 12;
                     $expectedPrice = $isAnnual ? (float) $plan->annual_price : (float) $plan->monthly_price;
-                    $capturedAmt   = (float) ($capture['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? 0);
+                    $capturedAmt = (float) ($capture['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? 0);
 
                     if ($expectedPrice <= 0 || abs($capturedAmt - $expectedPrice) > 0.01) {
                         Log::warning('PayPal payment amount mismatch', [
-                            'plan_id'        => $planId,
+                            'plan_id' => $planId,
                             'expected_price' => $expectedPrice,
-                            'captured_amount'=> $capturedAmt,
-                            'tenant_id'      => $tenantId,
+                            'captured_amount' => $capturedAmt,
+                            'tenant_id' => $tenantId,
                         ]);
+
                         return redirect()->route('subscribe')->withErrors(['payment' => __('pos.payment_amount_mismatch')]);
                     }
 
@@ -150,8 +154,9 @@ class PayPalController extends Controller
     private function activateSubscription(string $tenantId, string $planId, int $months): void
     {
         $tenant = Tenant::find($tenantId);
-        if (!$tenant)
+        if (! $tenant) {
             return;
+        }
 
         $base = ($tenant->subscription_ends_at && $tenant->subscription_ends_at->isFuture())
             ? $tenant->subscription_ends_at

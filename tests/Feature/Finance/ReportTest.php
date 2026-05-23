@@ -4,8 +4,8 @@ namespace Tests\Feature\Finance;
 
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -19,12 +19,13 @@ class ReportTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $cashier;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
         $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');
@@ -40,7 +41,7 @@ class ReportTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->postJson('/api/reports/income-statement', [
             'start_date' => now()->startOfYear()->toDateString(),
-            'end_date'   => now()->endOfYear()->toDateString(),
+            'end_date' => now()->endOfYear()->toDateString(),
         ]);
 
         $response->assertStatus(200);
@@ -51,7 +52,7 @@ class ReportTest extends TestCase
     {
         $this->actingAs($this->cashier)->postJson('/api/reports/income-statement', [
             'start_date' => now()->startOfYear()->toDateString(),
-            'end_date'   => now()->endOfYear()->toDateString(),
+            'end_date' => now()->endOfYear()->toDateString(),
         ])->assertStatus(403);
     }
 
@@ -67,7 +68,7 @@ class ReportTest extends TestCase
     {
         $this->actingAs($this->admin)->postJson('/api/reports/income-statement', [
             'start_date' => '2026-12-01',
-            'end_date'   => '2026-01-01', // before start
+            'end_date' => '2026-01-01', // before start
         ])->assertStatus(422);
     }
 
@@ -77,8 +78,8 @@ class ReportTest extends TestCase
     public function admin_can_access_profit_report(): void
     {
         $response = $this->actingAs($this->admin)->getJson(
-            '/api/reports/profit?start_date=' . now()->startOfMonth()->toDateString() .
-            '&end_date=' . now()->endOfMonth()->toDateString()
+            '/api/reports/profit?start_date='.now()->startOfMonth()->toDateString().
+            '&end_date='.now()->endOfMonth()->toDateString()
         );
 
         // Endpoint may vary — accept 200 or 404 if route name differs
@@ -132,8 +133,8 @@ class ReportTest extends TestCase
     public function admin_can_access_sales_report(): void
     {
         $response = $this->actingAs($this->admin)->getJson(
-            '/api/reports/sales?start_date=' . now()->startOfMonth()->toDateString() .
-            '&end_date=' . now()->endOfMonth()->toDateString()
+            '/api/reports/sales?start_date='.now()->startOfMonth()->toDateString().
+            '&end_date='.now()->endOfMonth()->toDateString()
         );
 
         $this->assertContains($response->status(), [200, 404, 405]);
@@ -163,27 +164,27 @@ class ReportTest extends TestCase
     public function expense_report_for_date_range(): void
     {
         $categoryId = DB::table('expense_categories')->insertGetId([
-            'name'       => 'إدارية',
+            'name' => 'إدارية',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         DB::table('expenses')->insert([
-            'expense_number'  => 'EXP-RPT-' . uniqid(),
-            'category_id'     => $categoryId,
-            'title'           => 'مصروف تقرير',
-            'amount'          => 500.00,
-            'payment_method'  => 'cash',
-            'expense_date'    => now()->toDateString(),
-            'created_by'      => $this->admin->id,
+            'expense_number' => 'EXP-RPT-'.uniqid(),
+            'category_id' => $categoryId,
+            'title' => 'مصروف تقرير',
+            'amount' => 500.00,
+            'payment_method' => 'cash',
+            'expense_date' => now()->toDateString(),
+            'created_by' => $this->admin->id,
             'created_by_name' => $this->admin->full_name,
-            'created_at'      => now(),
-            'updated_at'      => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $response = $this->actingAs($this->admin)->postJson('/api/expenses/summary', [
             'date_from' => now()->startOfMonth()->toDateString(),
-            'date_to'   => now()->endOfMonth()->toDateString(),
+            'date_to' => now()->endOfMonth()->toDateString(),
         ]);
 
         $response->assertStatus(200);
@@ -206,7 +207,7 @@ class ReportTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->postJson('/api/reports/income-statement', [
             'start_date' => now()->startOfMonth()->toDateString(),
-            'end_date'   => now()->endOfMonth()->toDateString(),
+            'end_date' => now()->endOfMonth()->toDateString(),
         ]);
         $response->assertStatus(200);
     }
@@ -215,8 +216,8 @@ class ReportTest extends TestCase
     public function sales_report_accepts_payment_method_filter(): void
     {
         $response = $this->actingAs($this->admin)->getJson(
-            '/api/reports/sales?start_date=' . now()->startOfMonth()->toDateString() .
-            '&end_date=' . now()->endOfMonth()->toDateString() .
+            '/api/reports/sales?start_date='.now()->startOfMonth()->toDateString().
+            '&end_date='.now()->endOfMonth()->toDateString().
             '&payment_method=cash'
         );
         $this->assertContains($response->status(), [200, 404, 405]);

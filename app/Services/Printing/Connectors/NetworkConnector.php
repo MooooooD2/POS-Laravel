@@ -15,8 +15,8 @@ class NetworkConnector implements ConnectorInterface
 
     public function __construct(
         private string $ip,
-        private int    $port    = 9100,
-        private int    $timeout = 5
+        private int $port = 9100,
+        private int $timeout = 5
     ) {}
 
     public function open(): void
@@ -27,7 +27,7 @@ class NetworkConnector implements ConnectorInterface
             $this->timeout
         );
 
-        if (!$this->socket) {
+        if (! $this->socket) {
             throw new Exception(
                 "Cannot connect to printer {$this->ip}:{$this->port} — [{$errno}] {$errstr}"
             );
@@ -39,19 +39,19 @@ class NetworkConnector implements ConnectorInterface
 
     public function send(string $data): void
     {
-        if (!$this->socket) {
-            throw new Exception("Socket not open");
+        if (! $this->socket) {
+            throw new Exception('Socket not open');
         }
 
         $written = fwrite($this->socket, $data);
 
         if ($written === false) {
-            throw new Exception("Failed to send data to printer");
+            throw new Exception('Failed to send data to printer');
         }
 
         if ($written !== strlen($data)) {
             throw new Exception(
-                "Partial write: sent {$written} of " . strlen($data) . " bytes"
+                "Partial write: sent {$written} of ".strlen($data).' bytes'
             );
         }
 

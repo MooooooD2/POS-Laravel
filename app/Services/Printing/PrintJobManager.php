@@ -46,8 +46,9 @@ class PrintJobManager
     {
         $job = PrintJob::with('printer')->find($jobId);
 
-        if (!$job) {
+        if (! $job) {
             Log::warning("PrintJobManager: job #{$jobId} not found");
+
             return false;
         }
 
@@ -59,11 +60,12 @@ class PrintJobManager
      */
     public function cancelJob(PrintJob $job): bool
     {
-        if (!in_array($job->status, ['pending', 'failed'])) {
+        if (! in_array($job->status, ['pending', 'failed'])) {
             return false;
         }
 
         $job->update(['status' => 'cancelled']);
+
         return true;
     }
 
@@ -85,7 +87,7 @@ class PrintJobManager
             // Re-fetch with lock to prevent concurrent processing
             $locked = PrintJob::lockForUpdate()->find($job->id);
 
-            if (!$locked || !in_array($locked->status, ['pending'])) {
+            if (! $locked || ! in_array($locked->status, ['pending'])) {
                 return false; // Already picked up by another worker
             }
 
@@ -96,7 +98,7 @@ class PrintJobManager
                 $locked->markAsCompleted();
 
                 Log::info("PrintJobManager: job #{$locked->id} completed", [
-                    'printer'  => $locked->printer->name ?? 'unknown',
+                    'printer' => $locked->printer->name ?? 'unknown',
                     'document' => $locked->document_number,
                 ]);
 
@@ -106,9 +108,9 @@ class PrintJobManager
                 $locked->markAsFailed($e->getMessage());
 
                 Log::error("PrintJobManager: job #{$locked->id} failed", [
-                    'printer'  => $locked->printer->name ?? 'unknown',
+                    'printer' => $locked->printer->name ?? 'unknown',
                     'document' => $locked->document_number,
-                    'error'    => $e->getMessage(),
+                    'error' => $e->getMessage(),
                     'attempts' => $locked->attempts,
                 ]);
 
@@ -119,15 +121,15 @@ class PrintJobManager
 
     private function sendJobToPrinter(PrintJob $job): void
     {
-        if (!$job->printer) {
+        if (! $job->printer) {
             throw new Exception("Printer not found for job #{$job->id}");
         }
 
-        if (!$job->raw_data) {
+        if (! $job->raw_data) {
             throw new Exception("No raw data for job #{$job->id}");
         }
 
-        $rawData   = base64_decode($job->raw_data);
+        $rawData = base64_decode($job->raw_data);
         $connector = ConnectorFactory::make($job->printer);
 
         $connector->open();
@@ -147,9 +149,9 @@ class PrintJobManager
     public function getQueueStats(): array
     {
         return [
-            'pending'    => PrintJob::where('status', 'pending')->count(),
+            'pending' => PrintJob::where('status', 'pending')->count(),
             'processing' => PrintJob::where('status', 'processing')->count(),
-            'failed'     => PrintJob::where('status', 'failed')->count(),
+            'failed' => PrintJob::where('status', 'failed')->count(),
             'completed_today' => PrintJob::where('status', 'completed')
                 ->whereDate('completed_at', today())
                 ->count(),
@@ -167,7 +169,7 @@ class PrintJobManager
         return PrintJob::where('status', 'processing')
             ->where('updated_at', '<', $threshold)
             ->update([
-                'status'        => 'pending',
+                'status' => 'pending',
                 'error_message' => 'Released from stuck processing state',
             ]);
     }

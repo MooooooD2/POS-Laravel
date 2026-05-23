@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\Repositories\PurchaseOrderRepositoryInterface;
@@ -15,67 +16,67 @@ use Illuminate\Support\Facades\Log;
 class PurchaseOrderService
 {
     public function __construct(
-        private StockService                       $stockService,
-        private AccountingService                  $accountingService,
-        private SettingRepositoryInterface         $settingRepo,
-        private PurchaseOrderRepositoryInterface   $poRepo,
-        private SupplierRepositoryInterface        $supplierRepo,
+        private StockService $stockService,
+        private AccountingService $accountingService,
+        private SettingRepositoryInterface $settingRepo,
+        private PurchaseOrderRepositoryInterface $poRepo,
+        private SupplierRepositoryInterface $supplierRepo,
         private SupplierAccountRepositoryInterface $supplierAccountRepo,
     ) {}
 
     public function createPurchaseOrder(array $data): PurchaseOrder
     {
         return DB::transaction(function () use ($data) {
-            $poNumber    = SequenceService::next('purchase');
-            $discount    = $data['discount'] ?? 0;
+            $poNumber = SequenceService::next('purchase');
+            $discount = $data['discount'] ?? 0;
 
             // Compute per-item subtotals and tax (Input Tax for Net Tax Payable report)
             $totalAmount = 0.0;
-            $totalTax    = 0.0;
-            $itemLines   = [];
+            $totalTax = 0.0;
+            $itemLines = [];
             foreach ($data['items'] as $item) {
-                $subtotal  = round((float) $item['cost_price'] * (int) $item['quantity'], 2);
-                $taxRate   = (float) ($item['tax_rate'] ?? 0);
+                $subtotal = round((float) $item['cost_price'] * (int) $item['quantity'], 2);
+                $taxRate = (float) ($item['tax_rate'] ?? 0);
                 $taxAmount = round($subtotal * $taxRate / 100, 2);
                 $totalAmount += $subtotal;
-                $totalTax    += $taxAmount;
+                $totalTax += $taxAmount;
                 $itemLines[] = array_merge($item, [
-                    'subtotal'   => $subtotal,
-                    'tax_rate'   => $taxRate,
+                    'subtotal' => $subtotal,
+                    'tax_rate' => $taxRate,
                     'tax_amount' => $taxAmount,
                 ]);
             }
 
             $finalAmount = $totalAmount + $totalTax - $discount;
-            $supplier    = $this->supplierRepo->findOrFail($data['supplier_id']);
+            $supplier = $this->supplierRepo->findOrFail($data['supplier_id']);
 
             $po = $this->poRepo->create([
-                'po_number'       => $poNumber,
-                'supplier_id'     => $data['supplier_id'],
-                'supplier_name'   => $supplier->name,
-                'total_amount'    => round($totalAmount, 2),
-                'discount'        => $discount,
-                'tax_amount'      => round($totalTax, 2),
-                'final_amount'    => round($finalAmount, 2),
-                'status'          => 'draft',
-                'order_date'      => $data['order_date'],
-                'expected_date'   => $data['expected_date'] ?? null,
-                'notes'           => $data['notes'] ?? null,
-                'created_by'      => Auth::id(),
+                'po_number' => $poNumber,
+                'supplier_id' => $data['supplier_id'],
+                'supplier_name' => $supplier->name,
+                'total_amount' => round($totalAmount, 2),
+                'discount' => $discount,
+                'tax_amount' => round($totalTax, 2),
+                'final_amount' => round($finalAmount, 2),
+                'status' => 'draft',
+                'order_date' => $data['order_date'],
+                'expected_date' => $data['expected_date'] ?? null,
+                'notes' => $data['notes'] ?? null,
+                'created_by' => Auth::id(),
                 'created_by_name' => Auth::user()?->full_name ?? '',
             ]);
 
             foreach ($itemLines as $item) {
                 $this->poRepo->createItem([
-                    'po_id'         => $po->id,
-                    'product_id'    => $item['product_id'],
-                    'product_name'  => $item['product_name'],
-                    'quantity'      => $item['quantity'],
-                    'cost_price'    => $item['cost_price'],
+                    'po_id' => $po->id,
+                    'product_id' => $item['product_id'],
+                    'product_name' => $item['product_name'],
+                    'quantity' => $item['quantity'],
+                    'cost_price' => $item['cost_price'],
                     'selling_price' => $item['selling_price'] ?? null,
-                    'subtotal'      => $item['subtotal'],
-                    'tax_rate'      => $item['tax_rate'],
-                    'tax_amount'    => $item['tax_amount'],
+                    'subtotal' => $item['subtotal'],
+                    'tax_rate' => $item['tax_rate'],
+                    'tax_amount' => $item['tax_amount'],
                 ]);
             }
 
@@ -91,17 +92,21 @@ class PurchaseOrderService
             foreach ($receivedItems as $item) {
                 // Lock the item row to prevent concurrent receive race conditions
                 $poItem = PurchaseOrderItem::lockForUpdate()->find($item['item_id']);
-                if (!$poItem) continue;
+                if (! $poItem) {
+                    continue;
+                }
 
-                $requestedQty  = $poItem->quantity;
-                $alreadyRcvd   = $poItem->received_quantity;
+                $requestedQty = $poItem->quantity;
+                $alreadyRcvd = $poItem->received_quantity;
                 $maxReceivable = $requestedQty - $alreadyRcvd;
-                $receivedQty   = (int) $item['received_quantity'];
-                $rejectedQty   = (int) ($item['rejected_qty'] ?? 0);
-                $actualQty     = max(0, $receivedQty);
-                $discrepancy   = $actualQty - $maxReceivable;
+                $receivedQty = (int) $item['received_quantity'];
+                $rejectedQty = (int) ($item['rejected_qty'] ?? 0);
+                $actualQty = max(0, $receivedQty);
+                $discrepancy = $actualQty - $maxReceivable;
 
-                if ($actualQty <= 0 && $rejectedQty <= 0) continue;
+                if ($actualQty <= 0 && $rejectedQty <= 0) {
+                    continue;
+                }
 
                 $qualityStatus = $rejectedQty > 0
                     ? ($actualQty > 0 ? 'passed' : 'rejected')
@@ -109,21 +114,21 @@ class PurchaseOrderService
 
                 $this->poRepo->updateItem($poItem, [
                     'received_quantity' => $alreadyRcvd + $actualQty,
-                    'rejected_qty'      => $poItem->rejected_qty + $rejectedQty,
-                    'quality_status'    => $qualityStatus,
-                    'discrepancy'       => $discrepancy,
+                    'rejected_qty' => $poItem->rejected_qty + $rejectedQty,
+                    'quality_status' => $qualityStatus,
+                    'discrepancy' => $discrepancy,
                     'discrepancy_notes' => $item['discrepancy_notes'] ?? null,
                 ]);
 
                 if ($discrepancy !== 0) {
                     Log::channel('audit')->warning('purchase_order.discrepancy', [
-                        'po_number'   => $po->po_number,
-                        'product'     => $poItem->product_name,
-                        'requested'   => $requestedQty,
-                        'received'    => $actualQty,
+                        'po_number' => $po->po_number,
+                        'product' => $poItem->product_name,
+                        'requested' => $requestedQty,
+                        'received' => $actualQty,
                         'discrepancy' => $discrepancy,
-                        'user_id'     => Auth::id(),
-                        'timestamp'   => now()->toIso8601String(),
+                        'user_id' => Auth::id(),
+                        'timestamp' => now()->toIso8601String(),
                     ]);
                 }
 
@@ -131,8 +136,12 @@ class PurchaseOrderService
                 if ($product) {
                     $unitCost = isset($item['cost_price']) ? (float) $item['cost_price'] : null;
 
-                    if ($unitCost !== null)            $product->update(['cost_price' => $unitCost]);
-                    if (isset($item['selling_price'])) $product->update(['price' => $item['selling_price']]);
+                    if ($unitCost !== null) {
+                        $product->update(['cost_price' => $unitCost]);
+                    }
+                    if (isset($item['selling_price'])) {
+                        $product->update(['price' => $item['selling_price']]);
+                    }
 
                     $this->stockService->addStock(
                         $product,
@@ -150,11 +159,11 @@ class PurchaseOrderService
             }
 
             $po->refresh();
-            $allReceived = $po->items->every(fn($i) => $i->received_quantity >= $i->quantity);
-            $anyReceived = $po->items->some(fn($i)  => $i->received_quantity > 0);
+            $allReceived = $po->items->every(fn ($i) => $i->received_quantity >= $i->quantity);
+            $anyReceived = $po->items->some(fn ($i) => $i->received_quantity > 0);
 
             $this->poRepo->update($po, [
-                'status'        => $allReceived ? 'received' : ($anyReceived ? 'partial' : 'pending'),
+                'status' => $allReceived ? 'received' : ($anyReceived ? 'partial' : 'pending'),
                 'received_date' => $allReceived ? now() : null,
             ]);
 
@@ -174,19 +183,19 @@ class PurchaseOrderService
 
     private function recordSupplierDebt(int $supplierId, int $poId, string $poNumber, float $amount): void
     {
-        $lastEntry   = $this->supplierAccountRepo->latestEntry($supplierId);
+        $lastEntry = $this->supplierAccountRepo->latestEntry($supplierId);
         $lastBalance = $lastEntry ? $lastEntry->balance : 0;
 
         $this->supplierAccountRepo->create([
-            'supplier_id'      => $supplierId,
+            'supplier_id' => $supplierId,
             'transaction_type' => 'purchase_order',
-            'reference_id'     => $poId,
+            'reference_id' => $poId,
             'reference_number' => $poNumber,
-            'debit'            => $amount,
-            'credit'           => 0,
-            'balance'          => $lastBalance + $amount,
-            'notes'            => __('pos.po_debt_note', ['po' => $poNumber]),
-            'created_by'       => Auth::id(),
+            'debit' => $amount,
+            'credit' => 0,
+            'balance' => $lastBalance + $amount,
+            'notes' => __('pos.po_debt_note', ['po' => $poNumber]),
+            'created_by' => Auth::id(),
         ]);
     }
 
@@ -202,46 +211,48 @@ class PurchaseOrderService
     private function postReceiptEntry(PurchaseOrder $po, float $amount): void
     {
         $inventoryCode = $this->settingRepo->get('inventory_account_code') ?: null;
-        $apCode        = $this->settingRepo->get('accounts_payable_account_code') ?: null;
+        $apCode = $this->settingRepo->get('accounts_payable_account_code') ?: null;
 
-        if (!$inventoryCode || !$apCode) {
+        if (! $inventoryCode || ! $apCode) {
             Log::warning('purchase_receipt.journal_skipped: account codes not configured', [
                 'po_number' => $po->po_number,
             ]);
+
             return;
         }
 
         $inventoryAccount = Account::where('account_code', $inventoryCode)->first();
-        $apAccount        = Account::where('account_code', $apCode)->first();
+        $apAccount = Account::where('account_code', $apCode)->first();
 
-        if (!$inventoryAccount || !$apAccount) {
+        if (! $inventoryAccount || ! $apAccount) {
             Log::warning('purchase_receipt.journal_skipped: account not found', [
-                'po_number'              => $po->po_number,
+                'po_number' => $po->po_number,
                 'inventory_account_code' => $inventoryCode,
-                'ap_account_code'        => $apCode,
-                'inventory_found'        => (bool) $inventoryAccount,
-                'ap_found'               => (bool) $apAccount,
+                'ap_account_code' => $apCode,
+                'inventory_found' => (bool) $inventoryAccount,
+                'ap_found' => (bool) $apAccount,
             ]);
+
             return;
         }
 
-        $desc  = __('pos.purchase_receipt_journal', ['po' => $po->po_number]);
+        $desc = __('pos.purchase_receipt_journal', ['po' => $po->po_number]);
         $entry = $this->accountingService->createJournalEntry([
-            'entry_date'     => now()->format('Y-m-d'),
-            'description'    => $desc,
+            'entry_date' => now()->format('Y-m-d'),
+            'description' => $desc,
             'reference_type' => 'purchase_order',
-            'reference_id'   => $po->id,
-            'lines'          => [
+            'reference_id' => $po->id,
+            'lines' => [
                 [
-                    'account_id'  => $inventoryAccount->id,
-                    'debit'       => $amount,
-                    'credit'      => 0,
+                    'account_id' => $inventoryAccount->id,
+                    'debit' => $amount,
+                    'credit' => 0,
                     'description' => $desc,
                 ],
                 [
-                    'account_id'  => $apAccount->id,
-                    'debit'       => 0,
-                    'credit'      => $amount,
+                    'account_id' => $apAccount->id,
+                    'debit' => 0,
+                    'credit' => $amount,
                     'description' => $desc,
                 ],
             ],

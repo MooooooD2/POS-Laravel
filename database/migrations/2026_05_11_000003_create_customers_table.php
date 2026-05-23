@@ -61,7 +61,7 @@ return new class extends Migration
 
         Schema::table('invoices', function (Blueprint $table) {
             $table->foreignId('customer_id')->nullable()->after('cashier_id')
-                  ->constrained('customers');
+                ->constrained('customers');
         });
     }
 

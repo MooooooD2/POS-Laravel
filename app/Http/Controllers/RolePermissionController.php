@@ -28,11 +28,12 @@ class RolePermissionController extends Controller
     public function storeRole(Request $request)
     {
         $request->validate([
-            'name'       => 'required|string|max:100|unique:roles,name',
+            'name' => 'required|string|max:100|unique:roles,name',
             'guard_name' => 'nullable|string|in:web,api',
         ]);
         $role = $this->roleService->create($request->only(['name', 'guard_name']));
         $this->audit('role.created', Role::class, (int) $role->id, ['name' => $role->name]);
+
         return $this->success(['role' => $role, 'message' => __('pos.role_created')], '', 201);
     }
 
@@ -49,6 +50,7 @@ class RolePermissionController extends Controller
             'old_name' => $oldName,
             'new_name' => $updated->name,
         ]);
+
         return $this->success(message: __('pos.role_updated'));
     }
 
@@ -59,22 +61,24 @@ class RolePermissionController extends Controller
             $this->roleService->delete($role);
         } catch (\Exception $e) {
             $code = str_contains($e->getMessage(), 'protected') ? 403 : 422;
+
             return $this->error($e->getMessage(), $code);
         }
         $this->audit('role.deleted', Role::class, (int) $role->id, ['name' => $roleName]);
+
         return $this->success(message: __('pos.role_deleted'));
     }
 
     public function syncPermissions(Request $request, Role $role)
     {
         $request->validate([
-            'permissions'   => 'array',
+            'permissions' => 'array',
             'permissions.*' => 'string|exists:permissions,name',
         ]);
 
         // Capture before state for audit trail
         $before = $role->permissions->pluck('name')->sort()->values()->toArray();
-        $after  = collect($request->input('permissions', []))->sort()->values()->toArray();
+        $after = collect($request->input('permissions', []))->sort()->values()->toArray();
 
         try {
             $this->roleService->syncPermissions($role, $after);
@@ -83,9 +87,9 @@ class RolePermissionController extends Controller
         }
 
         $this->audit('role.permissions_synced', Role::class, (int) $role->id, [
-            'role'    => $role->name,
+            'role' => $role->name,
             'removed' => array_values(array_diff($before, $after)),
-            'added'   => array_values(array_diff($after, $before)),
+            'added' => array_values(array_diff($after, $before)),
         ]);
 
         return $this->success(message: __('pos.permissions_updated'));
@@ -94,7 +98,7 @@ class RolePermissionController extends Controller
     public function getUserRoles(User $user)
     {
         return $this->success([
-            'roles'     => $user->getRoleNames(),
+            'roles' => $user->getRoleNames(),
             'all_roles' => $this->roleService->allWithPermissions(),
         ]);
     }
@@ -104,14 +108,14 @@ class RolePermissionController extends Controller
         $request->validate(['role' => 'required|exists:roles,name']);
 
         $beforeRoles = $user->getRoleNames()->toArray();
-        $newRole     = $request->string('role')->toString();
+        $newRole = $request->string('role')->toString();
 
         $user->syncRoles([$newRole]);
 
         $this->audit('user.role_assigned', User::class, (int) $user->id, [
-            'username'  => $user->username,
-            'before'    => $beforeRoles,
-            'after'     => [$newRole],
+            'username' => $user->username,
+            'before' => $beforeRoles,
+            'after' => [$newRole],
         ]);
 
         return $this->success(message: __('pos.role_assigned'));

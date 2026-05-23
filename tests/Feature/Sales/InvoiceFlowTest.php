@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -19,13 +20,15 @@ class InvoiceFlowTest extends TestCase
     use RefreshDatabase;
 
     private User $cashier;
+
     private User $admin;
+
     private Product $product;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
         $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');
@@ -34,10 +37,10 @@ class InvoiceFlowTest extends TestCase
         $this->cashier->assignRole('cashier');
 
         $this->product = Product::factory()->create([
-            'price'      => 100.00,
+            'price' => 100.00,
             'cost_price' => 60.00,
-            'quantity'   => 50,
-            'min_stock'  => 5,
+            'quantity' => 50,
+            'min_stock' => 5,
         ]);
     }
 
@@ -47,7 +50,7 @@ class InvoiceFlowTest extends TestCase
     public function creates_invoice_and_deducts_stock(): void
     {
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 3]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 3]],
             'payment_method' => 'cash',
         ]);
 
@@ -60,22 +63,22 @@ class InvoiceFlowTest extends TestCase
     public function cash_received_change_calculated_correctly(): void
     {
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 2]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 2]],
             'payment_method' => 'cash',
-            'cash_received'  => 250.00,
+            'cash_received' => 250.00,
         ]);
 
         $response->assertStatus(201);
         $invoice = Invoice::latest()->first();
         $this->assertEquals(200.00, $invoice->final_total);
-        $this->assertEquals(50.00,  $invoice->change_amount);
+        $this->assertEquals(50.00, $invoice->change_amount);
     }
 
     #[Test]
     public function creates_invoice_with_card_payment(): void
     {
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
             'payment_method' => 'card',
         ]);
 
@@ -104,9 +107,9 @@ class InvoiceFlowTest extends TestCase
     public function invoice_discount_reduces_final_total(): void
     {
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 2]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 2]],
             'payment_method' => 'cash',
-            'discount'       => 20.00,
+            'discount' => 20.00,
         ]);
 
         $response->assertStatus(201);
@@ -117,16 +120,16 @@ class InvoiceFlowTest extends TestCase
     public function invoice_linked_to_customer(): void
     {
         $customer = Customer::create([
-            'code'     => 'CUST-001',
-            'name'     => 'أحمد محمد',
-            'phone'    => '01000000001',
+            'code' => 'CUST-001',
+            'name' => 'أحمد محمد',
+            'phone' => '01000000001',
             'is_active' => true,
         ]);
 
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
-            'customer_id'    => $customer->id,
+            'customer_id' => $customer->id,
         ]);
 
         $response->assertStatus(201);
@@ -137,11 +140,11 @@ class InvoiceFlowTest extends TestCase
     public function invoice_number_is_unique_and_sequential(): void
     {
         $r1 = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
         ]);
         $r2 = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
         ]);
 
@@ -156,7 +159,7 @@ class InvoiceFlowTest extends TestCase
     public function rejects_when_quantity_exceeds_stock(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 999]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 999]],
             'payment_method' => 'cash',
         ])->assertStatus(422);
 
@@ -167,7 +170,7 @@ class InvoiceFlowTest extends TestCase
     public function rejects_zero_quantity(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 0]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 0]],
             'payment_method' => 'cash',
         ])->assertStatus(422);
     }
@@ -176,7 +179,7 @@ class InvoiceFlowTest extends TestCase
     public function rejects_negative_quantity(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => -1]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => -1]],
             'payment_method' => 'cash',
         ])->assertStatus(422);
     }
@@ -185,7 +188,7 @@ class InvoiceFlowTest extends TestCase
     public function stock_not_deducted_on_failed_invoice(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 999]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 999]],
             'payment_method' => 'cash',
         ])->assertStatus(422);
 
@@ -198,9 +201,9 @@ class InvoiceFlowTest extends TestCase
     public function discount_cannot_exceed_total(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
-            'discount'       => 500.00, // more than total (100)
+            'discount' => 500.00, // more than total (100)
         ])->assertStatus(422);
     }
 
@@ -208,9 +211,9 @@ class InvoiceFlowTest extends TestCase
     public function zero_discount_accepted(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
-            'discount'       => 0,
+            'discount' => 0,
         ])->assertStatus(201);
     }
 
@@ -220,7 +223,7 @@ class InvoiceFlowTest extends TestCase
     public function rejects_empty_items_array(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [],
+            'items' => [],
             'payment_method' => 'cash',
         ])->assertStatus(422);
     }
@@ -229,7 +232,7 @@ class InvoiceFlowTest extends TestCase
     public function rejects_nonexistent_product(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => 99999, 'quantity' => 1]],
+            'items' => [['product_id' => 99999, 'quantity' => 1]],
             'payment_method' => 'cash',
         ])->assertStatus(422);
     }
@@ -238,7 +241,7 @@ class InvoiceFlowTest extends TestCase
     public function rejects_invalid_payment_method(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
             'payment_method' => 'bitcoin',
         ])->assertStatus(422);
     }
@@ -249,7 +252,7 @@ class InvoiceFlowTest extends TestCase
     public function unauthenticated_user_cannot_create_invoice(): void
     {
         $this->postJson('/api/invoices', [
-            'items'          => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
         ])->assertStatus(401);
     }
@@ -260,15 +263,15 @@ class InvoiceFlowTest extends TestCase
     public function admin_can_cancel_invoice_and_restore_stock(): void
     {
         $invoice = Invoice::factory()->create([
-            'status'     => 'completed',
+            'status' => 'completed',
             'cashier_id' => $this->cashier->id,
         ]);
         InvoiceItem::factory()->create([
             'invoice_id' => $invoice->id,
             'product_id' => $this->product->id,
-            'quantity'   => 5,
-            'price'      => 100.00,
-            'subtotal'   => 500.00,
+            'quantity' => 5,
+            'price' => 100.00,
+            'subtotal' => 500.00,
         ]);
         $initialQty = $this->product->quantity;
 

@@ -1,8 +1,10 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\RoleRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -10,7 +12,7 @@ class RoleRepository extends BaseRepository implements RoleRepositoryInterface
 {
     public function __construct()
     {
-        $this->model = new Role();
+        $this->model = new Role;
     }
 
     public function allWithPermissions(): Collection
@@ -33,13 +35,14 @@ class RoleRepository extends BaseRepository implements RoleRepositoryInterface
         return Role::create($data);
     }
 
-    public function update(Role|\Illuminate\Database\Eloquent\Model $role, array $data): Role
+    public function update(Role|Model $role, array $data): Role
     {
         $role->update($data);
+
         return $role->fresh();
     }
 
-    public function delete(Role|\Illuminate\Database\Eloquent\Model $role): void
+    public function delete(Role|Model $role): void
     {
         $role->delete();
     }

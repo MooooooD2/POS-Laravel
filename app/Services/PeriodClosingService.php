@@ -5,13 +5,14 @@ namespace App\Services;
 use App\Contracts\Repositories\AccountRepositoryInterface;
 use App\Models\Account;
 use App\Models\FiscalPeriod;
+use App\Models\JournalEntry;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PeriodClosingService
 {
     public function __construct(
-        private AccountingService        $accountingService,
+        private AccountingService $accountingService,
         private AccountRepositoryInterface $accountRepo,
     ) {}
 
@@ -22,11 +23,11 @@ class PeriodClosingService
     {
         $overlap = FiscalPeriod::where(function ($q) use ($data) {
             $q->whereBetween('start_date', [$data['start_date'], $data['end_date']])
-              ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
-              ->orWhere(fn($q2) => $q2
-                  ->where('start_date', '<=', $data['start_date'])
-                  ->where('end_date',   '>=', $data['end_date'])
-              );
+                ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
+                ->orWhere(fn ($q2) => $q2
+                    ->where('start_date', '<=', $data['start_date'])
+                    ->where('end_date', '>=', $data['end_date'])
+                );
         })->exists();
 
         if ($overlap) {
@@ -34,10 +35,10 @@ class PeriodClosingService
         }
 
         return FiscalPeriod::create([
-            'name'       => $data['name'],
+            'name' => $data['name'],
             'start_date' => $data['start_date'],
-            'end_date'   => $data['end_date'],
-            'status'     => 'open',
+            'end_date' => $data['end_date'],
+            'status' => 'open',
         ]);
     }
 
@@ -81,9 +82,9 @@ class PeriodClosingService
             $closingEntry = $this->generateClosingEntry($locked, $retainedEarnings);
 
             $locked->update([
-                'status'           => 'closed',
-                'closed_at'        => now(),
-                'closed_by'        => Auth::id(),
+                'status' => 'closed',
+                'closed_at' => now(),
+                'closed_by' => Auth::id(),
                 'closing_entry_id' => $closingEntry->id,
             ]);
 
@@ -93,10 +94,10 @@ class PeriodClosingService
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
-    private function generateClosingEntry(FiscalPeriod $period, Account $retainedEarnings): \App\Models\JournalEntry
+    private function generateClosingEntry(FiscalPeriod $period, Account $retainedEarnings): JournalEntry
     {
-        $preview   = $this->buildClosingLines($period);
-        $lines     = $preview['lines'];
+        $preview = $this->buildClosingLines($period);
+        $lines = $preview['lines'];
         $netIncome = $preview['net_income'];
 
         if (empty($lines) && $netIncome == 0) {
@@ -106,26 +107,26 @@ class PeriodClosingService
         // Add the retained earnings impact line
         if ($netIncome > 0) {
             $lines[] = [
-                'account_id'  => $retainedEarnings->id,
-                'debit'       => 0,
-                'credit'      => $netIncome,
+                'account_id' => $retainedEarnings->id,
+                'debit' => 0,
+                'credit' => $netIncome,
                 'description' => __('pos.closing_net_income_transfer'),
             ];
         } elseif ($netIncome < 0) {
             $lines[] = [
-                'account_id'  => $retainedEarnings->id,
-                'debit'       => abs($netIncome),
-                'credit'      => 0,
+                'account_id' => $retainedEarnings->id,
+                'debit' => abs($netIncome),
+                'credit' => 0,
                 'description' => __('pos.closing_net_loss_transfer'),
             ];
         }
 
         $entry = $this->accountingService->createJournalEntry([
-            'entry_date'     => $period->end_date->format('Y-m-d'),
-            'description'    => __('pos.closing_entry_description', ['name' => $period->name]),
+            'entry_date' => $period->end_date->format('Y-m-d'),
+            'description' => __('pos.closing_entry_description', ['name' => $period->name]),
             'reference_type' => 'fiscal_period',
-            'reference_id'   => $period->id,
-            'lines'          => $lines,
+            'reference_id' => $period->id,
+            'lines' => $lines,
         ]);
 
         $this->accountingService->postEntry($entry);
@@ -141,22 +142,22 @@ class PeriodClosingService
     private function buildClosingLines(FiscalPeriod $period): array
     {
         $start = $period->start_date->format('Y-m-d');
-        $end   = $period->end_date->format('Y-m-d');
+        $end = $period->end_date->format('Y-m-d');
 
         $revenues = $this->accountRepo->totalsByType('revenue', $start, $end);
         $expenses = $this->accountRepo->totalsByType('expense', $start, $end);
 
-        $lines        = [];
+        $lines = [];
         $totalRevenue = 0.0;
         $totalExpense = 0.0;
 
         foreach ($revenues as $rev) {
             $balance = round((float) ($rev['total'] ?? 0), 2);
             if ($balance > 0) {
-                $lines[]       = [
-                    'account_id'  => $rev['id'],
-                    'debit'       => $balance,
-                    'credit'      => 0,
+                $lines[] = [
+                    'account_id' => $rev['id'],
+                    'debit' => $balance,
+                    'credit' => 0,
                     'description' => __('pos.closing_account', ['name' => $rev['account_name']]),
                 ];
                 $totalRevenue += $balance;
@@ -166,10 +167,10 @@ class PeriodClosingService
         foreach ($expenses as $exp) {
             $balance = round((float) ($exp['total'] ?? 0), 2);
             if ($balance > 0) {
-                $lines[]       = [
-                    'account_id'  => $exp['id'],
-                    'debit'       => 0,
-                    'credit'      => $balance,
+                $lines[] = [
+                    'account_id' => $exp['id'],
+                    'debit' => 0,
+                    'credit' => $balance,
                     'description' => __('pos.closing_account', ['name' => $exp['account_name']]),
                 ];
                 $totalExpense += $balance;
@@ -177,10 +178,10 @@ class PeriodClosingService
         }
 
         return [
-            'lines'         => $lines,
+            'lines' => $lines,
             'total_revenue' => round($totalRevenue, 2),
             'total_expense' => round($totalExpense, 2),
-            'net_income'    => round($totalRevenue - $totalExpense, 2),
+            'net_income' => round($totalRevenue - $totalExpense, 2),
         ];
     }
 }

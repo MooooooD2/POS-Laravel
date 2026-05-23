@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
@@ -35,14 +36,15 @@ class WhatsAppController extends Controller
 
     public function receiveWebhook(Request $request): Response
     {
-        $rawBody   = $request->getContent();
+        $rawBody = $request->getContent();
         $signature = $request->header('X-Hub-Signature-256');
 
-        if (!$this->service->verifySignature($rawBody, $signature)) {
+        if (! $this->service->verifySignature($rawBody, $signature)) {
             return response('Forbidden', 403);
         }
 
         $this->service->handleWebhook($request->all());
+
         return response('OK', 200);
     }
 
@@ -50,9 +52,9 @@ class WhatsAppController extends Controller
 
     public function logs(Request $request): JsonResponse
     {
-        $logs = WhatsAppMessage::when($request->status, fn($q) => $q->where('status', $request->status))
-            ->when($request->type, fn($q) => $q->where('message_type', $request->type))
-            ->when($request->phone, fn($q) => $q->where('to_number', 'like', "%{$request->phone}%"))
+        $logs = WhatsAppMessage::when($request->status, fn ($q) => $q->where('status', $request->status))
+            ->when($request->type, fn ($q) => $q->where('message_type', $request->type))
+            ->when($request->phone, fn ($q) => $q->where('to_number', 'like', "%{$request->phone}%"))
             ->latest()
             ->paginate($request->per_page ?? 25);
 
@@ -62,12 +64,14 @@ class WhatsAppController extends Controller
     public function sendInvoice(Invoice $invoice): JsonResponse
     {
         $this->service->sendInvoice($invoice);
+
         return $this->success([], __('pos.wa_invoice_queued'));
     }
 
     public function sendDebtReminder(Customer $customer): JsonResponse
     {
         $this->service->sendDebtReminder($customer);
+
         return $this->success([], __('pos.wa_reminder_queued'));
     }
 
@@ -89,20 +93,21 @@ class WhatsAppController extends Controller
     public function sendPromotion(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'message'      => 'required|string|max:1000',
+            'message' => 'required|string|max:1000',
             'customer_ids' => 'nullable|array',
             'customer_ids.*' => 'exists:customers,id',
-            'vip_only'     => 'boolean',
+            'vip_only' => 'boolean',
         ]);
 
         $query = Customer::whereNotNull('phone');
-        if (!empty($data['customer_ids'])) {
+        if (! empty($data['customer_ids'])) {
             $query->whereIn('id', $data['customer_ids']);
-        } elseif (!empty($data['vip_only'])) {
+        } elseif (! empty($data['vip_only'])) {
             $query->where('type', 'vip');
         }
 
         $count = $this->service->sendBulkPromotion($query->get(), $data['message']);
+
         return $this->success([], __('pos.wa_promotions_queued', ['count' => $count]));
     }
 
@@ -115,10 +120,10 @@ class WhatsAppController extends Controller
             ->pluck('count', 'status');
 
         return $this->success([
-            'today'    => $stats,
-            'total'    => WhatsAppMessage::count(),
-            'inbound'  => WhatsAppMessage::where('direction', 'inbound')->whereDate('created_at', today())->count(),
-            'failed'   => WhatsAppMessage::where('status', 'failed')->whereDate('created_at', today())->count(),
+            'today' => $stats,
+            'total' => WhatsAppMessage::count(),
+            'inbound' => WhatsAppMessage::where('direction', 'inbound')->whereDate('created_at', today())->count(),
+            'failed' => WhatsAppMessage::where('status', 'failed')->whereDate('created_at', today())->count(),
         ]);
     }
 }

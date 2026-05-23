@@ -20,10 +20,10 @@ return new class extends Migration
 
         Schema::table('customers', function (Blueprint $table) {
             $table->foreignId('customer_group_id')
-                  ->nullable()
-                  ->after('code')
-                  ->constrained('customer_groups')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('code')
+                ->constrained('customer_groups')
+                ->nullOnDelete();
         });
     }
 

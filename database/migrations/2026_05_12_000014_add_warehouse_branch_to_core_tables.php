@@ -4,15 +4,16 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        $defaultBranchId    = DB::table('branches')->where('is_default', true)->value('id');
+        $defaultBranchId = DB::table('branches')->where('is_default', true)->value('id');
         $defaultWarehouseId = DB::table('warehouses')->where('is_default', true)->value('id');
 
         // users → branch
         Schema::table('users', function (Blueprint $table) {
-            if (!Schema::hasColumn('users', 'branch_id')) {
+            if (! Schema::hasColumn('users', 'branch_id')) {
                 $table->foreignId('branch_id')->nullable()->after('language')
                     ->constrained('branches')->nullOnDelete();
             }
@@ -20,11 +21,11 @@ return new class extends Migration {
 
         // invoices → branch + warehouse
         Schema::table('invoices', function (Blueprint $table) {
-            if (!Schema::hasColumn('invoices', 'branch_id')) {
+            if (! Schema::hasColumn('invoices', 'branch_id')) {
                 $table->foreignId('branch_id')->nullable()->after('customer_id')
                     ->constrained('branches')->nullOnDelete();
             }
-            if (!Schema::hasColumn('invoices', 'warehouse_id')) {
+            if (! Schema::hasColumn('invoices', 'warehouse_id')) {
                 $table->foreignId('warehouse_id')->nullable()->after('branch_id')
                     ->constrained('warehouses')->nullOnDelete();
             }
@@ -32,7 +33,7 @@ return new class extends Migration {
 
         // expenses → branch
         Schema::table('expenses', function (Blueprint $table) {
-            if (!Schema::hasColumn('expenses', 'branch_id')) {
+            if (! Schema::hasColumn('expenses', 'branch_id')) {
                 $table->foreignId('branch_id')->nullable()->after('created_by')
                     ->constrained('branches')->nullOnDelete();
             }
@@ -40,7 +41,7 @@ return new class extends Migration {
 
         // cash_register_sessions → branch
         Schema::table('cash_register_sessions', function (Blueprint $table) {
-            if (!Schema::hasColumn('cash_register_sessions', 'branch_id')) {
+            if (! Schema::hasColumn('cash_register_sessions', 'branch_id')) {
                 $table->foreignId('branch_id')->nullable()->after('cashier_id')
                     ->constrained('branches')->nullOnDelete();
             }
@@ -48,11 +49,11 @@ return new class extends Migration {
 
         // purchase_orders → branch + warehouse
         Schema::table('purchase_orders', function (Blueprint $table) {
-            if (!Schema::hasColumn('purchase_orders', 'branch_id')) {
+            if (! Schema::hasColumn('purchase_orders', 'branch_id')) {
                 $table->foreignId('branch_id')->nullable()->after('id')
                     ->constrained('branches')->nullOnDelete();
             }
-            if (!Schema::hasColumn('purchase_orders', 'warehouse_id')) {
+            if (! Schema::hasColumn('purchase_orders', 'warehouse_id')) {
                 $table->foreignId('warehouse_id')->nullable()->after('branch_id')
                     ->constrained('warehouses')->nullOnDelete();
             }
@@ -60,22 +61,22 @@ return new class extends Migration {
 
         // stock_movements → warehouse + batch
         Schema::table('stock_movements', function (Blueprint $table) {
-            if (!Schema::hasColumn('stock_movements', 'warehouse_id')) {
+            if (! Schema::hasColumn('stock_movements', 'warehouse_id')) {
                 $table->foreignId('warehouse_id')->nullable()->after('reference_id')
                     ->constrained('warehouses')->nullOnDelete();
             }
-            if (!Schema::hasColumn('stock_movements', 'batch_id')) {
+            if (! Schema::hasColumn('stock_movements', 'batch_id')) {
                 $table->unsignedBigInteger('batch_id')->nullable()->after('warehouse_id');
             }
         });
 
         // invoice_items → warehouse + batch
         Schema::table('invoice_items', function (Blueprint $table) {
-            if (!Schema::hasColumn('invoice_items', 'warehouse_id')) {
+            if (! Schema::hasColumn('invoice_items', 'warehouse_id')) {
                 $table->foreignId('warehouse_id')->nullable()->after('subtotal')
                     ->constrained('warehouses')->nullOnDelete();
             }
-            if (!Schema::hasColumn('invoice_items', 'batch_id')) {
+            if (! Schema::hasColumn('invoice_items', 'batch_id')) {
                 $table->unsignedBigInteger('batch_id')->nullable()->after('warehouse_id');
             }
         });

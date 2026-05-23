@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Services\SettingService;
@@ -23,8 +24,8 @@ class SettingController extends Controller
         $this->authorize('update_settings');
 
         $data = $request->validate([
-            'settings'         => 'required|array|max:100',
-            'settings.*.key'   => ['required', 'string', 'max:100', 'exists:settings,key'],
+            'settings' => 'required|array|max:100',
+            'settings.*.key' => ['required', 'string', 'max:100', 'exists:settings,key'],
             // Values must be scalar — reject objects, nested arrays, and oversized blobs.
             // SettingService::updateBatch() additionally runs strip_tags() and an allowlist check.
             'settings.*.value' => ['nullable', 'scalar', 'max:2048'],
@@ -42,9 +43,10 @@ class SettingController extends Controller
     public function group(string $group)
     {
         $allowed = ['general', 'tax', 'pos', 'invoice', 'stock', 'accounting', 'printing', 'loyalty', 'inventory'];
-        if (!in_array($group, $allowed, true)) {
+        if (! in_array($group, $allowed, true)) {
             return response()->json([], 400);
         }
+
         return response()->json(['settings' => $this->settingService->getGroup($group)]);
     }
 }

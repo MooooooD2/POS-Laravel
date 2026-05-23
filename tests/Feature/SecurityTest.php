@@ -1,8 +1,9 @@
 <?php
+
 namespace Tests\Feature;
 
-use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,7 +14,7 @@ class SecurityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
     }
 
     /** @test */
@@ -27,11 +28,11 @@ class SecurityTest extends TestCase
     /** @test */
     public function xss_in_product_name_is_sanitized()
     {
-        $admin   = User::factory()->create(['is_active' => true]);
+        $admin = User::factory()->create(['is_active' => true]);
         $admin->assignRole('admin');
 
         $this->actingAs($admin)->postJson('/api/products', [
-            'name'  => '<script>alert("xss")</script>منتج',
+            'name' => '<script>alert("xss")</script>منتج',
             'price' => 100,
         ]);
 
@@ -47,7 +48,7 @@ class SecurityTest extends TestCase
 
         // يجب أن يُعالَج كـ literal string وليس SQL
         $response = $this->actingAs($admin)
-            ->getJson("/api/products?search=" . urlencode("' OR '1'='1"));
+            ->getJson('/api/products?search='.urlencode("' OR '1'='1"));
 
         $response->assertStatus(200);
         // النظام يعمل ولا يُرجع كل المنتجات
@@ -63,7 +64,7 @@ class SecurityTest extends TestCase
             'account_code' => 'TEST001',
             'account_name' => 'حساب تجريبي',
             'account_type' => 'asset',
-            'balance'      => 999999, // محاولة تعيين رصيد مباشرة
+            'balance' => 999999, // محاولة تعيين رصيد مباشرة
         ]);
 
         // الرصيد لا يُعيَّن من المستخدم
@@ -77,7 +78,7 @@ class SecurityTest extends TestCase
         $admin->assignRole('admin');
 
         $response = $this->actingAs($admin)->getJson('/api/users');
-        $users    = $response->json('users');
+        $users = $response->json('users');
 
         foreach ($users as $user) {
             $this->assertArrayNotHasKey('password', $user);

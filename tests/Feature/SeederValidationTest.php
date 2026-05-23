@@ -1,6 +1,8 @@
 <?php
+
 namespace Tests\Feature;
 
+use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,12 +19,12 @@ class SeederValidationTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/missing required passwords/i');
 
-        $seeder = new \Database\Seeders\UserSeeder();
+        $seeder = new UserSeeder;
         $method = new \ReflectionMethod($seeder, 'validatePasswords');
         $method->setAccessible(true);
         $method->invoke($seeder, [
-            'ADMIN_PASSWORD'     => '',
-            'CASHIER_PASSWORD'   => 'CashierPass1',
+            'ADMIN_PASSWORD' => '',
+            'CASHIER_PASSWORD' => 'CashierPass1',
             'WAREHOUSE_PASSWORD' => 'WarehousePass1',
         ]);
     }

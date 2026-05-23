@@ -16,7 +16,7 @@ class AuditLog extends Model
     ];
 
     protected $casts = [
-        'changes'    => 'array',
+        'changes' => 'array',
         'created_at' => 'datetime',
     ];
 
@@ -30,7 +30,7 @@ class AuditLog extends Model
     {
         parent::boot();
 
-        static::updating(fn() => throw new \LogicException('Audit logs are immutable.'));
-        static::deleting(fn() => throw new \LogicException('Audit logs are immutable.'));
+        static::updating(fn () => throw new \LogicException('Audit logs are immutable.'));
+        static::deleting(fn () => throw new \LogicException('Audit logs are immutable.'));
     }
 }

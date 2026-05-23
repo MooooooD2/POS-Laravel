@@ -16,7 +16,9 @@ class AccountingServiceTest extends TestCase
     use RefreshDatabase;
 
     private AccountingService $service;
+
     private Account $debitAccount;
+
     private Account $creditAccount;
 
     protected function setUp(): void
@@ -34,23 +36,23 @@ class AccountingServiceTest extends TestCase
             'account_code' => '1001',
             'account_name' => 'Cash',
             'account_type' => 'asset',
-            'balance'      => 0,
+            'balance' => 0,
         ]);
 
         $this->creditAccount = Account::create([
             'account_code' => '4001',
             'account_name' => 'Revenue',
             'account_type' => 'revenue',
-            'balance'      => 0,
+            'balance' => 0,
         ]);
     }
 
     private function validEntryData(float $amount = 1000.00): array
     {
         return [
-            'entry_date'  => today()->toDateString(),
+            'entry_date' => today()->toDateString(),
             'description' => 'Test journal entry',
-            'lines'       => [
+            'lines' => [
                 ['account_id' => $this->debitAccount->id,  'debit' => $amount, 'credit' => 0],
                 ['account_id' => $this->creditAccount->id, 'debit' => 0, 'credit' => $amount],
             ],
@@ -79,9 +81,9 @@ class AccountingServiceTest extends TestCase
     public function test_unbalanced_entry_throws_exception(): void
     {
         $data = [
-            'entry_date'  => today()->toDateString(),
+            'entry_date' => today()->toDateString(),
             'description' => 'Unbalanced entry',
-            'lines'       => [
+            'lines' => [
                 ['account_id' => $this->debitAccount->id,  'debit' => 1000, 'credit' => 0],
                 ['account_id' => $this->creditAccount->id, 'debit' => 0,    'credit' => 800], // mismatch
             ],
@@ -95,15 +97,18 @@ class AccountingServiceTest extends TestCase
     public function test_unbalanced_entry_does_not_persist(): void
     {
         $data = [
-            'entry_date'  => today()->toDateString(),
+            'entry_date' => today()->toDateString(),
             'description' => 'Unbalanced entry',
-            'lines'       => [
+            'lines' => [
                 ['account_id' => $this->debitAccount->id,  'debit' => 500, 'credit' => 0],
                 ['account_id' => $this->creditAccount->id, 'debit' => 0,   'credit' => 999],
             ],
         ];
 
-        try { $this->service->createJournalEntry($data); } catch (\Exception) {}
+        try {
+            $this->service->createJournalEntry($data);
+        } catch (\Exception) {
+        }
 
         $this->assertDatabaseCount('journal_entries', 0);
         $this->assertDatabaseCount('journal_entry_lines', 0);
@@ -113,7 +118,7 @@ class AccountingServiceTest extends TestCase
     {
         $this->service->createJournalEntry($this->validEntryData(500.00));
 
-        $debit  = $this->debitAccount->fresh();
+        $debit = $this->debitAccount->fresh();
         $credit = $this->creditAccount->fresh();
 
         // Asset debited → balance increases; Revenue credited → balance increases
@@ -125,12 +130,12 @@ class AccountingServiceTest extends TestCase
     public function test_entry_in_closed_period_is_rejected(): void
     {
         FiscalPeriod::create([
-            'name'       => 'January 2026',
+            'name' => 'January 2026',
             'start_date' => '2026-01-01',
-            'end_date'   => '2026-01-31',
-            'status'     => 'closed',
-            'closed_at'  => now(),
-            'closed_by'  => auth()->id(),
+            'end_date' => '2026-01-31',
+            'status' => 'closed',
+            'closed_at' => now(),
+            'closed_by' => auth()->id(),
         ]);
 
         $data = $this->validEntryData();
@@ -144,10 +149,10 @@ class AccountingServiceTest extends TestCase
     public function test_entry_in_open_period_is_allowed(): void
     {
         FiscalPeriod::create([
-            'name'       => 'May 2026',
+            'name' => 'May 2026',
             'start_date' => '2026-05-01',
-            'end_date'   => '2026-05-31',
-            'status'     => 'open',
+            'end_date' => '2026-05-31',
+            'status' => 'open',
         ]);
 
         $data = $this->validEntryData();
@@ -174,7 +179,7 @@ class AccountingServiceTest extends TestCase
 
     public function test_posting_already_posted_entry_throws(): void
     {
-        $entry  = $this->service->createJournalEntry($this->validEntryData());
+        $entry = $this->service->createJournalEntry($this->validEntryData());
         $this->service->postEntry($entry);
 
         $this->expectException(\Exception::class);
@@ -195,10 +200,10 @@ class AccountingServiceTest extends TestCase
         $this->assertCount(2, $reversal->lines);
 
         // Reversal lines should be mirror: original debit becomes credit and vice versa
-        $origDebit   = $original->lines->where('account_id', $this->debitAccount->id)->first();
+        $origDebit = $original->lines->where('account_id', $this->debitAccount->id)->first();
         $reversalLine = $reversal->lines->where('account_id', $this->debitAccount->id)->first();
 
-        $this->assertEquals((float) $origDebit->debit,  (float) $reversalLine->credit);
+        $this->assertEquals((float) $origDebit->debit, (float) $reversalLine->credit);
         $this->assertEquals((float) $origDebit->credit, (float) $reversalLine->debit);
     }
 

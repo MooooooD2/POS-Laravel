@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class Plan extends Model
 {
     protected $connection = 'mysql';  // central DB
+
     protected $primaryKey = 'id';
-    public    $incrementing = false;
+
+    public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -19,13 +22,13 @@ class Plan extends Model
 
     protected $casts = [
         'monthly_price' => 'float',
-        'annual_price'  => 'float',
-        'trial_days'    => 'integer',
-        'max_users'     => 'integer',
-        'max_products'  => 'integer',
-        'features'      => 'array',
-        'is_active'     => 'boolean',
-        'sort_order'    => 'integer',
+        'annual_price' => 'float',
+        'trial_days' => 'integer',
+        'max_users' => 'integer',
+        'max_products' => 'integer',
+        'features' => 'array',
+        'is_active' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     public function annualMonthlyRate(): float
@@ -35,7 +38,10 @@ class Plan extends Model
 
     public function annualSavings(): float
     {
-        if (!$this->annual_price) return 0;
+        if (! $this->annual_price) {
+            return 0;
+        }
+
         return round(($this->monthly_price * 12) - $this->annual_price, 2);
     }
 

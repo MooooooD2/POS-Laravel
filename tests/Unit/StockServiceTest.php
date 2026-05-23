@@ -1,10 +1,12 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\StockService;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,14 +15,15 @@ class StockServiceTest extends TestCase
     use RefreshDatabase;
 
     private StockService $service;
+
     private User $user;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
         $this->service = app(StockService::class);
-        $this->user    = User::factory()->create(['is_active' => true]);
+        $this->user = User::factory()->create(['is_active' => true]);
         $this->user->assignRole('admin');
         $this->actingAs($this->user);
     }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Product;
@@ -22,9 +23,9 @@ class UnitConversionController extends Controller
     public function upsert(Request $request, Product $product): JsonResponse
     {
         $data = $request->validate([
-            'purchase_unit_id'   => 'required|exists:units,id',
-            'sale_unit_id'       => 'required|exists:units,id|different:purchase_unit_id',
-            'conversion_factor'  => 'required|numeric|min:0.000001',
+            'purchase_unit_id' => 'required|exists:units,id',
+            'sale_unit_id' => 'required|exists:units,id|different:purchase_unit_id',
+            'conversion_factor' => 'required|numeric|min:0.000001',
         ]);
 
         $conv = UnitConversion::updateOrCreate(
@@ -36,7 +37,7 @@ class UnitConversionController extends Controller
 
         return $this->success([
             'conversion' => $conv->load('purchaseUnit:id,name,abbreviation', 'saleUnit:id,name,abbreviation'),
-            'message'    => __('pos.unit_conversion_saved'),
+            'message' => __('pos.unit_conversion_saved'),
         ]);
     }
 
@@ -44,6 +45,7 @@ class UnitConversionController extends Controller
     {
         UnitConversion::where('product_id', $product->id)->delete();
         $this->audit('unit_conversion.deleted', 'Product', $product->id, []);
+
         return $this->success(['message' => __('pos.unit_conversion_deleted')]);
     }
 }

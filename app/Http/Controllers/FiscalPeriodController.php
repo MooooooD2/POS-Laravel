@@ -30,13 +30,14 @@ class FiscalPeriodController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:100',
+            'name' => 'required|string|max:100',
             'start_date' => 'required|date',
-            'end_date'   => 'required|date|after_or_equal:start_date',
+            'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
         try {
             $period = $this->closingService->openPeriod($data);
+
             return response()->json($period, 201);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -52,8 +53,8 @@ class FiscalPeriodController extends Controller
         $preview = $this->closingService->previewClosingEntry($fiscalPeriod);
 
         return response()->json([
-            'period'   => $fiscalPeriod->only(['id', 'name', 'start_date', 'end_date']),
-            'preview'  => $preview,
+            'period' => $fiscalPeriod->only(['id', 'name', 'start_date', 'end_date']),
+            'preview' => $preview,
         ]);
     }
 
@@ -65,6 +66,7 @@ class FiscalPeriodController extends Controller
 
         try {
             $period = $this->closingService->closePeriod($fiscalPeriod, $data['retained_earnings_account_id']);
+
             return response()->json($period->load('closingEntry'));
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);

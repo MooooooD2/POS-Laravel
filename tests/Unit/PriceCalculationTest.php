@@ -1,11 +1,12 @@
 <?php
+
 namespace Tests\Unit;
 
-use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\InvoiceService;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,12 +15,13 @@ class PriceCalculationTest extends TestCase
     use RefreshDatabase;
 
     private InvoiceService $service;
+
     private User $cashier;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
         $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
         $this->actingAs($this->cashier);
@@ -32,7 +34,7 @@ class PriceCalculationTest extends TestCase
         $product = Product::factory()->create(['price' => 100.00, 'quantity' => 5]);
 
         $invoice = $this->service->createInvoice([
-            'items'          => [['product_id' => $product->id, 'quantity' => 2]],
+            'items' => [['product_id' => $product->id, 'quantity' => 2]],
             'payment_method' => 'cash',
         ]);
 
@@ -49,8 +51,8 @@ class PriceCalculationTest extends TestCase
         $this->expectException(\Exception::class);
 
         $this->service->createInvoice([
-            'items'          => [['product_id' => $product->id, 'quantity' => 1]],
-            'discount'       => 999,
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+            'discount' => 999,
             'payment_method' => 'cash',
         ]);
     }
@@ -65,7 +67,7 @@ class PriceCalculationTest extends TestCase
         $product = Product::factory()->create(['price' => 100.00, 'quantity' => 5]);
 
         $invoice = $this->service->createInvoice([
-            'items'          => [['product_id' => $product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
         ]);
 
@@ -81,7 +83,7 @@ class PriceCalculationTest extends TestCase
         $p2 = Product::factory()->create(['price' => 75.00, 'quantity' => 5]);
 
         $invoice = $this->service->createInvoice([
-            'items'          => [
+            'items' => [
                 ['product_id' => $p1->id, 'quantity' => 2],  // 100
                 ['product_id' => $p2->id, 'quantity' => 1],  // 75
             ],

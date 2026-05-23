@@ -7,7 +7,6 @@ use App\Contracts\Repositories\SettingRepositoryInterface;
 use App\Contracts\Repositories\SupplierAccountRepositoryInterface;
 use App\Models\Account;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
 use Illuminate\Support\Facades\Auth;
@@ -17,10 +16,10 @@ use Illuminate\Support\Facades\Log;
 class PurchaseReturnService
 {
     public function __construct(
-        private StockService                       $stockService,
-        private AccountingService                  $accountingService,
-        private SettingRepositoryInterface         $settingRepo,
-        private ProductRepositoryInterface         $productRepo,
+        private StockService $stockService,
+        private AccountingService $accountingService,
+        private SettingRepositoryInterface $settingRepo,
+        private ProductRepositoryInterface $productRepo,
         private SupplierAccountRepositoryInterface $supplierAccountRepo,
     ) {}
 
@@ -31,7 +30,7 @@ class PurchaseReturnService
                 ->lockForUpdate()
                 ->findOrFail($data['purchase_order_id']);
 
-            if (!in_array($po->status, ['received', 'partial'])) {
+            if (! in_array($po->status, ['received', 'partial'])) {
                 throw new \Exception(__('pos.purchase_return_po_not_received'));
             }
 
@@ -42,7 +41,7 @@ class PurchaseReturnService
                 if ($item['quantity'] <= 0 || $item['quantity'] > $max) {
                     throw new \Exception(__('pos.return_quantity_exceeded', [
                         'name' => $item['product_id'],
-                        'max'  => $max,
+                        'max' => $max,
                     ]));
                 }
             }
@@ -52,36 +51,36 @@ class PurchaseReturnService
 
             $totalAmount = 0;
             foreach ($data['items'] as $item) {
-                $poItem       = $poItemsByCost->get($item['product_id']);
-                $unitCost     = $poItem ? (float) $poItem->cost_price : 0;
+                $poItem = $poItemsByCost->get($item['product_id']);
+                $unitCost = $poItem ? (float) $poItem->cost_price : 0;
                 $totalAmount += $unitCost * $item['quantity'];
             }
 
             $return = PurchaseReturn::create([
-                'return_number'    => $returnNumber,
-                'purchase_order_id'=> $po->id,
-                'supplier_id'      => $po->supplier_id,
-                'supplier_name'    => $po->supplier_name,
-                'total_amount'     => round($totalAmount, 2),
-                'reason'           => $data['reason'] ?? null,
-                'refund_method'    => $data['refund_method'] ?? 'credit_note',
-                'status'           => 'completed',
-                'processed_by'     => Auth::id(),
-                'processed_by_name'=> Auth::user()?->full_name ?? '',
-                'return_date'      => now()->toDateString(),
+                'return_number' => $returnNumber,
+                'purchase_order_id' => $po->id,
+                'supplier_id' => $po->supplier_id,
+                'supplier_name' => $po->supplier_name,
+                'total_amount' => round($totalAmount, 2),
+                'reason' => $data['reason'] ?? null,
+                'refund_method' => $data['refund_method'] ?? 'credit_note',
+                'status' => 'completed',
+                'processed_by' => Auth::id(),
+                'processed_by_name' => Auth::user()?->full_name ?? '',
+                'return_date' => now()->toDateString(),
             ]);
 
             foreach ($data['items'] as $item) {
-                $poItem   = $poItemsByCost->get($item['product_id']);
+                $poItem = $poItemsByCost->get($item['product_id']);
                 $unitCost = $poItem ? (float) $poItem->cost_price : 0;
 
                 PurchaseReturnItem::create([
                     'purchase_return_id' => $return->id,
-                    'product_id'         => $item['product_id'],
-                    'product_name'       => $poItem?->product_name ?? '',
-                    'quantity'           => $item['quantity'],
-                    'unit_cost'          => $unitCost,
-                    'subtotal'           => round($unitCost * $item['quantity'], 2),
+                    'product_id' => $item['product_id'],
+                    'product_name' => $poItem?->product_name ?? '',
+                    'quantity' => $item['quantity'],
+                    'unit_cost' => $unitCost,
+                    'subtotal' => round($unitCost * $item['quantity'], 2),
                 ]);
 
                 $product = $this->productRepo->findById($item['product_id']);
@@ -117,12 +116,12 @@ class PurchaseReturnService
 
             Log::channel('audit')->info('purchase_return.processed', [
                 'return_number' => $returnNumber,
-                'po_number'     => $po->po_number,
-                'supplier'      => $po->supplier_name,
-                'total'         => round($totalAmount, 2),
+                'po_number' => $po->po_number,
+                'supplier' => $po->supplier_name,
+                'total' => round($totalAmount, 2),
                 'refund_method' => $return->refund_method,
-                'user_id'       => Auth::id(),
-                'timestamp'     => now()->toIso8601String(),
+                'user_id' => Auth::id(),
+                'timestamp' => now()->toIso8601String(),
             ]);
 
             return $return->load('items');
@@ -133,7 +132,7 @@ class PurchaseReturnService
     {
         $alreadyReturned = PurchaseReturnItem::whereHas(
             'purchaseReturn',
-            fn($q) => $q->where('purchase_order_id', $po->id)->where('status', 'completed')
+            fn ($q) => $q->where('purchase_order_id', $po->id)->where('status', 'completed')
         )->selectRaw('product_id, SUM(quantity) as total_returned')
             ->groupBy('product_id')
             ->pluck('total_returned', 'product_id');
@@ -144,24 +143,25 @@ class PurchaseReturnService
             $returned = (int) ($alreadyReturned[$item->product_id] ?? 0);
             $result[$item->product_id] = max(0, $received - $returned);
         }
+
         return $result;
     }
 
     private function recordSupplierCredit(int $supplierId, int $returnId, string $returnNumber, float $amount): void
     {
-        $lastEntry   = $this->supplierAccountRepo->latestEntry($supplierId);
+        $lastEntry = $this->supplierAccountRepo->latestEntry($supplierId);
         $lastBalance = $lastEntry ? $lastEntry->balance : 0;
 
         $this->supplierAccountRepo->create([
-            'supplier_id'      => $supplierId,
+            'supplier_id' => $supplierId,
             'transaction_type' => 'purchase_return',
-            'reference_id'     => $returnId,
+            'reference_id' => $returnId,
             'reference_number' => $returnNumber,
-            'debit'            => 0,
-            'credit'           => $amount,
-            'balance'          => $lastBalance - $amount,
-            'notes'            => __('pos.purchase_return_credit_note', ['ret' => $returnNumber]),
-            'created_by'       => Auth::id(),
+            'debit' => 0,
+            'credit' => $amount,
+            'balance' => $lastBalance - $amount,
+            'notes' => __('pos.purchase_return_credit_note', ['ret' => $returnNumber]),
+            'created_by' => Auth::id(),
         ]);
     }
 
@@ -176,47 +176,49 @@ class PurchaseReturnService
      */
     private function postReturnEntry(PurchaseReturn $return, float $amount): void
     {
-        $apCode        = $this->settingRepo->get('accounts_payable_account_code') ?: null;
+        $apCode = $this->settingRepo->get('accounts_payable_account_code') ?: null;
         $inventoryCode = $this->settingRepo->get('inventory_account_code') ?: null;
 
-        if (!$apCode || !$inventoryCode) {
+        if (! $apCode || ! $inventoryCode) {
             Log::warning('purchase_return.journal_skipped: account codes not configured', [
                 'return_number' => $return->return_number,
             ]);
+
             return;
         }
 
-        $apAccount        = Account::where('account_code', $apCode)->first();
+        $apAccount = Account::where('account_code', $apCode)->first();
         $inventoryAccount = Account::where('account_code', $inventoryCode)->first();
 
-        if (!$apAccount || !$inventoryAccount) {
+        if (! $apAccount || ! $inventoryAccount) {
             Log::warning('purchase_return.journal_skipped: account not found', [
-                'return_number'          => $return->return_number,
-                'ap_account_code'        => $apCode,
+                'return_number' => $return->return_number,
+                'ap_account_code' => $apCode,
                 'inventory_account_code' => $inventoryCode,
-                'ap_found'               => (bool) $apAccount,
-                'inventory_found'        => (bool) $inventoryAccount,
+                'ap_found' => (bool) $apAccount,
+                'inventory_found' => (bool) $inventoryAccount,
             ]);
+
             return;
         }
 
-        $desc  = __('pos.purchase_return_journal', ['ret' => $return->return_number]);
+        $desc = __('pos.purchase_return_journal', ['ret' => $return->return_number]);
         $entry = $this->accountingService->createJournalEntry([
-            'entry_date'     => now()->format('Y-m-d'),
-            'description'    => $desc,
+            'entry_date' => now()->format('Y-m-d'),
+            'description' => $desc,
             'reference_type' => 'purchase_return',
-            'reference_id'   => $return->id,
-            'lines'          => [
+            'reference_id' => $return->id,
+            'lines' => [
                 [
-                    'account_id'  => $apAccount->id,
-                    'debit'       => $amount,
-                    'credit'      => 0,
+                    'account_id' => $apAccount->id,
+                    'debit' => $amount,
+                    'credit' => 0,
                     'description' => $desc,
                 ],
                 [
-                    'account_id'  => $inventoryAccount->id,
-                    'debit'       => 0,
-                    'credit'      => $amount,
+                    'account_id' => $inventoryAccount->id,
+                    'debit' => 0,
+                    'credit' => $amount,
                     'description' => $desc,
                 ],
             ],

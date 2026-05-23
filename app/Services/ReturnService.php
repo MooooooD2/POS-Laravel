@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\Repositories\ProductRepositoryInterface;
@@ -16,9 +17,9 @@ use Illuminate\Support\Facades\Log;
 class ReturnService
 {
     public function __construct(
-        private StockService               $stockService,
+        private StockService $stockService,
         private ProductRepositoryInterface $productRepo,
-        private CustomerService            $customerService,
+        private CustomerService $customerService,
     ) {}
 
     public function processReturn(array $data): SalesReturn
@@ -37,23 +38,23 @@ class ReturnService
                 if ($item['quantity'] <= 0 || $item['quantity'] > $max) {
                     throw new \Exception(__('pos.return_quantity_exceeded', [
                         'name' => $item['product_id'],
-                        'max'  => $max,
+                        'max' => $max,
                     ]));
                 }
             }
 
-            $returnNumber   = SequenceService::next('return');
+            $returnNumber = SequenceService::next('return');
             $invoiceItemMap = $invoice->items->keyBy('product_id');
 
             $totalAmount = 0;
             foreach ($data['items'] as $item) {
-                $invoiceItem  = $invoiceItemMap->get($item['product_id']);
-                $price        = $invoiceItem ? $invoiceItem->price : 0;
+                $invoiceItem = $invoiceItemMap->get($item['product_id']);
+                $price = $invoiceItem ? $invoiceItem->price : 0;
                 $totalAmount += $price * $item['quantity'];
             }
 
             // Refund only what the customer actually paid (proportional to invoice discount)
-            $netDiscount   = ($invoice->discount ?? 0) + ($invoice->loyalty_discount ?? 0);
+            $netDiscount = ($invoice->discount ?? 0) + ($invoice->loyalty_discount ?? 0);
             $discountRatio = ($invoice->total > 0 && $netDiscount > 0)
                 ? max(0.0, ($invoice->total - $netDiscount) / $invoice->total)
                 : 1.0;
@@ -61,7 +62,7 @@ class ReturnService
             $refundMethod = $data['refund_method'] ?? 'cash';
             $refundAmount = round($totalAmount * $discountRatio, 2);
 
-            if (!\in_array($refundMethod, ['cash', 'store_credit', 'exchange'], true)) {
+            if (! \in_array($refundMethod, ['cash', 'store_credit', 'exchange'], true)) {
                 throw new \Exception(__('pos.invalid_refund_method'));
             }
 
@@ -70,26 +71,26 @@ class ReturnService
             }
 
             $return = SalesReturn::create([
-                'return_number'     => $returnNumber,
-                'invoice_id'        => $invoice->id,
-                'invoice_number'    => $invoice->invoice_number,
-                'customer_name'     => $data['customer_name'] ?? null,
-                'total_amount'      => round($totalAmount, 2),
-                'refund_method'     => $refundMethod,
-                'refund_amount'     => $refundAmount,
-                'reason'            => $data['reason'] ?? null,
-                'status'            => 'completed',
-                'return_date'       => now()->toDateString(),
-                'processed_by'      => Auth::id(),
+                'return_number' => $returnNumber,
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'customer_name' => $data['customer_name'] ?? null,
+                'total_amount' => round($totalAmount, 2),
+                'refund_method' => $refundMethod,
+                'refund_amount' => $refundAmount,
+                'reason' => $data['reason'] ?? null,
+                'status' => 'completed',
+                'return_date' => now()->toDateString(),
+                'processed_by' => Auth::id(),
                 'processed_by_name' => Auth::user()?->full_name ?? '',
             ]);
 
             foreach ($data['items'] as $item) {
                 /** @var InvoiceItem|null $invoiceItem */
                 $invoiceItem = $invoiceItemMap->get($item['product_id']);
-                $price       = $invoiceItem ? $invoiceItem->price : 0;
-                $qty         = $item['quantity'];
-                $subtotal    = round($price * $qty, 2);
+                $price = $invoiceItem ? $invoiceItem->price : 0;
+                $qty = $item['quantity'];
+                $subtotal = round($price * $qty, 2);
 
                 // Proportional tax refund: tax_amount / original_qty * returned_qty
                 $itemTax = 0.0;
@@ -98,12 +99,12 @@ class ReturnService
                 }
 
                 ReturnItem::create([
-                    'return_id'    => $return->id,
-                    'product_id'   => $item['product_id'],
+                    'return_id' => $return->id,
+                    'product_id' => $item['product_id'],
                     'product_name' => $invoiceItem?->product_name ?? '',
-                    'quantity'     => $qty,
-                    'price'        => $price,
-                    'subtotal'     => $subtotal,
+                    'quantity' => $qty,
+                    'price' => $price,
+                    'subtotal' => $subtotal,
                 ]);
 
                 // Track returned quantity directly on the invoice item
@@ -176,7 +177,7 @@ class ReturnService
                         : ($invoice->payment_method === 'credit' ? (float) $invoice->final_total : 0.0);
 
                     if ($originalCredit > 0) {
-                        $returnRatio     = $refundAmount / (float) $invoice->final_total;
+                        $returnRatio = $refundAmount / (float) $invoice->final_total;
                         $creditToReverse = round($originalCredit * $returnRatio, 2);
                         if ($creditToReverse > 0) {
                             $customer = Customer::find($invoice->customer_id);
@@ -190,7 +191,7 @@ class ReturnService
                 // FIX 3: restore loyalty points that were REDEEMED on the original sale
                 // (proportional to the return fraction of the invoice total).
                 if ($invoice->loyalty_points_used > 0 && (float) $invoice->final_total > 0 && $refundAmount > 0) {
-                    $returnRatio     = $refundAmount / (float) $invoice->final_total;
+                    $returnRatio = $refundAmount / (float) $invoice->final_total;
                     $pointsToRestore = (int) floor($invoice->loyalty_points_used * $returnRatio);
                     if ($pointsToRestore > 0) {
                         Customer::lockForUpdate()
@@ -218,12 +219,12 @@ class ReturnService
 
             Log::channel('audit')->info('return.processed', [
                 'return_number' => $returnNumber,
-                'invoice'       => $invoice->invoice_number,
-                'total'         => $totalAmount,
+                'invoice' => $invoice->invoice_number,
+                'total' => $totalAmount,
                 'refund_method' => $refundMethod,
                 'refund_amount' => $refundAmount,
-                'user_id'       => Auth::id(),
-                'timestamp'     => now()->toIso8601String(),
+                'user_id' => Auth::id(),
+                'timestamp' => now()->toIso8601String(),
             ]);
 
             return $return->load('items');
@@ -234,7 +235,7 @@ class ReturnService
     {
         $already = ReturnItem::whereHas(
             'salesReturn',
-            fn($q) => $q->where('invoice_id', $invoice->id)->where('status', 'completed')
+            fn ($q) => $q->where('invoice_id', $invoice->id)->where('status', 'completed')
         )->selectRaw('product_id, SUM(quantity) as total_returned')
             ->groupBy('product_id')
             ->pluck('total_returned', 'product_id');
@@ -243,6 +244,7 @@ class ReturnService
         foreach ($invoice->items as $item) {
             $result[$item->product_id] = max(0, $item->quantity - ($already[$item->product_id] ?? 0));
         }
+
         return $result;
     }
 }

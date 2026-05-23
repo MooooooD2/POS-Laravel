@@ -1,9 +1,11 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\InvoiceRepositoryInterface;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\ReturnItem;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -11,7 +13,7 @@ class InvoiceRepository extends BaseRepository implements InvoiceRepositoryInter
 {
     public function __construct()
     {
-        $this->model = new Invoice();
+        $this->model = new Invoice;
     }
 
     public function findByNumber(string $number): ?Invoice
@@ -62,10 +64,10 @@ class InvoiceRepository extends BaseRepository implements InvoiceRepositoryInter
     {
         $base = Invoice::where('status', 'completed')->whereBetween('created_at', [$start, $end]);
 
-        if (!empty($filters['payment_method'])) {
+        if (! empty($filters['payment_method'])) {
             $base->where('payment_method', $filters['payment_method']);
         }
-        if (!empty($filters['cashier_id'])) {
+        if (! empty($filters['cashier_id'])) {
             $base->where('cashier_id', $filters['cashier_id']);
         }
 
@@ -96,9 +98,9 @@ class InvoiceRepository extends BaseRepository implements InvoiceRepositoryInter
 
     public function returnedQtyByProduct(int $invoiceId): Collection
     {
-        return \App\Models\ReturnItem::whereHas(
+        return ReturnItem::whereHas(
             'salesReturn',
-            fn($q) => $q->where('invoice_id', $invoiceId)->where('status', 'completed')
+            fn ($q) => $q->where('invoice_id', $invoiceId)->where('status', 'completed')
         )->selectRaw('product_id, SUM(quantity) as total_returned')
             ->groupBy('product_id')
             ->get();

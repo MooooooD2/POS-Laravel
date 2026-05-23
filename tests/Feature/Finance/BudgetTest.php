@@ -3,6 +3,7 @@
 namespace Tests\Feature\Finance;
 
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -15,12 +16,13 @@ class BudgetTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $cashier;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
         $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');

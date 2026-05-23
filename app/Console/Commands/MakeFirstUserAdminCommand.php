@@ -22,6 +22,7 @@ class MakeFirstUserAdminCommand extends Command
 
         if ($tenants->isEmpty()) {
             $this->error('No matching tenants found.');
+
             return self::FAILURE;
         }
 
@@ -33,9 +34,10 @@ class MakeFirstUserAdminCommand extends Command
 
             $user = User::oldest()->first();
 
-            if (!$user) {
-                $this->warn("  No users found — skipping.");
+            if (! $user) {
+                $this->warn('  No users found — skipping.');
                 tenancy()->end();
+
                 continue;
             }
 
@@ -46,8 +48,9 @@ class MakeFirstUserAdminCommand extends Command
             $allPerms = Permission::all();
 
             if ($allPerms->isEmpty()) {
-                $this->warn("  No permissions in tenant DB — run tenants:seed first.");
+                $this->warn('  No permissions in tenant DB — run tenants:seed first.');
                 tenancy()->end();
+
                 continue;
             }
 
@@ -71,7 +74,7 @@ class MakeFirstUserAdminCommand extends Command
     {
         $filter = $this->option('tenant');
 
-        if (!$filter) {
+        if (! $filter) {
             return Tenant::all();
         }
 

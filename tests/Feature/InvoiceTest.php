@@ -1,9 +1,10 @@
 <?php
+
 namespace Tests\Feature;
 
-use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,7 +17,7 @@ class InvoiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
         $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
     }
@@ -34,7 +35,7 @@ class InvoiceTest extends TestCase
         $product = Product::factory()->create(['price' => 100.00, 'quantity' => 10]);
 
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
         ]);
 
@@ -49,7 +50,7 @@ class InvoiceTest extends TestCase
         $product = Product::factory()->create(['price' => 50.00, 'quantity' => 2]);
 
         $response = $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 5]],
+            'items' => [['product_id' => $product->id, 'quantity' => 5]],
             'payment_method' => 'cash',
         ]);
 
@@ -63,7 +64,7 @@ class InvoiceTest extends TestCase
         $product = Product::factory()->create(['price' => 50.00, 'quantity' => 10]);
 
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 3]],
+            'items' => [['product_id' => $product->id, 'quantity' => 3]],
             'payment_method' => 'cash',
         ]);
 
@@ -76,13 +77,13 @@ class InvoiceTest extends TestCase
         $product = Product::factory()->create(['price' => 50.00, 'quantity' => 10]);
 
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 3]],
+            'items' => [['product_id' => $product->id, 'quantity' => 3]],
             'payment_method' => 'cash',
         ]);
 
         $this->assertDatabaseHas('stock_movements', [
-            'product_id'    => $product->id,
-            'quantity'      => 3,
+            'product_id' => $product->id,
+            'quantity' => 3,
             'movement_type' => 'sale',
         ]);
     }
@@ -90,12 +91,12 @@ class InvoiceTest extends TestCase
     /** @test */
     public function disabled_user_cannot_login()
     {
-        $user = User::factory()->create(['is_active' => false, 'username' => 'dis_' . uniqid(), 'password' => bcrypt('Secret123')]);
+        $user = User::factory()->create(['is_active' => false, 'username' => 'dis_'.uniqid(), 'password' => bcrypt('Secret123')]);
 
         $response = $this->postJson('/login', [
             'tenant_code' => 'test',
-            'username'    => $user->username,
-            'password'    => 'Secret123',
+            'username' => $user->username,
+            'password' => 'Secret123',
         ]);
         // Without a real tenant: 401 (tenant not found). With one: 403 (inactive).
         $this->assertContains($response->status(), [401, 403]);

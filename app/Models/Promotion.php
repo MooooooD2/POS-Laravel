@@ -14,13 +14,13 @@ class Promotion extends Model
     ];
 
     protected $casts = [
-        'value'            => 'decimal:2',
+        'value' => 'decimal:2',
         'min_order_amount' => 'decimal:2',
-        'starts_at'        => 'date',
-        'ends_at'          => 'date',
-        'is_active'        => 'boolean',
-        'buy_qty'          => 'integer',
-        'get_qty'          => 'integer',
+        'starts_at' => 'date',
+        'ends_at' => 'date',
+        'is_active' => 'boolean',
+        'buy_qty' => 'integer',
+        'get_qty' => 'integer',
     ];
 
     public function product()
@@ -30,10 +30,17 @@ class Promotion extends Model
 
     public function isValid(): bool
     {
-        if (!$this->is_active) return false;
+        if (! $this->is_active) {
+            return false;
+        }
         $today = now()->toDateString();
-        if ($this->starts_at && $this->starts_at->toDateString() > $today) return false;
-        if ($this->ends_at   && $this->ends_at->toDateString()   < $today) return false;
+        if ($this->starts_at && $this->starts_at->toDateString() > $today) {
+            return false;
+        }
+        if ($this->ends_at && $this->ends_at->toDateString() < $today) {
+            return false;
+        }
+
         return true;
     }
 }

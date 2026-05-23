@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Services\Printing\PrintJobManager;
+use App\Services\Printing\ReceiptTemplateEngine;
 use App\Services\Printing\ThermalPrinterService;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 
 class PrintingServiceProvider extends ServiceProvider
@@ -21,7 +23,7 @@ class PrintingServiceProvider extends ServiceProvider
         );
 
         // ReceiptTemplateEngine — constructor-injected via container (SettingService resolved automatically)
-        $this->app->singleton(\App\Services\Printing\ReceiptTemplateEngine::class);
+        $this->app->singleton(ReceiptTemplateEngine::class);
 
         // ThermalPrinterService — let the container resolve all constructor dependencies
         $this->app->singleton(ThermalPrinterService::class);
@@ -46,7 +48,7 @@ class PrintingServiceProvider extends ServiceProvider
                     // Release any jobs stuck in "processing"
                     $released = $manager->releaseStuckJobs();
                     if ($released > 0) {
-                        \Illuminate\Support\Facades\Log::info(
+                        Log::info(
                             "PrintJobManager: released {$released} stuck jobs"
                         );
                     }
@@ -54,14 +56,14 @@ class PrintingServiceProvider extends ServiceProvider
                     // Process pending/retryable jobs
                     $processed = $manager->processPendingJobs();
                     if ($processed > 0) {
-                        \Illuminate\Support\Facades\Log::info(
+                        Log::info(
                             "PrintJobManager: processed {$processed} print jobs"
                         );
                     }
                 })
-                ->everyMinute()
-                ->name('process-print-jobs')
-                ->withoutOverlapping();
+                    ->everyMinute()
+                    ->name('process-print-jobs')
+                    ->withoutOverlapping();
             });
         }
     }

@@ -5,6 +5,7 @@ namespace Tests\Feature\Purchasing;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -18,15 +19,19 @@ class PurchaseReturnTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $warehouse;
+
     private User $cashier;
+
     private int $purchaseOrderId;
+
     private Product $product;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
         $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');
@@ -37,34 +42,34 @@ class PurchaseReturnTest extends TestCase
         $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
 
-        $supplier    = Supplier::factory()->create();
+        $supplier = Supplier::factory()->create();
         $this->product = Product::factory()->create(['price' => 100.00, 'quantity' => 50]);
 
         // Create a received purchase order
         $this->purchaseOrderId = DB::table('purchase_orders')->insertGetId([
-            'po_number'       => 'PO-TEST-' . uniqid(),
-            'supplier_id'     => $supplier->id,
-            'supplier_name'   => $supplier->name,
-            'status'          => 'received',
-            'total_amount'    => 1000.00,
-            'final_amount'    => 1000.00,
-            'created_by'      => $this->admin->id,
+            'po_number' => 'PO-TEST-'.uniqid(),
+            'supplier_id' => $supplier->id,
+            'supplier_name' => $supplier->name,
+            'status' => 'received',
+            'total_amount' => 1000.00,
+            'final_amount' => 1000.00,
+            'created_by' => $this->admin->id,
             'created_by_name' => $this->admin->full_name,
-            'order_date'      => now()->toDateString(),
-            'created_at'      => now(),
-            'updated_at'      => now(),
+            'order_date' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         DB::table('purchase_order_items')->insert([
-            'po_id'             => $this->purchaseOrderId,
-            'product_id'        => $this->product->id,
-            'product_name'      => $this->product->name,
-            'quantity'          => 10,
+            'po_id' => $this->purchaseOrderId,
+            'product_id' => $this->product->id,
+            'product_name' => $this->product->name,
+            'quantity' => 10,
             'received_quantity' => 10,
-            'cost_price'        => 100.00,
-            'subtotal'          => 1000.00,
-            'created_at'        => now(),
-            'updated_at'        => now(),
+            'cost_price' => 100.00,
+            'subtotal' => 1000.00,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 
@@ -75,9 +80,9 @@ class PurchaseReturnTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->postJson('/api/purchase-returns', [
             'purchase_order_id' => $this->purchaseOrderId,
-            'reason'            => 'منتجات تالفة',
-            'refund_method'     => 'cash',
-            'items'             => [
+            'reason' => 'منتجات تالفة',
+            'refund_method' => 'cash',
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 2],
             ],
         ]);
@@ -93,7 +98,7 @@ class PurchaseReturnTest extends TestCase
     {
         $this->actingAs($this->cashier)->postJson('/api/purchase-returns', [
             'purchase_order_id' => $this->purchaseOrderId,
-            'items'             => [
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 1],
             ],
         ])->assertStatus(403);
@@ -104,7 +109,7 @@ class PurchaseReturnTest extends TestCase
     {
         $this->actingAs($this->admin)->postJson('/api/purchase-returns', [
             'purchase_order_id' => 99999, // nonexistent
-            'items'             => [
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 1],
             ],
         ])->assertStatus(422);
@@ -115,7 +120,7 @@ class PurchaseReturnTest extends TestCase
     {
         $this->actingAs($this->admin)->postJson('/api/purchase-returns', [
             'purchase_order_id' => $this->purchaseOrderId,
-            'items'             => [],
+            'items' => [],
         ])->assertStatus(422);
     }
 
@@ -124,7 +129,7 @@ class PurchaseReturnTest extends TestCase
     {
         $this->actingAs($this->admin)->postJson('/api/purchase-returns', [
             'purchase_order_id' => $this->purchaseOrderId,
-            'items'             => [
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 0],
             ],
         ])->assertStatus(422);
@@ -135,8 +140,8 @@ class PurchaseReturnTest extends TestCase
     {
         $this->actingAs($this->admin)->postJson('/api/purchase-returns', [
             'purchase_order_id' => $this->purchaseOrderId,
-            'refund_method'     => 'crypto', // invalid
-            'items'             => [
+            'refund_method' => 'crypto', // invalid
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 1],
             ],
         ])->assertStatus(422);
@@ -147,8 +152,8 @@ class PurchaseReturnTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->postJson('/api/purchase-returns', [
             'purchase_order_id' => $this->purchaseOrderId,
-            'refund_method'     => 'cash',
-            'items'             => [
+            'refund_method' => 'cash',
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 1],
             ],
         ]);
@@ -161,8 +166,8 @@ class PurchaseReturnTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->postJson('/api/purchase-returns', [
             'purchase_order_id' => $this->purchaseOrderId,
-            'refund_method'     => 'credit_note',
-            'items'             => [
+            'refund_method' => 'credit_note',
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 1],
             ],
         ]);
@@ -179,8 +184,8 @@ class PurchaseReturnTest extends TestCase
 
         $this->actingAs($this->admin)->postJson('/api/purchase-returns', [
             'purchase_order_id' => $this->purchaseOrderId,
-            'refund_method'     => 'cash',
-            'items'             => [
+            'refund_method' => 'cash',
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 3],
             ],
         ])->assertStatus(201);

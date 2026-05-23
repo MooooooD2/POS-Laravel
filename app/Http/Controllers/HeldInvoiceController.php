@@ -22,6 +22,7 @@ class HeldInvoiceController extends Controller
     {
         try {
             $held = $this->heldService->hold($request->validated());
+
             return $this->success(['held_invoice' => $held], __('pos.invoice_held'), 201);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -32,6 +33,7 @@ class HeldInvoiceController extends Controller
     {
         try {
             $held = $this->heldService->resume($heldInvoice);
+
             return $this->success(['held_invoice' => $held]);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
@@ -44,6 +46,7 @@ class HeldInvoiceController extends Controller
 
         try {
             $this->heldService->discard($heldInvoice);
+
             return $this->success([], __('pos.invoice_discarded'));
         } catch (\Exception $e) {
             return $this->error($e->getMessage());

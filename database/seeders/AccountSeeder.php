@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Account;
+use Illuminate\Database\Seeder;
 
 class AccountSeeder extends Seeder
 {
@@ -25,7 +25,7 @@ class AccountSeeder extends Seeder
             // Equity - حقوق الملكية
             ['3000', 'حقوق الملكية / Equity',        'equity',    null,  'Owners equity'],
             ['3100', 'رأس المال / Capital',           'equity',    9,     'Paid capital'],
-            ['3200', 'أرباح محتجزة / Retained Earnings','equity',  9,    'Retained earnings'],
+            ['3200', 'أرباح محتجزة / Retained Earnings', 'equity',  9,    'Retained earnings'],
 
             // Revenue - الإيرادات
             ['4000', 'الإيرادات / Revenue',           'revenue',   null,  'Revenue accounts'],
@@ -38,16 +38,16 @@ class AccountSeeder extends Seeder
             ['5200', 'مرتبات / Salaries',             'expense',   15,    'Employee salaries'],
             ['5300', 'إيجار / Rent',                  'expense',   15,    'Rent expense'],
             ['5400', 'مرافق / Utilities',             'expense',   15,    'Utilities expense'],
-            ['5500', 'مصروفات أخرى / Other Expenses','expense',   15,    'Other operating expenses'],
+            ['5500', 'مصروفات أخرى / Other Expenses', 'expense',   15,    'Other operating expenses'],
         ];
 
         foreach ($accounts as $acc) {
             Account::firstOrCreate(['account_code' => $acc[0]], [
                 'account_name' => $acc[1],
                 'account_type' => $acc[2],
-                'parent_id'    => $acc[3],
-                'description'  => $acc[4],
-                'balance'      => 0,
+                'parent_id' => $acc[3],
+                'description' => $acc[4],
+                'balance' => 0,
             ]);
         }
     }

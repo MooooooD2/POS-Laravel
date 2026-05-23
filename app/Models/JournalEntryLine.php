@@ -10,8 +10,15 @@ class JournalEntryLine extends Model
 
     protected $casts = ['debit' => 'decimal:4', 'credit' => 'decimal:4'];
 
-    public function entry()   { return $this->belongsTo(JournalEntry::class, 'entry_id'); }
-    public function account() { return $this->belongsTo(Account::class); }
+    public function entry()
+    {
+        return $this->belongsTo(JournalEntry::class, 'entry_id');
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
+    }
 
     public static function boot(): void
     {

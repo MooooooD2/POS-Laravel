@@ -8,7 +8,6 @@ use App\Models\Product;
 use App\Models\SalesReturn;
 use App\Models\User;
 use App\Services\ReturnService;
-use App\Services\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -36,13 +35,14 @@ class ReturnServiceTest extends TestCase
         $product = Product::factory()->create(['quantity' => 0, 'price' => $price]);
         $invoice = Invoice::factory()->create();
         InvoiceItem::factory()->create([
-            'invoice_id'   => $invoice->id,
-            'product_id'   => $product->id,
+            'invoice_id' => $invoice->id,
+            'product_id' => $product->id,
             'product_name' => $product->name,
-            'quantity'     => $qty,
-            'price'        => $price,
-            'subtotal'     => $qty * $price,
+            'quantity' => $qty,
+            'price' => $price,
+            'subtotal' => $qty * $price,
         ]);
+
         return [$invoice, $product];
     }
 
@@ -52,12 +52,12 @@ class ReturnServiceTest extends TestCase
 
         $return = $this->service->processReturn([
             'invoice_id' => $invoice->id,
-            'reason'     => 'Defective item',
-            'items'      => [[
-                'product_id'   => $product->id,
+            'reason' => 'Defective item',
+            'items' => [[
+                'product_id' => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => 2,
-                'price'        => 100.0,
+                'quantity' => 2,
+                'price' => 100.0,
             ]],
         ]);
 
@@ -73,11 +73,11 @@ class ReturnServiceTest extends TestCase
 
         $this->service->processReturn([
             'invoice_id' => $invoice->id,
-            'items'      => [[
-                'product_id'   => $product->id,
+            'items' => [[
+                'product_id' => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => 3,
-                'price'        => 100.0,
+                'quantity' => 3,
+                'price' => 100.0,
             ]],
         ]);
 
@@ -92,11 +92,11 @@ class ReturnServiceTest extends TestCase
 
         $this->service->processReturn([
             'invoice_id' => $invoice->id,
-            'items'      => [[
-                'product_id'   => $product->id,
+            'items' => [[
+                'product_id' => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => 99, // more than the 2 in invoice
-                'price'        => 100.0,
+                'quantity' => 99, // more than the 2 in invoice
+                'price' => 100.0,
             ]],
         ]);
     }
@@ -108,9 +108,9 @@ class ReturnServiceTest extends TestCase
         // First return — full qty
         $this->service->processReturn([
             'invoice_id' => $invoice->id,
-            'items'      => [[
+            'items' => [[
                 'product_id' => $product->id, 'product_name' => $product->name,
-                'quantity'   => 2, 'price' => 100.0,
+                'quantity' => 2, 'price' => 100.0,
             ]],
         ]);
 
@@ -119,9 +119,9 @@ class ReturnServiceTest extends TestCase
 
         $this->service->processReturn([
             'invoice_id' => $invoice->id,
-            'items'      => [[
+            'items' => [[
                 'product_id' => $product->id, 'product_name' => $product->name,
-                'quantity'   => 1, 'price' => 100.0,
+                'quantity' => 1, 'price' => 100.0,
             ]],
         ]);
     }

@@ -10,7 +10,7 @@ class Budget extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'year'   => 'integer',
-        'month'  => 'integer',
+        'year' => 'integer',
+        'month' => 'integer',
     ];
 }

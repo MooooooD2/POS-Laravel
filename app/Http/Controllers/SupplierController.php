@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSupplierRequest;
@@ -15,19 +16,23 @@ class SupplierController extends Controller
 
     public function __construct(private SupplierService $supplierService) {}
 
-    public function index() { return view('suppliers.index'); }
+    public function index()
+    {
+        return view('suppliers.index');
+    }
 
     public function all(Request $request)
     {
         $request->validate(['search' => 'nullable|string|max:100', 'per_page' => 'nullable|integer|min:5|max:100']);
 
-        $filters  = $request->only(['search', 'per_page']);
+        $filters = $request->only(['search', 'per_page']);
         $fetchAll = $request->boolean('all');
-        $result   = $this->supplierService->all($filters, $fetchAll);
+        $result = $this->supplierService->all($filters, $fetchAll);
 
         if ($fetchAll) {
             return $this->success(['suppliers' => $result]);
         }
+
         return $this->success(['suppliers' => SupplierResource::collection($result)]);
     }
 
@@ -36,6 +41,7 @@ class SupplierController extends Controller
         $this->authorize('create', Supplier::class);
         $supplier = $this->supplierService->create($request->validated());
         $this->audit('supplier.created', Supplier::class, (int) $supplier->id, ['name' => $supplier->name]);
+
         return $this->success(['supplier' => new SupplierResource($supplier)], '', 201);
     }
 
@@ -44,6 +50,7 @@ class SupplierController extends Controller
         $this->authorize('update', $supplier);
         $updated = $this->supplierService->update($supplier, $request->validated());
         $this->audit('supplier.updated', Supplier::class, (int) $updated->id);
+
         return $this->success(['supplier' => new SupplierResource($updated)]);
     }
 
@@ -56,6 +63,7 @@ class SupplierController extends Controller
             return $this->error($e->getMessage(), 422);
         }
         $this->audit('supplier.deleted', Supplier::class, (int) $supplier->id, ['name' => $supplier->name]);
+
         return $this->success();
     }
 }

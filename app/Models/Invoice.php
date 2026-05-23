@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Invoice extends Model
 {
     use HasFactory, SoftDeletes;
+
     protected $fillable = [
         'invoice_number', 'offline_uuid',
         'total', 'discount', 'loyalty_points_used', 'loyalty_discount',
@@ -24,22 +26,41 @@ class Invoice extends Model
     protected $hidden = ['cashier_id'];
 
     protected $casts = [
-        'total'               => 'decimal:4',
-        'final_total'         => 'decimal:4',
-        'discount'            => 'decimal:4',
-        'tax_rate'            => 'decimal:4',
-        'tax_amount'          => 'decimal:4',
+        'total' => 'decimal:4',
+        'final_total' => 'decimal:4',
+        'discount' => 'decimal:4',
+        'tax_rate' => 'decimal:4',
+        'tax_amount' => 'decimal:4',
         'loyalty_points_used' => 'integer',
-        'loyalty_discount'    => 'decimal:4',
-        'cash_received'       => 'decimal:4',
-        'change_amount'       => 'decimal:4',
-        'is_split_payment'    => 'boolean',
-        'date'                => 'date',
+        'loyalty_discount' => 'decimal:4',
+        'cash_received' => 'decimal:4',
+        'change_amount' => 'decimal:4',
+        'is_split_payment' => 'boolean',
+        'date' => 'date',
     ];
 
-    public function items()    { return $this->hasMany(InvoiceItem::class); }
-    public function cashier()  { return $this->belongsTo(User::class, 'cashier_id'); }
-    public function customer() { return $this->belongsTo(Customer::class); }
-    public function returns()  { return $this->hasMany(SalesReturn::class); }
-    public function payments() { return $this->hasMany(InvoicePayment::class); }
+    public function items()
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
+
+    public function cashier()
+    {
+        return $this->belongsTo(User::class, 'cashier_id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function returns()
+    {
+        return $this->hasMany(SalesReturn::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(InvoicePayment::class);
+    }
 }

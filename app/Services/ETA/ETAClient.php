@@ -8,31 +8,33 @@ use Illuminate\Support\Facades\Http;
 class ETAClient
 {
     private string $baseUrl;
+
     private string $clientId;
+
     private string $clientSecret;
 
     public function __construct()
     {
-        $this->baseUrl       = config('eta.base_url');
-        $this->clientId      = config('eta.client_id');
-        $this->clientSecret  = config('eta.client_secret');
+        $this->baseUrl = config('eta.base_url');
+        $this->clientId = config('eta.client_id');
+        $this->clientSecret = config('eta.client_secret');
     }
 
     public function authenticate(): string
     {
         $encrypted = Cache::remember('eta_token', 3500, function () {
             $response = Http::asForm()->post(
-                config('eta.identity_url') . '/connect/token',
+                config('eta.identity_url').'/connect/token',
                 [
-                    'grant_type'    => 'client_credentials',
-                    'client_id'     => $this->clientId,
+                    'grant_type' => 'client_credentials',
+                    'client_id' => $this->clientId,
                     'client_secret' => $this->clientSecret,
-                    'scope'         => 'InvoicingAPI',
+                    'scope' => 'InvoicingAPI',
                 ]
             );
 
-            if (!$response->successful()) {
-                throw new \Exception('ETA authentication failed: ' . $response->body());
+            if (! $response->successful()) {
+                throw new \Exception('ETA authentication failed: '.$response->body());
             }
 
             return encrypt($response->json('access_token'));

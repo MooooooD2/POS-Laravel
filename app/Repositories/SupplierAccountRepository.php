@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\SupplierAccountRepositoryInterface;
@@ -9,7 +10,7 @@ class SupplierAccountRepository extends BaseRepository implements SupplierAccoun
 {
     public function __construct()
     {
-        $this->model = new SupplierAccount();
+        $this->model = new SupplierAccount;
     }
 
     public function latestEntry(int $supplierId): ?SupplierAccount

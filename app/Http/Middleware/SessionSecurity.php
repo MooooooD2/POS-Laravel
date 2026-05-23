@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -19,25 +20,26 @@ class SessionSecurity
             $session = $request->session();
 
             // #36 تخزين بصمة المتصفح عند أول تسجيل دخول
-            if (!$session->has('_fingerprint')) {
+            if (! $session->has('_fingerprint')) {
                 $session->put('_fingerprint', $this->fingerprint($request));
-                $session->put('_login_ip',    $request->ip());
-                $session->put('_login_at',    now()->timestamp);
+                $session->put('_login_ip', $request->ip());
+                $session->put('_login_at', now()->timestamp);
             }
 
             // #36 اكتشاف Hijacking — بصمة مختلفة = جلسة مسروقة
             if ($session->get('_fingerprint') !== $this->fingerprint($request)) {
                 Log::channel('audit')->warning('session_hijack_attempt', [
-                    'user_id'    => Auth::id(),
-                    'username'   => Auth::user()?->username ?? 'unknown',
-                    'ip'         => $request->ip(),
-                    'stored_fp'  => $session->get('_fingerprint'),
+                    'user_id' => Auth::id(),
+                    'username' => Auth::user()?->username ?? 'unknown',
+                    'ip' => $request->ip(),
+                    'stored_fp' => $session->get('_fingerprint'),
                     'current_fp' => $this->fingerprint($request),
-                    'timestamp'  => now()->toIso8601String(),
+                    'timestamp' => now()->toIso8601String(),
                 ]);
                 Auth::logout();
                 $session->invalidate();
                 $session->regenerateToken();
+
                 return redirect()->route('login')
                     ->with('error', 'انتهت صلاحية الجلسة لأسباب أمنية. يرجى تسجيل الدخول مجدداً.');
             }
@@ -51,6 +53,7 @@ class SessionSecurity
                 Auth::logout();
                 $session->invalidate();
                 $session->regenerateToken();
+
                 return redirect()->route('login')->with('error', 'انتهت جلستك. يرجى تسجيل الدخول مجدداً.');
             }
 
@@ -82,10 +85,10 @@ class SessionSecurity
     {
         return match (true) {
             str_contains($ua, 'Firefox') => 'firefox',
-            str_contains($ua, 'Chrome')  => 'chrome',
-            str_contains($ua, 'Safari')  => 'safari',
-            str_contains($ua, 'Edge')    => 'edge',
-            default                      => 'other',
+            str_contains($ua, 'Chrome') => 'chrome',
+            str_contains($ua, 'Safari') => 'safari',
+            str_contains($ua, 'Edge') => 'edge',
+            default => 'other',
         };
     }
 }

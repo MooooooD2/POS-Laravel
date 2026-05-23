@@ -1,4 +1,5 @@
 <?php
+
 // =============================================================
 // DATABASE SEEDERS - البيانات الافتراضية
 // =============================================================
@@ -6,6 +7,7 @@
 // ---------------------------------------------------------------
 // FILE: database/seeders/DatabaseSeeder.php
 // ---------------------------------------------------------------
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
@@ -26,11 +28,12 @@ class DatabaseSeeder extends Seeder
 // ---------------------------------------------------------------
 // FILE: database/seeders/UserSeeder.php
 // ---------------------------------------------------------------
+
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class UserSeeder extends Seeder
 {
@@ -38,25 +41,25 @@ class UserSeeder extends Seeder
     {
         // Admin - المدير
         User::firstOrCreate(['username' => 'admin'], [
-            'password'  => Hash::make('admin123'),
+            'password' => Hash::make('admin123'),
             'full_name' => 'المدير العام',
-            'role'      => 'admin',
+            'role' => 'admin',
             'is_active' => true,
         ]);
 
         // Cashier - الكاشير
         User::firstOrCreate(['username' => 'cashier'], [
-            'password'  => Hash::make('cashier123'),
+            'password' => Hash::make('cashier123'),
             'full_name' => 'أمين الصندوق',
-            'role'      => 'cashier',
+            'role' => 'cashier',
             'is_active' => true,
         ]);
 
         // Warehouse - مسؤول المخزن
         User::firstOrCreate(['username' => 'warehouse'], [
-            'password'  => Hash::make('warehouse123'),
+            'password' => Hash::make('warehouse123'),
             'full_name' => 'مسؤول المخزن',
-            'role'      => 'warehouse',
+            'role' => 'warehouse',
             'is_active' => true,
         ]);
     }
@@ -65,10 +68,11 @@ class UserSeeder extends Seeder
 // ---------------------------------------------------------------
 // FILE: database/seeders/AccountSeeder.php
 // ---------------------------------------------------------------
+
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Account;
+use Illuminate\Database\Seeder;
 
 class AccountSeeder extends Seeder
 {
@@ -90,7 +94,7 @@ class AccountSeeder extends Seeder
             // Equity - حقوق الملكية
             ['3000', 'حقوق الملكية / Equity',        'equity',    null,  'Owners equity'],
             ['3100', 'رأس المال / Capital',           'equity',    9,     'Paid capital'],
-            ['3200', 'أرباح محتجزة / Retained Earnings','equity',  9,    'Retained earnings'],
+            ['3200', 'أرباح محتجزة / Retained Earnings', 'equity',  9,    'Retained earnings'],
 
             // Revenue - الإيرادات
             ['4000', 'الإيرادات / Revenue',           'revenue',   null,  'Revenue accounts'],
@@ -103,16 +107,16 @@ class AccountSeeder extends Seeder
             ['5200', 'مرتبات / Salaries',             'expense',   15,    'Employee salaries'],
             ['5300', 'إيجار / Rent',                  'expense',   15,    'Rent expense'],
             ['5400', 'مرافق / Utilities',             'expense',   15,    'Utilities expense'],
-            ['5500', 'مصروفات أخرى / Other Expenses','expense',   15,    'Other operating expenses'],
+            ['5500', 'مصروفات أخرى / Other Expenses', 'expense',   15,    'Other operating expenses'],
         ];
 
         foreach ($accounts as $acc) {
             Account::firstOrCreate(['account_code' => $acc[0]], [
                 'account_name' => $acc[1],
                 'account_type' => $acc[2],
-                'parent_id'    => $acc[3],
-                'description'  => $acc[4],
-                'balance'      => 0,
+                'parent_id' => $acc[3],
+                'description' => $acc[4],
+                'balance' => 0,
             ]);
         }
     }
@@ -121,10 +125,11 @@ class AccountSeeder extends Seeder
 // ---------------------------------------------------------------
 // FILE: database/seeders/SupplierSeeder.php
 // ---------------------------------------------------------------
+
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Supplier;
+use Illuminate\Database\Seeder;
 
 class SupplierSeeder extends Seeder
 {
@@ -134,7 +139,7 @@ class SupplierSeeder extends Seeder
             ['name' => 'شركة النور للأغذية',   'phone' => '01000000001', 'address' => 'القاهرة',    'email' => 'nour@company.com'],
             ['name' => 'شركة السكر المصرية',   'phone' => '01000000002', 'address' => 'الجيزة',    'email' => 'sugar@company.com'],
             ['name' => 'شركة الزيوت العربية',  'phone' => '01000000003', 'address' => 'الإسكندرية', 'email' => 'oils@company.com'],
-            ['name' => 'شركة النظافة والتنظيف','phone' => '01000000004', 'address' => 'القاهرة',    'email' => 'clean@company.com'],
+            ['name' => 'شركة النظافة والتنظيف', 'phone' => '01000000004', 'address' => 'القاهرة',    'email' => 'clean@company.com'],
         ];
 
         foreach ($suppliers as $s) {
@@ -146,10 +151,11 @@ class SupplierSeeder extends Seeder
 // ---------------------------------------------------------------
 // FILE: database/seeders/ProductSeeder.php
 // ---------------------------------------------------------------
+
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Product;
+use Illuminate\Database\Seeder;
 
 class ProductSeeder extends Seeder
 {
@@ -162,20 +168,20 @@ class ProductSeeder extends Seeder
             ['صابون سائل 500مل', 12.0,  7.0, 200, 20, '123456789004', 'منظفات',    'شركة النظافة'],
             ['شامبو 250 مل',     45.0, 30.0,  60,  6, '123456789005', 'مستحضرات',  'شركة التجميل'],
             ['مكرونة 400 جرام',  8.50,  5.0, 300, 30, '123456789006', 'أغذية',     'شركة النور'],
-            ['عصير برتقال 1 لتر',18.0, 12.0,  90,  9, '123456789007', 'مشروبات',   'شركة النور'],
-            ['مياه معدنية 1.5 لتر',3.0, 1.5, 500, 50, '123456789008', 'مشروبات',   'شركة المياه'],
+            ['عصير برتقال 1 لتر', 18.0, 12.0,  90,  9, '123456789007', 'مشروبات',   'شركة النور'],
+            ['مياه معدنية 1.5 لتر', 3.0, 1.5, 500, 50, '123456789008', 'مشروبات',   'شركة المياه'],
         ];
 
         foreach ($products as $p) {
             Product::firstOrCreate(['barcode' => $p[5]], [
-                'name'       => $p[0],
-                'price'      => $p[1],
+                'name' => $p[0],
+                'price' => $p[1],
                 'cost_price' => $p[2],
-                'quantity'   => $p[3],
-                'min_stock'  => $p[4],
-                'barcode'    => $p[5],
-                'category'   => $p[6],
-                'supplier'   => $p[7],
+                'quantity' => $p[3],
+                'min_stock' => $p[4],
+                'barcode' => $p[5],
+                'category' => $p[6],
+                'supplier' => $p[7],
             ]);
         }
     }

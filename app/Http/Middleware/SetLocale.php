@@ -16,7 +16,7 @@ class SetLocale
             $locale = Session::get('locale');
         }
         // 2. ✅ FIX: Safely read language from user (column now exists)
-        elseif (auth()->check() && !empty(auth()->user()->language)) {
+        elseif (auth()->check() && ! empty(auth()->user()->language)) {
             $locale = auth()->user()->language;
         }
         // 3. Default from config

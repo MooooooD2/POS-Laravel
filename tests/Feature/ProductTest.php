@@ -1,8 +1,10 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,7 +15,7 @@ class ProductTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
     }
 
     /** @test */
@@ -30,13 +32,13 @@ class ProductTest extends TestCase
     /** @test */
     public function product_quantity_cannot_go_negative()
     {
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
-        $admin   = User::factory()->create(['is_active' => true]);
+        $this->seed(RolePermissionSeeder::class);
+        $admin = User::factory()->create(['is_active' => true]);
         $admin->assignRole('admin');
         $product = Product::factory()->create(['quantity' => 2]);
 
-        $response = $this->actingAs($admin)->postJson("/api/invoices", [
-            'items'          => [['product_id' => $product->id, 'quantity' => 5]],
+        $response = $this->actingAs($admin)->postJson('/api/invoices', [
+            'items' => [['product_id' => $product->id, 'quantity' => 5]],
             'payment_method' => 'cash',
         ]);
 
@@ -47,18 +49,18 @@ class ProductTest extends TestCase
     /** @test */
     public function stock_add_is_always_logged()
     {
-        $admin   = User::factory()->create(['is_active' => true]);
+        $admin = User::factory()->create(['is_active' => true]);
         $admin->assignRole('admin');
         $product = Product::factory()->create(['quantity' => 0]);
 
         $this->actingAs($admin)->postJson("/api/products/{$product->id}/add-stock", [
             'quantity' => 20,
-            'reason'   => 'جرد دوري',
+            'reason' => 'جرد دوري',
         ]);
 
         $this->assertDatabaseHas('stock_movements', [
             'product_id' => $product->id,
-            'quantity'   => 20,
+            'quantity' => 20,
         ]);
     }
 }

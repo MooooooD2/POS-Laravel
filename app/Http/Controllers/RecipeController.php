@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Product;
@@ -20,10 +21,10 @@ class RecipeController extends Controller
         $recipe = ProductRecipe::where('product_id', $product->id)
             ->with('ingredient:id,name,quantity,unit_id')
             ->get()
-            ->map(fn($r) => [
-                'ingredient_id'   => $r->ingredient_id,
+            ->map(fn ($r) => [
+                'ingredient_id' => $r->ingredient_id,
                 'ingredient_name' => $r->ingredient?->name,
-                'quantity'        => $r->quantity,
+                'quantity' => $r->quantity,
                 'available_stock' => $r->ingredient?->quantity,
             ]);
 
@@ -33,9 +34,9 @@ class RecipeController extends Controller
     public function sync(Request $request, Product $product): JsonResponse
     {
         $data = $request->validate([
-            'ingredients'                    => 'required|array',
-            'ingredients.*.ingredient_id'    => 'required|integer|exists:products,id|different:' . $product->id,
-            'ingredients.*.quantity'         => 'required|numeric|min:0.001',
+            'ingredients' => 'required|array',
+            'ingredients.*.ingredient_id' => 'required|integer|exists:products,id|different:'.$product->id,
+            'ingredients.*.quantity' => 'required|numeric|min:0.001',
         ]);
 
         $this->recipeService->syncRecipe($product->id, $data['ingredients']);

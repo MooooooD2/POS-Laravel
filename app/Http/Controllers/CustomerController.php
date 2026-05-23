@@ -30,12 +30,12 @@ class CustomerController extends Controller
                 $safe = Str::escapeLike($s);
                 $q->where(function ($q) use ($safe) {
                     $q->where('name', 'like', "%{$safe}%")
-                      ->orWhere('phone', 'like', "%{$safe}%")
-                      ->orWhere('code', 'like', "%{$safe}%");
+                        ->orWhere('phone', 'like', "%{$safe}%")
+                        ->orWhere('code', 'like', "%{$safe}%");
                 });
             })
-            ->when($request->type, fn($q) => $q->where('type', $request->type))
-            ->when(! $request->boolean('with_inactive'), fn($q) => $q->where('is_active', true))
+            ->when($request->type, fn ($q) => $q->where('type', $request->type))
+            ->when(! $request->boolean('with_inactive'), fn ($q) => $q->where('is_active', true))
             ->orderBy('name')
             ->paginate($request->per_page ?? 20);
 
@@ -50,8 +50,8 @@ class CustomerController extends Controller
         $customers = Customer::where('is_active', true)
             ->where(function ($query) use ($safe) {
                 $query->where('name', 'like', "%{$safe}%")
-                      ->orWhere('phone', 'like', "%{$safe}%")
-                      ->orWhere('code', 'like', "%{$safe}%");
+                    ->orWhere('phone', 'like', "%{$safe}%")
+                    ->orWhere('code', 'like', "%{$safe}%");
             })
             ->select('id', 'code', 'name', 'phone', 'type', 'balance', 'loyalty_points')
             ->orderBy('name')
@@ -63,7 +63,7 @@ class CustomerController extends Controller
 
     public function store(StoreCustomerRequest $request): JsonResponse
     {
-        $data         = $request->validated();
+        $data = $request->validated();
         $data['code'] = $this->service->nextCode();
         $data['type'] = $data['type'] ?? 'individual';
 
@@ -93,6 +93,7 @@ class CustomerController extends Controller
     public function show(Customer $customer): JsonResponse
     {
         $customer->load('accountEntries');
+
         return $this->success(['customer' => new CustomerResource($customer)]);
     }
 }

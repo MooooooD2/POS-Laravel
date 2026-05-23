@@ -11,10 +11,10 @@ return new class extends Migration
     public function up(): void
     {
         DB::table('settings')->insertOrIgnore([
-            'key'      => 'max_discount_percent',
-            'value'    => env('MAX_DISCOUNT_PERCENT', '20'),
-            'type'     => 'number',
-            'group'    => 'pos',
+            'key' => 'max_discount_percent',
+            'value' => env('MAX_DISCOUNT_PERCENT', '20'),
+            'type' => 'number',
+            'group' => 'pos',
             'label_ar' => 'الحد الأقصى للخصم (%)',
             'label_en' => 'Maximum Discount (%)',
         ]);

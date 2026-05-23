@@ -22,6 +22,7 @@ class TaxService
         }
 
         $taxEnabled = (bool) $this->settingRepo->get('tax_enabled', false);
+
         return $taxEnabled ? (float) $this->settingRepo->get('tax_rate', 0) : 0.0;
     }
 
@@ -38,16 +39,18 @@ class TaxService
 
         if ($taxInclusive) {
             $taxAmount = $subtotal * $rate / (100 + $rate);
+
             return [
-                'tax_rate'   => $rate,
+                'tax_rate' => $rate,
                 'tax_amount' => round($taxAmount, 2),
                 'line_total' => $subtotal,
             ];
         }
 
         $rawTax = $subtotal * ($rate / 100);
+
         return [
-            'tax_rate'   => $rate,
+            'tax_rate' => $rate,
             'tax_amount' => round($rawTax, 2),
             'line_total' => round($subtotal + $rawTax, 2),
         ];

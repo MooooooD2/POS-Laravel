@@ -1,11 +1,18 @@
 <?php
+
 namespace App\Policies;
 
-use App\Models\SalesReturn;
 use App\Models\User;
 
 class SalesReturnPolicy
 {
-    public function viewAny(User $user): bool                         { return $user->can('view_returns'); }
-    public function create(User $user): bool                          { return $user->can('create_return'); }
+    public function viewAny(User $user): bool
+    {
+        return $user->can('view_returns');
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->can('create_return');
+    }
 }

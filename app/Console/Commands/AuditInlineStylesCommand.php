@@ -16,28 +16,31 @@ use Symfony\Component\Finder\Finder;
  */
 class AuditInlineStylesCommand extends Command
 {
-    protected $signature   = 'csp:audit-inline-styles {--output= : Path to write JSON report}';
+    protected $signature = 'csp:audit-inline-styles {--output= : Path to write JSON report}';
+
     protected $description = 'Report all inline style="" attributes in Blade templates (CSP migration helper)';
 
     public function handle(): int
     {
         $viewsPath = resource_path('views');
-        $finder    = Finder::create()->files()->name('*.blade.php')->in($viewsPath);
+        $finder = Finder::create()->files()->name('*.blade.php')->in($viewsPath);
 
         $report = [];
-        $total  = 0;
+        $total = 0;
 
         foreach ($finder as $file) {
-            $content  = $file->getContents();
-            $relative = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getRealPath());
+            $content = $file->getContents();
+            $relative = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getRealPath());
 
             preg_match_all('/style="([^"]+)"/i', $content, $matches, PREG_OFFSET_CAPTURE);
 
-            if (empty($matches[0])) continue;
+            if (empty($matches[0])) {
+                continue;
+            }
 
-            $lines   = explode("\n", $content);
+            $lines = explode("\n", $content);
             $lineMap = [];
-            $offset  = 0;
+            $offset = 0;
             foreach ($lines as $lineNum => $line) {
                 $lineMap[$lineNum + 1] = $offset;
                 $offset += strlen($line) + 1;
@@ -48,31 +51,33 @@ class AuditInlineStylesCommand extends Command
                 // Find which line number this byte offset belongs to
                 $lineNumber = 1;
                 foreach ($lineMap as $ln => $lo) {
-                    if ($lo > $byteOffset) break;
+                    if ($lo > $byteOffset) {
+                        break;
+                    }
                     $lineNumber = $ln;
                 }
 
                 $occurrences[] = [
-                    'line'  => $lineNumber,
+                    'line' => $lineNumber,
                     'style' => $matches[1][count($occurrences)][0],
                 ];
                 $total++;
             }
 
             $report[$relative] = [
-                'count'       => count($occurrences),
+                'count' => count($occurrences),
                 'occurrences' => $occurrences,
             ];
         }
 
         // Sort by file with most occurrences first
-        uasort($report, fn($a, $b) => $b['count'] <=> $a['count']);
+        uasort($report, fn ($a, $b) => $b['count'] <=> $a['count']);
 
-        $this->info("Found {$total} inline style attributes across " . count($report) . " files.\n");
+        $this->info("Found {$total} inline style attributes across ".count($report)." files.\n");
 
         $this->table(
             ['File', 'Count'],
-            collect($report)->map(fn($data, $file) => [$file, $data['count']])->values()->toArray()
+            collect($report)->map(fn ($data, $file) => [$file, $data['count']])->values()->toArray()
         );
 
         $outputPath = $this->option('output');

@@ -1,11 +1,12 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Product;
 use App\Models\ProductRecipe;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 
 class RecipeService
 {
@@ -26,18 +27,20 @@ class RecipeService
         }
 
         foreach ($ingredients as $line) {
-            $needed     = $line->quantity * $quantitySold;
+            $needed = $line->quantity * $quantitySold;
             $ingredient = $line->ingredient;
 
-            if (!$ingredient || $needed <= 0) continue;
+            if (! $ingredient || $needed <= 0) {
+                continue;
+            }
 
             // Lock the ingredient row — we are already inside InvoiceService's transaction.
             $fresh = Product::lockForUpdate()->findOrFail($ingredient->id);
 
             if ($fresh->quantity < $needed) {
                 throw new \Exception(__('pos.recipe_ingredient_shortfall', [
-                    'name'      => $fresh->name,
-                    'needed'    => $needed,
+                    'name' => $fresh->name,
+                    'needed' => $needed,
                     'available' => $fresh->quantity,
                 ]));
             }
@@ -56,11 +59,11 @@ class RecipeService
 
     public function syncRecipe(int $productId, array $ingredients): void
     {
-        $rows = collect($ingredients)->map(fn($i) => [
-            'product_id'    => $productId,
+        $rows = collect($ingredients)->map(fn ($i) => [
+            'product_id' => $productId,
             'ingredient_id' => (int) $i['ingredient_id'],
-            'quantity'      => (float) $i['quantity'],
-        ])->filter(fn($r) => $r['quantity'] > 0 && $r['ingredient_id'] !== $productId);
+            'quantity' => (float) $i['quantity'],
+        ])->filter(fn ($r) => $r['quantity'] > 0 && $r['ingredient_id'] !== $productId);
 
         DB::transaction(function () use ($productId, $rows) {
             ProductRecipe::where('product_id', $productId)->delete();
@@ -70,9 +73,9 @@ class RecipeService
         });
 
         Log::channel('audit')->info('recipe.synced', [
-            'product_id'       => $productId,
+            'product_id' => $productId,
             'ingredient_count' => $rows->count(),
-            'user_id'          => Auth::id(),
+            'user_id' => Auth::id(),
         ]);
     }
 }

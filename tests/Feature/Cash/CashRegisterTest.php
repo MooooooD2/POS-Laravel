@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Cash;
 
+use App\Models\CashRegisterSession;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -15,15 +17,17 @@ class CashRegisterTest extends TestCase
     use RefreshDatabase;
 
     private User $cashier;
+
     private User $admin;
+
     private User $cashier2;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
-        $this->cashier  = User::factory()->create(['is_active' => true]);
+        $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
 
         $this->cashier2 = User::factory()->create(['is_active' => true]);
@@ -41,6 +45,7 @@ class CashRegisterTest extends TestCase
             'opening_amount' => $amount,
         ]);
         $response->assertStatus(201);
+
         return $response->json('session.id') ?? $response->json('id');
     }
 
@@ -55,9 +60,9 @@ class CashRegisterTest extends TestCase
 
         $response->assertStatus(201);
         $this->assertDatabaseHas('cash_register_sessions', [
-            'cashier_id'     => $this->cashier->id,
+            'cashier_id' => $this->cashier->id,
             'opening_amount' => 500.00,
-            'status'         => 'open',
+            'status' => 'open',
         ]);
     }
 
@@ -97,13 +102,13 @@ class CashRegisterTest extends TestCase
 
         $response = $this->actingAs($this->cashier)->postJson("/api/cash-session/{$sessionId}/close", [
             'actual_cash' => 500.00,
-            'notes'       => 'Shift end',
+            'notes' => 'Shift end',
         ]);
 
         $response->assertStatus(200);
         $this->assertDatabaseHas('cash_register_sessions', [
-            'cashier_id'  => $this->cashier->id,
-            'status'      => 'closed',
+            'cashier_id' => $this->cashier->id,
+            'status' => 'closed',
             'actual_cash' => 500.00,
         ]);
     }
@@ -126,7 +131,7 @@ class CashRegisterTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-        $session = \App\Models\CashRegisterSession::where('cashier_id', $this->cashier->id)->first();
+        $session = CashRegisterSession::where('cashier_id', $this->cashier->id)->first();
         $this->assertNotNull($session->difference);
     }
 
@@ -138,9 +143,9 @@ class CashRegisterTest extends TestCase
         $sessionId = $this->openSession($this->cashier, 200.00);
 
         $this->actingAs($this->cashier)->postJson("/api/cash-session/{$sessionId}/movements", [
-            'type'   => 'deposit',
+            'type' => 'deposit',
             'amount' => 100.00,
-            'notes'  => 'مبيعات إضافية',
+            'notes' => 'مبيعات إضافية',
         ])->assertStatus(201);
     }
 
@@ -150,9 +155,9 @@ class CashRegisterTest extends TestCase
         $sessionId = $this->openSession($this->cashier, 500.00);
 
         $this->actingAs($this->cashier)->postJson("/api/cash-session/{$sessionId}/movements", [
-            'type'   => 'withdrawal',
+            'type' => 'withdrawal',
             'amount' => 50.00,
-            'notes'  => 'مصروف تشغيلي',
+            'notes' => 'مصروف تشغيلي',
         ])->assertStatus(201);
     }
 
@@ -160,7 +165,7 @@ class CashRegisterTest extends TestCase
     public function movement_on_nonexistent_session_returns_404(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/cash-session/99999/movements', [
-            'type'   => 'deposit',
+            'type' => 'deposit',
             'amount' => 100.00,
         ])->assertStatus(404);
     }
@@ -171,7 +176,7 @@ class CashRegisterTest extends TestCase
         $sessionId = $this->openSession($this->cashier, 200.00);
 
         $this->actingAs($this->cashier)->postJson("/api/cash-session/{$sessionId}/movements", [
-            'type'   => 'deposit',
+            'type' => 'deposit',
             'amount' => 0,
         ])->assertStatus(422);
     }
@@ -182,7 +187,7 @@ class CashRegisterTest extends TestCase
         $sessionId = $this->openSession($this->cashier, 200.00);
 
         $this->actingAs($this->cashier)->postJson("/api/cash-session/{$sessionId}/movements", [
-            'type'   => 'withdrawal',
+            'type' => 'withdrawal',
             'amount' => -50.00,
         ])->assertStatus(422);
     }

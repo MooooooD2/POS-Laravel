@@ -6,7 +6,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
-use App\Models\WarehouseTransfer;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -19,16 +19,21 @@ class WarehouseTransferTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $warehouse;
+
     private User $cashier;
+
     private Warehouse $warehouseA;
+
     private Warehouse $warehouseB;
+
     private Product $product;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
         $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');
@@ -40,16 +45,16 @@ class WarehouseTransferTest extends TestCase
         $this->cashier->assignRole('cashier');
 
         $this->warehouseA = Warehouse::create([
-            'name'       => 'المخزن الرئيسي',
-            'code'       => 'WH-A',
-            'is_active'  => true,
-            'is_locked'  => false,
+            'name' => 'المخزن الرئيسي',
+            'code' => 'WH-A',
+            'is_active' => true,
+            'is_locked' => false,
             'is_default' => true,
         ]);
 
         $this->warehouseB = Warehouse::create([
-            'name'      => 'مخزن الفرع',
-            'code'      => 'WH-B',
+            'name' => 'مخزن الفرع',
+            'code' => 'WH-B',
             'is_active' => true,
             'is_locked' => false,
         ]);
@@ -59,18 +64,18 @@ class WarehouseTransferTest extends TestCase
         // Seed warehouse stock for source warehouse
         WarehouseStock::create([
             'warehouse_id' => $this->warehouseA->id,
-            'product_id'   => $this->product->id,
-            'quantity'     => 50,
+            'product_id' => $this->product->id,
+            'quantity' => 50,
             'reserved_qty' => 0,
-            'min_stock'    => 0,
+            'min_stock' => 0,
         ]);
 
         WarehouseStock::create([
             'warehouse_id' => $this->warehouseB->id,
-            'product_id'   => $this->product->id,
-            'quantity'     => 0,
+            'product_id' => $this->product->id,
+            'quantity' => 0,
             'reserved_qty' => 0,
-            'min_stock'    => 0,
+            'min_stock' => 0,
         ]);
     }
 
@@ -81,8 +86,8 @@ class WarehouseTransferTest extends TestCase
     {
         $response = $this->actingAs($this->warehouse)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseB->id,
-            'items'             => [
+            'to_warehouse_id' => $this->warehouseB->id,
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 10],
             ],
             'notes' => 'نقل منتظم',
@@ -91,7 +96,7 @@ class WarehouseTransferTest extends TestCase
         $response->assertStatus(201);
         $this->assertDatabaseHas('warehouse_transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseB->id,
+            'to_warehouse_id' => $this->warehouseB->id,
         ]);
     }
 
@@ -100,8 +105,8 @@ class WarehouseTransferTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseB->id,
-            'items'             => [
+            'to_warehouse_id' => $this->warehouseB->id,
+            'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 5],
             ],
         ]);
@@ -114,8 +119,8 @@ class WarehouseTransferTest extends TestCase
     {
         $this->actingAs($this->cashier)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseB->id,
-            'items'             => [['product_id' => $this->product->id, 'quantity' => 5]],
+            'to_warehouse_id' => $this->warehouseB->id,
+            'items' => [['product_id' => $this->product->id, 'quantity' => 5]],
         ])->assertStatus(403);
     }
 
@@ -124,8 +129,8 @@ class WarehouseTransferTest extends TestCase
     {
         $this->actingAs($this->warehouse)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseA->id, // same
-            'items'             => [['product_id' => $this->product->id, 'quantity' => 5]],
+            'to_warehouse_id' => $this->warehouseA->id, // same
+            'items' => [['product_id' => $this->product->id, 'quantity' => 5]],
         ])->assertStatus(422);
     }
 
@@ -134,8 +139,8 @@ class WarehouseTransferTest extends TestCase
     {
         $this->actingAs($this->warehouse)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseB->id,
-            'items'             => [['product_id' => $this->product->id, 'quantity' => 0]],
+            'to_warehouse_id' => $this->warehouseB->id,
+            'items' => [['product_id' => $this->product->id, 'quantity' => 0]],
         ])->assertStatus(422);
     }
 
@@ -144,8 +149,8 @@ class WarehouseTransferTest extends TestCase
     {
         $this->actingAs($this->warehouse)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseB->id,
-            'items'             => [],
+            'to_warehouse_id' => $this->warehouseB->id,
+            'items' => [],
         ])->assertStatus(422);
     }
 
@@ -154,8 +159,8 @@ class WarehouseTransferTest extends TestCase
     {
         $this->actingAs($this->warehouse)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseB->id,
-            'items'             => [['product_id' => 99999, 'quantity' => 5]],
+            'to_warehouse_id' => $this->warehouseB->id,
+            'items' => [['product_id' => 99999, 'quantity' => 5]],
         ])->assertStatus(422);
     }
 
@@ -167,8 +172,8 @@ class WarehouseTransferTest extends TestCase
         // Create transfer
         $createResponse = $this->actingAs($this->warehouse)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseB->id,
-            'items'             => [['product_id' => $this->product->id, 'quantity' => 10]],
+            'to_warehouse_id' => $this->warehouseB->id,
+            'items' => [['product_id' => $this->product->id, 'quantity' => 10]],
         ]);
         $createResponse->assertStatus(201);
 
@@ -191,8 +196,8 @@ class WarehouseTransferTest extends TestCase
     {
         $createResponse = $this->actingAs($this->warehouse)->postJson('/api/warehouse-transfers', [
             'from_warehouse_id' => $this->warehouseA->id,
-            'to_warehouse_id'   => $this->warehouseB->id,
-            'items'             => [['product_id' => $this->product->id, 'quantity' => 5]],
+            'to_warehouse_id' => $this->warehouseB->id,
+            'items' => [['product_id' => $this->product->id, 'quantity' => 5]],
         ]);
 
         $transferId = $createResponse->json('transfer.id');
@@ -200,7 +205,7 @@ class WarehouseTransferTest extends TestCase
         $this->actingAs($this->warehouse)->postJson("/api/warehouse-transfers/{$transferId}/receive");
 
         $this->assertDatabaseHas('warehouse_transfers', [
-            'id'     => $transferId,
+            'id' => $transferId,
             'status' => 'received',
         ]);
     }

@@ -3,21 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\FiscalPeriod;
+use Illuminate\Support\Carbon;
 
 /**
- * @property int                              $id
- * @property string                           $entry_number
- * @property \Illuminate\Support\Carbon       $entry_date
- * @property string                           $description
- * @property string|null                      $reference_type
- * @property int|null                         $reference_id
- * @property int|null                         $created_by
- * @property bool                             $is_posted
- * @property \Illuminate\Support\Carbon|null  $posted_at
- * @property int|null                         $posted_by
- * @property int|null                         $reversal_of
- * @property int|null                         $fiscal_period_id
+ * @property int $id
+ * @property string $entry_number
+ * @property Carbon $entry_date
+ * @property string $description
+ * @property string|null $reference_type
+ * @property int|null $reference_id
+ * @property int|null $created_by
+ * @property bool $is_posted
+ * @property Carbon|null $posted_at
+ * @property int|null $posted_by
+ * @property int|null $reversal_of
+ * @property int|null $fiscal_period_id
  */
 class JournalEntry extends Model
 {
@@ -29,16 +29,39 @@ class JournalEntry extends Model
 
     protected $casts = [
         'entry_date' => 'date',
-        'is_posted'  => 'boolean',
-        'posted_at'  => 'datetime',
+        'is_posted' => 'boolean',
+        'posted_at' => 'datetime',
     ];
 
-    public function lines()        { return $this->hasMany(JournalEntryLine::class, 'entry_id'); }
-    public function creator()      { return $this->belongsTo(User::class, 'created_by'); }
-    public function poster()       { return $this->belongsTo(User::class, 'posted_by'); }
-    public function reversalOf()   { return $this->belongsTo(JournalEntry::class, 'reversal_of'); }
-    public function reversals()    { return $this->hasMany(JournalEntry::class, 'reversal_of'); }
-    public function fiscalPeriod() { return $this->belongsTo(FiscalPeriod::class); }
+    public function lines()
+    {
+        return $this->hasMany(JournalEntryLine::class, 'entry_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function poster()
+    {
+        return $this->belongsTo(User::class, 'posted_by');
+    }
+
+    public function reversalOf()
+    {
+        return $this->belongsTo(JournalEntry::class, 'reversal_of');
+    }
+
+    public function reversals()
+    {
+        return $this->hasMany(JournalEntry::class, 'reversal_of');
+    }
+
+    public function fiscalPeriod()
+    {
+        return $this->belongsTo(FiscalPeriod::class);
+    }
 
     public static function boot(): void
     {

@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseReturn extends Model
 {
@@ -14,25 +16,25 @@ class PurchaseReturn extends Model
 
     protected $casts = [
         'total_amount' => 'decimal:2',
-        'return_date'  => 'date',
+        'return_date' => 'date',
     ];
 
-    public function purchaseOrder(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
     }
 
-    public function supplier(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
     }
 
-    public function items(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function items(): HasMany
     {
         return $this->hasMany(PurchaseReturnItem::class);
     }
 
-    public function processor(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function processor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'processed_by');
     }

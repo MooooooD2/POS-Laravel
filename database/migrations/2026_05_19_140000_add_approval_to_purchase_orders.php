@@ -12,14 +12,14 @@ return new class extends Migration
             // Extend status to include draft and approved
             $table->string('status', 20)->default('draft')->change();
 
-            if (!Schema::hasColumn('purchase_orders', 'approved_by')) {
+            if (! Schema::hasColumn('purchase_orders', 'approved_by')) {
                 $table->foreignId('approved_by')->nullable()->after('created_by_name')
-                      ->constrained('users')->nullOnDelete();
+                    ->constrained('users')->nullOnDelete();
             }
-            if (!Schema::hasColumn('purchase_orders', 'approved_at')) {
+            if (! Schema::hasColumn('purchase_orders', 'approved_at')) {
                 $table->timestamp('approved_at')->nullable()->after('approved_by');
             }
-            if (!Schema::hasColumn('purchase_orders', 'rejection_reason')) {
+            if (! Schema::hasColumn('purchase_orders', 'rejection_reason')) {
                 $table->string('rejection_reason')->nullable()->after('approved_at');
             }
         });

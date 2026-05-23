@@ -14,9 +14,9 @@ class InventoryCostLayer extends Model
     ];
 
     protected $casts = [
-        'unit_cost'    => 'decimal:4',
+        'unit_cost' => 'decimal:4',
         'original_qty' => 'integer',
-        'remaining_qty'=> 'integer',
+        'remaining_qty' => 'integer',
     ];
 
     public function product()

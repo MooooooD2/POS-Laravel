@@ -17,13 +17,13 @@ class UsbConnector implements ConnectorInterface
 
     public function open(): void
     {
-        if (!file_exists($this->device)) {
+        if (! file_exists($this->device)) {
             throw new Exception("USB device not found: {$this->device}");
         }
 
         $this->handle = @fopen($this->device, 'wb');
 
-        if (!$this->handle) {
+        if (! $this->handle) {
             throw new Exception(
                 "Cannot open USB device: {$this->device}. Check permissions."
             );
@@ -32,14 +32,14 @@ class UsbConnector implements ConnectorInterface
 
     public function send(string $data): void
     {
-        if (!$this->handle) {
-            throw new Exception("Device not open");
+        if (! $this->handle) {
+            throw new Exception('Device not open');
         }
 
         $written = fwrite($this->handle, $data);
 
         if ($written === false) {
-            throw new Exception("Failed to write to USB device");
+            throw new Exception('Failed to write to USB device');
         }
 
         fflush($this->handle);

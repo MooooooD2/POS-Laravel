@@ -11,7 +11,7 @@ return new class extends Migration
     {
         // Tax ID for suppliers — required for input-VAT reconciliation
         // (customers already have tax_number from earlier migration)
-        if (!Schema::hasColumn('suppliers', 'tax_number')) {
+        if (! Schema::hasColumn('suppliers', 'tax_number')) {
             Schema::table('suppliers', function (Blueprint $table) {
                 $table->string('tax_number', 20)->nullable()->after('phone');
             });
@@ -20,25 +20,25 @@ return new class extends Migration
         // Company tax registration number seeded as a setting
         $settingSeeds = [
             [
-                'key'      => 'company_tax_number',
-                'value'    => '',
-                'group'    => 'tax',
+                'key' => 'company_tax_number',
+                'value' => '',
+                'group' => 'tax',
                 'label_ar' => 'الرقم الضريبي للشركة',
                 'label_en' => 'Company Tax Registration Number',
-                'type'     => 'string',
+                'type' => 'string',
             ],
             [
-                'key'      => 'ip_whitelist',
-                'value'    => '',
-                'group'    => 'security',
+                'key' => 'ip_whitelist',
+                'value' => '',
+                'group' => 'security',
                 'label_ar' => 'قائمة IPs المسموح بها (مفصولة بفاصلة، فارغة = بلا قيود)',
                 'label_en' => 'Allowed IP Whitelist (comma-separated, empty = no restriction)',
-                'type'     => 'string',
+                'type' => 'string',
             ],
         ];
 
         foreach ($settingSeeds as $seed) {
-            if (!DB::table('settings')->where('key', $seed['key'])->exists()) {
+            if (! DB::table('settings')->where('key', $seed['key'])->exists()) {
                 DB::table('settings')->insert(array_merge($seed, [
                     'created_at' => now(),
                     'updated_at' => now(),

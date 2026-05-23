@@ -26,9 +26,9 @@ class PaymentAccountController extends Controller
     {
         $data = $request->validate([
             'account_number' => 'nullable|string|max:100',
-            'account_name'   => 'nullable|string|max:100',
-            'notes'          => 'nullable|string|max:255',
-            'is_active'      => 'boolean',
+            'account_name' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
         ]);
 
         $account = PaymentAccount::findOrFail($id);

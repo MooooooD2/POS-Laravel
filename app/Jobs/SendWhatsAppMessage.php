@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Jobs;
 
 use App\Models\WhatsAppMessage;
@@ -13,7 +14,8 @@ class SendWhatsAppMessage implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 3;
+    public int $tries = 3;
+
     public int $timeout = 30;
 
     public function __construct(private int $messageLogId) {}
@@ -21,7 +23,9 @@ class SendWhatsAppMessage implements ShouldQueue
     public function handle(WhatsAppService $service): void
     {
         $log = WhatsAppMessage::find($this->messageLogId);
-        if (!$log || $log->status === 'sent') return;
+        if (! $log || $log->status === 'sent') {
+            return;
+        }
 
         $service->dispatchMessage($log);
     }
@@ -29,7 +33,7 @@ class SendWhatsAppMessage implements ShouldQueue
     public function failed(\Throwable $e): void
     {
         WhatsAppMessage::where('id', $this->messageLogId)->update([
-            'status'        => 'failed',
+            'status' => 'failed',
             'error_message' => substr($e->getMessage(), 0, 500),
         ]);
     }

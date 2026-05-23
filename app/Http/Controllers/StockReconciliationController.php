@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Contracts\Repositories\ProductRepositoryInterface;
@@ -13,19 +14,23 @@ class StockReconciliationController extends Controller
     use ApiResponse, AuditLog;
 
     public function __construct(
-        private StockReconciliationService  $service,
-        private ProductRepositoryInterface  $productRepo,
+        private StockReconciliationService $service,
+        private ProductRepositoryInterface $productRepo,
     ) {}
 
-    public function index() { return view('warehouse.reconciliation'); }
+    public function index()
+    {
+        return view('warehouse.reconciliation');
+    }
 
     public function reconcile(StockReconciliationRequest $request)
     {
         $result = $this->service->reconcile($request->validated()['items']);
         $this->audit('stock.reconciliation', 'Product', 0, [
-            'total_checked'    => $result['total_checked'],
+            'total_checked' => $result['total_checked'],
             'total_discrepant' => $result['total_discrepant'],
         ]);
+
         return $this->success($result);
     }
 
@@ -33,7 +38,7 @@ class StockReconciliationController extends Controller
     {
         $request->validate([
             'from' => 'required|date',
-            'to'   => 'required|date|after_or_equal:from',
+            'to' => 'required|date|after_or_equal:from',
         ]);
 
         $this->productRepo->findOrFail($productId);

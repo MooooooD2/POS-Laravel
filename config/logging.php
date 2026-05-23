@@ -1,7 +1,7 @@
 <?php
+
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
-use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
 
 return [
@@ -10,15 +10,15 @@ return [
     'channels' => [
         'stack' => ['driver' => 'stack', 'channels' => explode(',', env('LOG_STACK', 'single')), 'ignore_exceptions' => false],
         'single' => ['driver' => 'single', 'path' => storage_path('logs/laravel.log'), 'level' => env('LOG_LEVEL', 'warning'), 'replace_placeholders' => true],
-        'daily'  => ['driver' => 'daily', 'path' => storage_path('logs/laravel.log'), 'level' => env('LOG_LEVEL', 'warning'), 'days' => env('LOG_DAILY_DAYS', 14), 'replace_placeholders' => true],
+        'daily' => ['driver' => 'daily', 'path' => storage_path('logs/laravel.log'), 'level' => env('LOG_LEVEL', 'warning'), 'days' => env('LOG_DAILY_DAYS', 14), 'replace_placeholders' => true],
 
         // #38-43 Audit Trail منفصل لكل العمليات الحساسة
         'audit' => [
-            'driver'              => 'daily',
-            'path'                => storage_path('logs/audit.log'),
-            'level'               => 'info',
-            'days'                => 90,   // احتفظ بـ 90 يوم
-            'replace_placeholders'=> true,
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => 'info',
+            'days' => 90,   // احتفظ بـ 90 يوم
+            'replace_placeholders' => true,
         ],
 
         'null' => ['driver' => 'monolog', 'handler' => NullHandler::class],

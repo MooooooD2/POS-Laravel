@@ -1,52 +1,59 @@
 <?php
+
 namespace App\Services;
 
+use App\Jobs\SendWhatsAppMessage as SendJob;
 use App\Models\Customer;
 use App\Models\Invoice;
-use App\Models\Product;
 use App\Models\WhatsAppMessage;
-use App\Jobs\SendWhatsAppMessage as SendJob;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class WhatsAppService
 {
     private string $apiBase;
+
     private string $phoneNumberId;
+
     private string $accessToken;
+
     private string $language;
 
     public function __construct()
     {
         $this->phoneNumberId = config('whatsapp.phone_number_id', '');
-        $this->accessToken   = config('whatsapp.access_token', '');
-        $this->language      = config('whatsapp.language', 'ar');
-        $this->apiBase       = config('whatsapp.base_url') . '/' . config('whatsapp.api_version');
+        $this->accessToken = config('whatsapp.access_token', '');
+        $this->language = config('whatsapp.language', 'ar');
+        $this->apiBase = config('whatsapp.base_url').'/'.config('whatsapp.api_version');
     }
 
     public function isEnabled(): bool
     {
         return config('whatsapp.enabled', false)
-            && !empty($this->phoneNumberId)
-            && !empty($this->accessToken);
+            && ! empty($this->phoneNumberId)
+            && ! empty($this->accessToken);
     }
 
     // ── Public send methods (queued) ─────────────────────────────────────────
 
     public function sendInvoice(Invoice $invoice): void
     {
-        if (!$this->isEnabled()) return;
+        if (! $this->isEnabled()) {
+            return;
+        }
 
         $phone = optional($invoice->customer)->phone;
-        if (!$phone) return;
+        if (! $phone) {
+            return;
+        }
 
         $log = $this->createLog([
-            'direction'    => 'outbound',
-            'to_number'    => $this->normalizePhone($phone),
+            'direction' => 'outbound',
+            'to_number' => $this->normalizePhone($phone),
             'message_type' => 'invoice',
             'related_type' => 'invoice',
-            'related_id'   => $invoice->id,
-            'template_name'=> config('whatsapp.templates.invoice'),
+            'related_id' => $invoice->id,
+            'template_name' => config('whatsapp.templates.invoice'),
         ]);
 
         SendJob::dispatch($log->id)->onQueue('whatsapp');
@@ -54,18 +61,22 @@ class WhatsAppService
 
     public function sendDebtReminder(Customer $customer): void
     {
-        if (!$this->isEnabled() || !$customer->phone) return;
-        if ($customer->balance <= 0) return;
+        if (! $this->isEnabled() || ! $customer->phone) {
+            return;
+        }
+        if ($customer->balance <= 0) {
+            return;
+        }
 
         $log = $this->createLog([
-            'direction'    => 'outbound',
-            'to_number'    => $this->normalizePhone($customer->phone),
+            'direction' => 'outbound',
+            'to_number' => $this->normalizePhone($customer->phone),
             'message_type' => 'reminder',
             'related_type' => 'customer',
-            'related_id'   => $customer->id,
-            'template_name'=> config('whatsapp.templates.debt_reminder'),
+            'related_id' => $customer->id,
+            'template_name' => config('whatsapp.templates.debt_reminder'),
             'message_body' => __('pos.wa_debt_reminder_body', [
-                'name'    => $customer->name,
+                'name' => $customer->name,
                 'balance' => number_format($customer->balance, 2),
             ]),
         ]);
@@ -75,15 +86,19 @@ class WhatsAppService
 
     public function sendDailySummary(array $stats): void
     {
-        if (!$this->isEnabled()) return;
+        if (! $this->isEnabled()) {
+            return;
+        }
         $managerPhone = config('whatsapp.manager_phone');
-        if (!$managerPhone) return;
+        if (! $managerPhone) {
+            return;
+        }
 
         $log = $this->createLog([
-            'direction'    => 'outbound',
-            'to_number'    => $this->normalizePhone($managerPhone),
+            'direction' => 'outbound',
+            'to_number' => $this->normalizePhone($managerPhone),
             'message_type' => 'alert',
-            'template_name'=> config('whatsapp.templates.daily_summary'),
+            'template_name' => config('whatsapp.templates.daily_summary'),
             'message_body' => __('pos.wa_daily_summary_body', $stats),
         ]);
 
@@ -92,16 +107,20 @@ class WhatsAppService
 
     public function sendLowStockAlert(array $products): void
     {
-        if (!$this->isEnabled()) return;
+        if (! $this->isEnabled()) {
+            return;
+        }
         $managerPhone = config('whatsapp.manager_phone');
-        if (!$managerPhone) return;
+        if (! $managerPhone) {
+            return;
+        }
 
         $productNames = collect($products)->pluck('name')->join(', ');
         $log = $this->createLog([
-            'direction'    => 'outbound',
-            'to_number'    => $this->normalizePhone($managerPhone),
+            'direction' => 'outbound',
+            'to_number' => $this->normalizePhone($managerPhone),
             'message_type' => 'alert',
-            'template_name'=> config('whatsapp.templates.low_stock'),
+            'template_name' => config('whatsapp.templates.low_stock'),
             'message_body' => __('pos.wa_low_stock_body', ['products' => $productNames]),
         ]);
 
@@ -110,20 +129,26 @@ class WhatsAppService
 
     public function sendLargeInvoiceAlert(Invoice $invoice): void
     {
-        if (!$this->isEnabled()) return;
+        if (! $this->isEnabled()) {
+            return;
+        }
         $managerPhone = config('whatsapp.manager_phone');
-        if (!$managerPhone) return;
-        if ($invoice->final_total < config('whatsapp.large_invoice_threshold', 5000)) return;
+        if (! $managerPhone) {
+            return;
+        }
+        if ($invoice->final_total < config('whatsapp.large_invoice_threshold', 5000)) {
+            return;
+        }
 
         $log = $this->createLog([
-            'direction'    => 'outbound',
-            'to_number'    => $this->normalizePhone($managerPhone),
+            'direction' => 'outbound',
+            'to_number' => $this->normalizePhone($managerPhone),
             'message_type' => 'alert',
-            'template_name'=> config('whatsapp.templates.large_invoice'),
+            'template_name' => config('whatsapp.templates.large_invoice'),
             'message_body' => __('pos.wa_large_invoice_body', [
                 'number' => $invoice->invoice_number,
-                'total'  => number_format($invoice->final_total, 2),
-                'cashier'=> $invoice->cashier_name,
+                'total' => number_format($invoice->final_total, 2),
+                'cashier' => $invoice->cashier_name,
             ]),
         ]);
 
@@ -132,15 +157,17 @@ class WhatsAppService
 
     public function sendPromotion(Customer $customer, string $message): void
     {
-        if (!$this->isEnabled() || !$customer->phone) return;
+        if (! $this->isEnabled() || ! $customer->phone) {
+            return;
+        }
 
         $log = $this->createLog([
-            'direction'    => 'outbound',
-            'to_number'    => $this->normalizePhone($customer->phone),
+            'direction' => 'outbound',
+            'to_number' => $this->normalizePhone($customer->phone),
             'message_type' => 'promotion',
             'related_type' => 'customer',
-            'related_id'   => $customer->id,
-            'template_name'=> config('whatsapp.templates.promotion'),
+            'related_id' => $customer->id,
+            'template_name' => config('whatsapp.templates.promotion'),
             'message_body' => $message,
         ]);
 
@@ -154,6 +181,7 @@ class WhatsAppService
             $this->sendPromotion($customer, $message);
             $count++;
         }
+
         return $count;
     }
 
@@ -163,7 +191,7 @@ class WhatsAppService
     {
         try {
             $payload = $this->buildPayload($log);
-            $url     = "{$this->apiBase}/{$this->phoneNumberId}/messages";
+            $url = "{$this->apiBase}/{$this->phoneNumberId}/messages";
 
             $response = Http::withToken($this->accessToken)
                 ->timeout(15)
@@ -172,9 +200,9 @@ class WhatsAppService
             if ($response->successful()) {
                 $waId = data_get($response->json(), 'messages.0.id');
                 $log->update([
-                    'status'       => 'sent',
-                    'wa_message_id'=> $waId,
-                    'sent_at'      => now(),
+                    'status' => 'sent',
+                    'wa_message_id' => $waId,
+                    'sent_at' => now(),
                 ]);
             } else {
                 $this->markFailed($log, $response->body());
@@ -192,17 +220,23 @@ class WhatsAppService
         if ($mode === 'subscribe' && $token === config('whatsapp.verify_token')) {
             return $challenge;
         }
+
         return null;
     }
 
     public function verifySignature(string $rawBody, ?string $signatureHeader): bool
     {
         $secret = config('whatsapp.app_secret');
-        if (empty($secret)) return false;
+        if (empty($secret)) {
+            return false;
+        }
 
-        if (!$signatureHeader || !str_starts_with($signatureHeader, 'sha256=')) return false;
+        if (! $signatureHeader || ! str_starts_with($signatureHeader, 'sha256=')) {
+            return false;
+        }
 
-        $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
+        $expected = 'sha256='.hash_hmac('sha256', $rawBody, $secret);
+
         return hash_equals($expected, $signatureHeader);
     }
 
@@ -222,16 +256,22 @@ class WhatsAppService
     {
         // Status updates (delivered, read)
         foreach (data_get($change, 'value.statuses', []) as $status) {
-            $waId   = data_get($status, 'id');
-            $state  = data_get($status, 'status'); // sent/delivered/read/failed
-            $ts     = data_get($status, 'timestamp');
+            $waId = data_get($status, 'id');
+            $state = data_get($status, 'status'); // sent/delivered/read/failed
+            $ts = data_get($status, 'timestamp');
 
             $log = WhatsAppMessage::where('wa_message_id', $waId)->first();
-            if (!$log) continue;
+            if (! $log) {
+                continue;
+            }
 
             $updates = ['status' => $state];
-            if ($state === 'delivered') $updates['delivered_at'] = now();
-            if ($state === 'read')      $updates['read_at']      = now();
+            if ($state === 'delivered') {
+                $updates['delivered_at'] = now();
+            }
+            if ($state === 'read') {
+                $updates['read_at'] = now();
+            }
             $log->update($updates);
         }
 
@@ -241,13 +281,13 @@ class WhatsAppService
             $text = data_get($msg, 'text.body') ?? data_get($msg, 'interactive.button_reply.title');
 
             WhatsAppMessage::create([
-                'direction'    => 'inbound',
-                'from_number'  => $from,
-                'to_number'    => data_get($change, 'value.metadata.phone_number_id'),
+                'direction' => 'inbound',
+                'from_number' => $from,
+                'to_number' => data_get($change, 'value.metadata.phone_number_id'),
                 'message_type' => 'inbound',
                 'message_body' => $text,
-                'wa_message_id'=> data_get($msg, 'id'),
-                'status'       => 'read',
+                'wa_message_id' => data_get($msg, 'id'),
+                'status' => 'read',
             ]);
 
             Log::info('whatsapp.inbound', ['from' => $from, 'text' => $text]);
@@ -258,14 +298,14 @@ class WhatsAppService
     {
         $base = [
             'messaging_product' => 'whatsapp',
-            'to'                => $log->to_number,
+            'to' => $log->to_number,
         ];
 
         if ($log->template_name) {
             return array_merge($base, [
-                'type'     => 'template',
+                'type' => 'template',
                 'template' => [
-                    'name'     => $log->template_name,
+                    'name' => $log->template_name,
                     'language' => ['code' => $this->language],
                     'components' => $this->buildTemplateComponents($log),
                 ],
@@ -280,10 +320,12 @@ class WhatsAppService
 
     private function buildTemplateComponents(WhatsAppMessage $log): array
     {
-        if (!$log->message_body) return [];
+        if (! $log->message_body) {
+            return [];
+        }
 
         return [[
-            'type'       => 'body',
+            'type' => 'body',
             'parameters' => [['type' => 'text', 'text' => $log->message_body]],
         ]];
     }
@@ -302,6 +344,7 @@ class WhatsAppService
     {
         // Strip spaces, dashes, parens; ensure no leading +
         $clean = preg_replace('/[\s\-\(\)]/', '', $phone);
+
         return ltrim($clean, '+');
     }
 }

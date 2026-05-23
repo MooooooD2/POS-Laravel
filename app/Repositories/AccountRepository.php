@@ -1,16 +1,18 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\AccountRepositoryInterface;
 use App\Models\Account;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 class AccountRepository extends BaseRepository implements AccountRepositoryInterface
 {
     public function __construct()
     {
-        $this->model = new Account();
+        $this->model = new Account;
     }
 
     public function allWithTree(): Collection
@@ -33,13 +35,14 @@ class AccountRepository extends BaseRepository implements AccountRepositoryInter
         return Account::create($data);
     }
 
-    public function update(Account|\Illuminate\Database\Eloquent\Model $account, array $data): Account
+    public function update(Account|Model $account, array $data): Account
     {
         $account->update($data);
+
         return $account->fresh();
     }
 
-    public function delete(Account|\Illuminate\Database\Eloquent\Model $account): void
+    public function delete(Account|Model $account): void
     {
         $account->delete();
     }
@@ -66,10 +69,10 @@ class AccountRepository extends BaseRepository implements AccountRepositoryInter
         return Account::where('account_type', $type)
             ->whereNotNull('parent_id')
             ->withSum([
-                'lines as total' => fn($q) => $q->whereHas(
+                'lines as total' => fn ($q) => $q->whereHas(
                     'entry',
-                    fn($q2) => $q2->whereBetween('entry_date', [$start, $end])
-                )
+                    fn ($q2) => $q2->whereBetween('entry_date', [$start, $end])
+                ),
             ], $col)
             ->get()
             ->toArray();
@@ -93,7 +96,7 @@ class AccountRepository extends BaseRepository implements AccountRepositoryInter
             ->selectRaw('SUM(jel.debit) as total_debit, SUM(jel.credit) as total_credit')
             ->first();
 
-        $totalDebit  = (float) ($row->total_debit  ?? 0);
+        $totalDebit = (float) ($row->total_debit ?? 0);
         $totalCredit = (float) ($row->total_credit ?? 0);
 
         $balance = in_array($account->account_type, ['asset', 'expense'])

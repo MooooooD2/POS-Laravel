@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Console\Commands;
 
 use App\Jobs\ProcessStockAlert;
@@ -46,7 +47,7 @@ class StockAlertCommand extends Command
 
     private function checkLowAndOutOfStock(): void
     {
-        $lowStock   = $this->alertService->getLowStock();
+        $lowStock = $this->alertService->getLowStock();
         $outOfStock = $this->alertService->getOutOfStock();
 
         foreach ($lowStock as $item) {
@@ -69,12 +70,12 @@ class StockAlertCommand extends Command
         // 7-day critical window
         $critical = $this->alertService->getNearExpiryBatches(7);
         // 30-day warning window (excludes the 7-day critical)
-        $warning  = $this->alertService->getNearExpiryBatches(30)
+        $warning = $this->alertService->getNearExpiryBatches(30)
             ->where('days_to_expiry', '>', 7);
 
         foreach ($critical as $item) {
             ProcessStockAlert::dispatch($item['product_id'], $item['remaining_qty'], 'expiry_critical', [
-                'batch_id'    => $item['batch_id'],
+                'batch_id' => $item['batch_id'],
                 'expiry_date' => $item['expiry_date'],
             ]);
         }
@@ -82,7 +83,7 @@ class StockAlertCommand extends Command
         // FIX: warning batches were counted but never dispatched — add dispatch loop
         foreach ($warning as $item) {
             ProcessStockAlert::dispatch($item['product_id'], $item['remaining_qty'], 'expiry_warning', [
-                'batch_id'    => $item['batch_id'],
+                'batch_id' => $item['batch_id'],
                 'expiry_date' => $item['expiry_date'],
             ]);
         }
@@ -99,9 +100,9 @@ class StockAlertCommand extends Command
         if ($expired->count() > 0) {
             foreach ($expired as $item) {
                 Log::channel('audit')->warning('batch.expired_stock_remaining', [
-                    'batch_id'         => $item['batch_id'],
-                    'product_id'       => $item['product_id'],
-                    'remaining_qty'    => $item['remaining_qty'],
+                    'batch_id' => $item['batch_id'],
+                    'product_id' => $item['product_id'],
+                    'remaining_qty' => $item['remaining_qty'],
                     'expired_days_ago' => $item['expired_days_ago'],
                 ]);
             }
@@ -114,25 +115,25 @@ class StockAlertCommand extends Command
 
     private function suggestSmartReorders(): void
     {
-        $lookback    = max(1, (int) $this->option('lookback'));
+        $lookback = max(1, (int) $this->option('lookback'));
         $suggestions = $this->alertService->getReorderSuggestions($lookback);
 
         foreach ($suggestions as $item) {
             Log::channel('audit')->info('stock.reorder_suggested', [
-                'product_id'           => $item['product_id'],
-                'product_name'         => $item['product_name'],
-                'quantity'             => $item['quantity'],
-                'reorder_point'        => $item['reorder_point'],
-                'suggested_order_qty'  => $item['suggested_order_qty'],
-                'avg_daily_velocity'   => $item['avg_daily_velocity'],
-                'days_of_stock_left'   => $item['days_of_stock_left'],
-                'urgency'              => $item['urgency'],
-                'supplier'             => $item['supplier'],
-                'timestamp'            => now()->toIso8601String(),
+                'product_id' => $item['product_id'],
+                'product_name' => $item['product_name'],
+                'quantity' => $item['quantity'],
+                'reorder_point' => $item['reorder_point'],
+                'suggested_order_qty' => $item['suggested_order_qty'],
+                'avg_daily_velocity' => $item['avg_daily_velocity'],
+                'days_of_stock_left' => $item['days_of_stock_left'],
+                'urgency' => $item['urgency'],
+                'supplier' => $item['supplier'],
+                'timestamp' => now()->toIso8601String(),
             ]);
         }
 
-        $urgent  = collect($suggestions)->where('urgency', 'urgent')->count();
+        $urgent = collect($suggestions)->where('urgency', 'urgent')->count();
         $message = sprintf('%d product(s) need reordering', count($suggestions));
         if ($urgent > 0) {
             $message .= sprintf(' (%d urgent)', $urgent);

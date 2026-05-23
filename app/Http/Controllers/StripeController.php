@@ -27,42 +27,42 @@ class StripeController extends Controller
     public function checkout(Request $request)
     {
         $data = $request->validate([
-            'plan_id'        => 'required|string|exists:mysql.plans,id',
+            'plan_id' => 'required|string|exists:mysql.plans,id',
             'billing_period' => 'required|in:monthly,annual',
         ]);
 
         $tenant = tenancy()->tenant;
-        $plan   = Plan::findOrFail($data['plan_id']);
+        $plan = Plan::findOrFail($data['plan_id']);
 
         $isAnnual = $data['billing_period'] === 'annual';
-        $price    = $isAnnual ? $plan->annual_price : $plan->monthly_price;
+        $price = $isAnnual ? $plan->annual_price : $plan->monthly_price;
 
-        if (!$price || $price <= 0) {
+        if (! $price || $price <= 0) {
             return $this->error(__('pos.invalid_plan_price'), 422);
         }
 
         $session = StripeSession::create([
             'payment_method_types' => ['card'],
-            'mode'                 => 'payment',
-            'line_items'           => [[
+            'mode' => 'payment',
+            'line_items' => [[
                 'price_data' => [
-                    'currency'     => config('services.stripe.currency', 'usd'),
+                    'currency' => config('services.stripe.currency', 'usd'),
                     'product_data' => [
-                        'name'        => $plan->name . ' — ' . ($isAnnual ? '12 months' : '1 month'),
+                        'name' => $plan->name.' — '.($isAnnual ? '12 months' : '1 month'),
                         'description' => implode(', ', array_slice($plan->features ?? [], 0, 3)),
                     ],
-                    'unit_amount'  => (int) round($price * 100),
+                    'unit_amount' => (int) round($price * 100),
                 ],
-                'quantity'   => 1,
+                'quantity' => 1,
             ]],
             'metadata' => [
-                'tenant_id'      => $tenant->id,
-                'plan_id'        => $plan->id,
+                'tenant_id' => $tenant->id,
+                'plan_id' => $plan->id,
                 'billing_period' => $data['billing_period'],
-                'months'         => $isAnnual ? 12 : 1,
+                'months' => $isAnnual ? 12 : 1,
             ],
-            'success_url' => route('stripe.success') . '?session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url'  => route('subscribe'),
+            'success_url' => route('stripe.success').'?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => route('subscribe'),
             'customer_email' => auth()->user()?->email ?? null,
         ]);
 
@@ -75,13 +75,13 @@ class StripeController extends Controller
     {
         $sessionId = $request->query('session_id');
 
-        if (!$sessionId) {
+        if (! $sessionId) {
             return redirect()->route('subscribe');
         }
 
         try {
             $session = StripeSession::retrieve([
-                'id'     => $sessionId,
+                'id' => $sessionId,
                 'expand' => ['payment_intent'],
             ]);
         } catch (\Exception $e) {
@@ -89,30 +89,32 @@ class StripeController extends Controller
         }
 
         if ($session->payment_status === 'paid') {
-            $planId        = $session->metadata['plan_id'] ?? null;
+            $planId = $session->metadata['plan_id'] ?? null;
             $billingPeriod = $session->metadata['billing_period'] ?? 'monthly';
-            $months        = (int) ($session->metadata['months'] ?? 1);
+            $months = (int) ($session->metadata['months'] ?? 1);
 
             // SECURITY: verify that the amount Stripe actually charged matches the plan price.
             // Protects against metadata tampering — an attacker cannot forge a $1 charge for
             // a 12-month subscription by editing the checkout metadata after the session is created.
             $plan = $planId ? Plan::find($planId) : null;
-            if (!$plan) {
+            if (! $plan) {
                 Log::warning('Stripe success: plan not found', ['plan_id' => $planId, 'session_id' => $sessionId]);
+
                 return redirect()->route('subscribe')->withErrors(['payment' => __('pos.payment_plan_not_found')]);
             }
 
             $expectedPrice = $billingPeriod === 'annual' ? (float) $plan->annual_price : (float) $plan->monthly_price;
-            $paidAmount    = $session->amount_total / 100;   // Stripe stores amounts in cents
+            $paidAmount = $session->amount_total / 100;   // Stripe stores amounts in cents
 
             if ($expectedPrice <= 0 || abs($paidAmount - $expectedPrice) > 0.01) {
                 Log::warning('Stripe payment amount mismatch', [
-                    'session_id'     => $sessionId,
-                    'plan_id'        => $planId,
+                    'session_id' => $sessionId,
+                    'plan_id' => $planId,
                     'expected_price' => $expectedPrice,
-                    'paid_amount'    => $paidAmount,
-                    'tenant_id'      => $session->metadata['tenant_id'] ?? null,
+                    'paid_amount' => $paidAmount,
+                    'tenant_id' => $session->metadata['tenant_id'] ?? null,
                 ]);
+
                 return redirect()->route('subscribe')->withErrors(['payment' => __('pos.payment_amount_mismatch')]);
             }
 
@@ -125,7 +127,7 @@ class StripeController extends Controller
 
         return view('subscription.success', [
             'session' => $session,
-            'tenant'  => tenancy()->tenant,
+            'tenant' => tenancy()->tenant,
         ]);
     }
 
@@ -141,12 +143,13 @@ class StripeController extends Controller
             $event = Webhook::constructEvent($payload, $sigHeader, $secret);
         } catch (SignatureVerificationException $e) {
             Log::warning('Stripe webhook signature failed', ['error' => $e->getMessage()]);
+
             return response('Invalid signature', 400);
         }
 
         match ($event->type) {
             'checkout.session.completed' => $this->handleCheckoutCompleted($event->data->object),
-            default                      => null,
+            default => null,
         };
 
         return response('OK', 200);
@@ -156,29 +159,33 @@ class StripeController extends Controller
 
     private function handleCheckoutCompleted(object $session): void
     {
-        if ($session->payment_status !== 'paid') return;
+        if ($session->payment_status !== 'paid') {
+            return;
+        }
 
-        $planId        = $session->metadata->plan_id ?? null;
+        $planId = $session->metadata->plan_id ?? null;
         $billingPeriod = $session->metadata->billing_period ?? 'monthly';
-        $months        = (int) ($session->metadata->months ?? 1);
+        $months = (int) ($session->metadata->months ?? 1);
 
         // SECURITY: server-side amount verification — same guard as the redirect handler.
         $plan = $planId ? Plan::find($planId) : null;
-        if (!$plan) {
+        if (! $plan) {
             Log::warning('Stripe webhook: plan not found', ['plan_id' => $planId]);
+
             return;
         }
 
         $expectedPrice = $billingPeriod === 'annual' ? (float) $plan->annual_price : (float) $plan->monthly_price;
-        $paidAmount    = $session->amount_total / 100;
+        $paidAmount = $session->amount_total / 100;
 
         if ($expectedPrice <= 0 || abs($paidAmount - $expectedPrice) > 0.01) {
             Log::warning('Stripe webhook amount mismatch', [
-                'plan_id'        => $planId,
+                'plan_id' => $planId,
                 'expected_price' => $expectedPrice,
-                'paid_amount'    => $paidAmount,
-                'tenant_id'      => $session->metadata->tenant_id ?? null,
+                'paid_amount' => $paidAmount,
+                'tenant_id' => $session->metadata->tenant_id ?? null,
             ]);
+
             return;
         }
 
@@ -192,24 +199,26 @@ class StripeController extends Controller
     private function activateSubscription(string $tenantId, string $planId, int $months): void
     {
         $tenant = Tenant::find($tenantId);
-        if (!$tenant) return;
+        if (! $tenant) {
+            return;
+        }
 
         $base = ($tenant->subscription_ends_at && $tenant->subscription_ends_at->isFuture())
             ? $tenant->subscription_ends_at
             : Carbon::now();
 
         $tenant->update([
-            'plan'                => $planId,
+            'plan' => $planId,
             'subscription_status' => 'active',
-            'subscription_ends_at'=> $base->addMonths($months),
-            'is_active'           => true,
+            'subscription_ends_at' => $base->addMonths($months),
+            'is_active' => true,
         ]);
 
         Log::info('Subscription activated', [
             'tenant_id' => $tenantId,
-            'plan_id'   => $planId,
-            'months'    => $months,
-            'ends_at'   => $tenant->fresh()->subscription_ends_at,
+            'plan_id' => $planId,
+            'months' => $months,
+            'ends_at' => $tenant->fresh()->subscription_ends_at,
         ]);
     }
 }

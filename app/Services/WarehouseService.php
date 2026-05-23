@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Product;
@@ -22,7 +23,7 @@ class WarehouseService
     public function all(bool $activeOnly = false)
     {
         return Warehouse::with('branch:id,name,code')
-            ->when($activeOnly, fn($q) => $q->where('is_active', true))
+            ->when($activeOnly, fn ($q) => $q->where('is_active', true))
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get();
@@ -31,9 +32,10 @@ class WarehouseService
     public function create(array $data): Warehouse
     {
         return DB::transaction(function () use ($data) {
-            if (!empty($data['is_default'])) {
+            if (! empty($data['is_default'])) {
                 Warehouse::where('is_default', true)->update(['is_default' => false]);
             }
+
             return Warehouse::create($data);
         });
     }
@@ -41,10 +43,11 @@ class WarehouseService
     public function update(Warehouse $warehouse, array $data): Warehouse
     {
         return DB::transaction(function () use ($warehouse, $data) {
-            if (!empty($data['is_default'])) {
+            if (! empty($data['is_default'])) {
                 Warehouse::where('id', '!=', $warehouse->id)->update(['is_default' => false]);
             }
             $warehouse->update($data);
+
             return $warehouse->fresh();
         });
     }
@@ -69,7 +72,7 @@ class WarehouseService
 
     public function stockList(Warehouse $warehouse)
     {
-        return WarehouseStock::with(['product' => fn($q) => $q->select('id','name','barcode','category','min_stock','unit_id')->with('unit:id,name,abbreviation')])
+        return WarehouseStock::with(['product' => fn ($q) => $q->select('id', 'name', 'barcode', 'category', 'min_stock', 'unit_id')->with('unit:id,name,abbreviation')])
             ->where('warehouse_id', $warehouse->id)
             ->orderBy('product_id')
             ->get();
@@ -89,12 +92,12 @@ class WarehouseService
     {
         return DB::transaction(function () use ($data) {
             $transfer = WarehouseTransfer::create([
-                'transfer_number'    => SequenceService::next('transfer', 'TRF'),
-                'from_warehouse_id'  => $data['from_warehouse_id'],
-                'to_warehouse_id'    => $data['to_warehouse_id'],
-                'requested_by'       => Auth::id(),
-                'status'             => 'pending',
-                'notes'              => $data['notes'] ?? null,
+                'transfer_number' => SequenceService::next('transfer', 'TRF'),
+                'from_warehouse_id' => $data['from_warehouse_id'],
+                'to_warehouse_id' => $data['to_warehouse_id'],
+                'requested_by' => Auth::id(),
+                'status' => 'pending',
+                'notes' => $data['notes'] ?? null,
             ]);
 
             foreach ($data['items'] as $item) {
@@ -104,7 +107,7 @@ class WarehouseService
                     ->lockForUpdate()
                     ->first();
 
-                if (!$stock || $stock->quantity < $item['quantity']) {
+                if (! $stock || $stock->quantity < $item['quantity']) {
                     $product = Product::find($item['product_id']);
                     throw new \Exception(__('pos.insufficient_stock', ['name' => $product?->name ?? "#{$item['product_id']}"]));
                 }
@@ -114,16 +117,16 @@ class WarehouseService
 
                 WarehouseTransferItem::create([
                     'transfer_id' => $transfer->id,
-                    'product_id'  => $item['product_id'],
-                    'batch_id'    => $item['batch_id'] ?? null,
-                    'quantity'    => $item['quantity'],
+                    'product_id' => $item['product_id'],
+                    'batch_id' => $item['batch_id'] ?? null,
+                    'quantity' => $item['quantity'],
                 ]);
             }
 
             $transfer->update(['status' => 'in_transit']);
             Log::channel('audit')->info('warehouse.transfer_created', [
                 'transfer_id' => $transfer->id,
-                'user_id'     => Auth::id(),
+                'user_id' => Auth::id(),
             ]);
 
             return $transfer->load('items.product', 'fromWarehouse', 'toWarehouse');
@@ -163,14 +166,14 @@ class WarehouseService
             }
 
             $transfer->update([
-                'status'      => 'received',
+                'status' => 'received',
                 'received_by' => Auth::id(),
                 'received_at' => now(),
             ]);
 
             Log::channel('audit')->info('warehouse.transfer_received', [
                 'transfer_id' => $transfer->id,
-                'user_id'     => Auth::id(),
+                'user_id' => Auth::id(),
             ]);
 
             return $transfer->fresh('items.product');
@@ -179,7 +182,7 @@ class WarehouseService
 
     public function cancelTransfer(WarehouseTransfer $transfer): void
     {
-        if (!\in_array($transfer->status, ['pending', 'in_transit'], true)) {
+        if (! \in_array($transfer->status, ['pending', 'in_transit'], true)) {
             throw new \Exception(__('pos.transfer_cannot_be_cancelled'));
         }
 

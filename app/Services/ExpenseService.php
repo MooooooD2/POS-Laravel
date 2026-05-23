@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\FiscalPeriod;
 use App\Models\JournalEntry;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,17 +17,17 @@ use Illuminate\Support\Facades\Log;
 class ExpenseService
 {
     public function __construct(
-        private AccountingService      $accountingService,
+        private AccountingService $accountingService,
         private SettingRepositoryInterface $settingRepo,
     ) {}
 
     public function all(array $filters): LengthAwarePaginator
     {
         return Expense::with('category')
-            ->when($filters['category_id'] ?? null, fn($q) => $q->where('category_id', $filters['category_id']))
-            ->when($filters['payment_method'] ?? null, fn($q) => $q->where('payment_method', $filters['payment_method']))
-            ->when($filters['date_from'] ?? null, fn($q) => $q->whereDate('expense_date', '>=', $filters['date_from']))
-            ->when($filters['date_to'] ?? null, fn($q) => $q->whereDate('expense_date', '<=', $filters['date_to']))
+            ->when($filters['category_id'] ?? null, fn ($q) => $q->where('category_id', $filters['category_id']))
+            ->when($filters['payment_method'] ?? null, fn ($q) => $q->where('payment_method', $filters['payment_method']))
+            ->when($filters['date_from'] ?? null, fn ($q) => $q->whereDate('expense_date', '>=', $filters['date_from']))
+            ->when($filters['date_to'] ?? null, fn ($q) => $q->whereDate('expense_date', '<=', $filters['date_to']))
             ->latest('expense_date')
             ->paginate($filters['per_page'] ?? 15);
     }
@@ -48,15 +49,15 @@ class ExpenseService
 
             $expense = Expense::create([
                 'expense_number' => $number,
-                'category_id'    => $data['category_id'] ?? null,
-                'title'          => $data['title'],
-                'amount'         => round((float) $data['amount'], 2),
+                'category_id' => $data['category_id'] ?? null,
+                'title' => $data['title'],
+                'amount' => round((float) $data['amount'], 2),
                 'payment_method' => $data['payment_method'] ?? 'cash',
-                'reference'      => $data['reference'] ?? null,
-                'expense_date'   => $data['expense_date'],
-                'notes'          => $data['notes'] ?? null,
-                'created_by'     => Auth::id(),
-                'created_by_name'=> Auth::user()?->full_name ?? '',
+                'reference' => $data['reference'] ?? null,
+                'expense_date' => $data['expense_date'],
+                'notes' => $data['notes'] ?? null,
+                'created_by' => Auth::id(),
+                'created_by_name' => Auth::user()?->full_name ?? '',
             ]);
 
             // FIX: create double-entry journal entry for this expense
@@ -65,11 +66,11 @@ class ExpenseService
 
             Log::channel('audit')->info('expense.created', [
                 'expense_number' => $number,
-                'title'          => $expense->title,
-                'amount'         => $expense->amount,
+                'title' => $expense->title,
+                'amount' => $expense->amount,
                 'payment_method' => $expense->payment_method,
-                'user_id'        => Auth::id(),
-                'timestamp'      => now()->toIso8601String(),
+                'user_id' => Auth::id(),
+                'timestamp' => now()->toIso8601String(),
             ]);
 
             return $expense->load('category');
@@ -93,13 +94,13 @@ class ExpenseService
             }
 
             $expense->update([
-                'category_id'    => $data['category_id'] ?? $expense->category_id,
-                'title'          => $data['title'] ?? $expense->title,
-                'amount'         => isset($data['amount']) ? round((float) $data['amount'], 2) : $expense->amount,
+                'category_id' => $data['category_id'] ?? $expense->category_id,
+                'title' => $data['title'] ?? $expense->title,
+                'amount' => isset($data['amount']) ? round((float) $data['amount'], 2) : $expense->amount,
                 'payment_method' => $data['payment_method'] ?? $expense->payment_method,
-                'reference'      => $data['reference'] ?? $expense->reference,
-                'expense_date'   => $data['expense_date'] ?? $expense->expense_date,
-                'notes'          => $data['notes'] ?? $expense->notes,
+                'reference' => $data['reference'] ?? $expense->reference,
+                'expense_date' => $data['expense_date'] ?? $expense->expense_date,
+                'notes' => $data['notes'] ?? $expense->notes,
             ]);
 
             // Post a new entry reflecting the updated expense
@@ -107,8 +108,8 @@ class ExpenseService
 
             Log::channel('audit')->info('expense.updated', [
                 'expense_number' => $expense->expense_number,
-                'user_id'        => Auth::id(),
-                'timestamp'      => now()->toIso8601String(),
+                'user_id' => Auth::id(),
+                'timestamp' => now()->toIso8601String(),
             ]);
 
             return $expense->fresh('category');
@@ -129,16 +130,16 @@ class ExpenseService
 
             Log::channel('audit')->info('expense.deleted', [
                 'expense_number' => $expense->expense_number,
-                'amount'         => $expense->amount,
-                'user_id'        => Auth::id(),
-                'timestamp'      => now()->toIso8601String(),
+                'amount' => $expense->amount,
+                'user_id' => Auth::id(),
+                'timestamp' => now()->toIso8601String(),
             ]);
 
             $expense->delete();
         });
     }
 
-    public function categories(): \Illuminate\Database\Eloquent\Collection
+    public function categories(): Collection
     {
         return ExpenseCategory::where('is_active', true)->orderBy('name')->get();
     }
@@ -154,14 +155,14 @@ class ExpenseService
         $grandTotal = $rows->sum('total');
 
         return [
-            'by_category' => $rows->map(fn($r) => [
+            'by_category' => $rows->map(fn ($r) => [
                 'category' => $r->category?->name ?? __('pos.uncategorized'),
-                'total'    => round((float) $r->total, 2),
-                'count'    => (int) $r->count,
+                'total' => round((float) $r->total, 2),
+                'count' => (int) $r->count,
             ]),
             'grand_total' => round((float) $grandTotal, 2),
-            'date_from'   => $dateFrom,
-            'date_to'     => $dateTo,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
         ];
     }
 
@@ -191,8 +192,9 @@ class ExpenseService
     {
         $key = match (strtolower($paymentMethod)) {
             'bank_transfer', 'bank' => 'bank_account_code',
-            default                 => 'cash_account_code',
+            default => 'cash_account_code',
         };
+
         return $this->settingRepo->get($key) ?: null;
     }
 
@@ -210,53 +212,55 @@ class ExpenseService
     private function postExpenseEntry(Expense $expense): void
     {
         $expenseCode = $this->settingRepo->get('expense_account_code') ?: null;
-        $contraCode  = $this->contraAccountCode((string) $expense->payment_method);
+        $contraCode = $this->contraAccountCode((string) $expense->payment_method);
 
-        if (!$expenseCode || !$contraCode) {
+        if (! $expenseCode || ! $contraCode) {
             Log::warning('expense.journal_skipped: account codes not configured', [
-                'expense_number'      => $expense->expense_number,
-                'expense_account_code'=> $expenseCode,
+                'expense_number' => $expense->expense_number,
+                'expense_account_code' => $expenseCode,
                 'contra_account_code' => $contraCode,
             ]);
+
             return;
         }
 
         $expenseAccount = Account::where('account_code', $expenseCode)->first();
-        $contraAccount  = Account::where('account_code', $contraCode)->first();
+        $contraAccount = Account::where('account_code', $contraCode)->first();
 
-        if (!$expenseAccount || !$contraAccount) {
+        if (! $expenseAccount || ! $contraAccount) {
             Log::warning('expense.journal_skipped: account not found', [
-                'expense_number'      => $expense->expense_number,
-                'expense_account_code'=> $expenseCode,
+                'expense_number' => $expense->expense_number,
+                'expense_account_code' => $expenseCode,
                 'contra_account_code' => $contraCode,
                 'expense_account_found' => (bool) $expenseAccount,
-                'contra_account_found'  => (bool) $contraAccount,
+                'contra_account_found' => (bool) $contraAccount,
             ]);
+
             return;
         }
 
         $amount = round((float) $expense->amount, 2);
-        $desc   = __('pos.expense_journal_description', [
-            'title'  => $expense->title,
+        $desc = __('pos.expense_journal_description', [
+            'title' => $expense->title,
             'number' => $expense->expense_number,
         ]);
 
         $entry = $this->accountingService->createJournalEntry([
-            'entry_date'     => $expense->expense_date->format('Y-m-d'),
-            'description'    => $desc,
+            'entry_date' => $expense->expense_date->format('Y-m-d'),
+            'description' => $desc,
             'reference_type' => 'expense',
-            'reference_id'   => $expense->id,
-            'lines'          => [
+            'reference_id' => $expense->id,
+            'lines' => [
                 [
-                    'account_id'  => $expenseAccount->id,
-                    'debit'       => $amount,
-                    'credit'      => 0,
+                    'account_id' => $expenseAccount->id,
+                    'debit' => $amount,
+                    'credit' => 0,
                     'description' => $desc,
                 ],
                 [
-                    'account_id'  => $contraAccount->id,
-                    'debit'       => 0,
-                    'credit'      => $amount,
+                    'account_id' => $contraAccount->id,
+                    'debit' => 0,
+                    'credit' => $amount,
                     'description' => $desc,
                 ],
             ],

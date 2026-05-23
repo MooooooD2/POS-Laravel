@@ -5,7 +5,9 @@ namespace Tests\Feature\Purchasing;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -17,46 +19,51 @@ class PurchaseOrderWorkflowTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $warehouse;
+
     private User $cashier;
+
     private Supplier $supplier;
+
     private Product $product;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
-        $this->admin     = User::factory()->create(['is_active' => true]);
+        $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');
 
         $this->warehouse = User::factory()->create(['is_active' => true]);
         $this->warehouse->assignRole('warehouse');
 
-        $this->cashier   = User::factory()->create(['is_active' => true]);
+        $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
 
-        $this->supplier  = Supplier::factory()->create();
-        $this->product   = Product::factory()->create(['quantity' => 10, 'cost_price' => 40.00]);
+        $this->supplier = Supplier::factory()->create();
+        $this->product = Product::factory()->create(['quantity' => 10, 'cost_price' => 40.00]);
     }
 
     private function createDraftPO(array $overrides = []): array
     {
         $response = $this->actingAs($this->warehouse)->postJson('/api/purchase-orders', array_merge([
             'supplier_id' => $this->supplier->id,
-            'order_date'  => now()->toDateString(),
-            'items'       => [
+            'order_date' => now()->toDateString(),
+            'items' => [
                 [
-                    'product_id'   => $this->product->id,
+                    'product_id' => $this->product->id,
                     'product_name' => $this->product->name,
-                    'quantity'     => 20,
-                    'cost_price'   => 40.00,
+                    'quantity' => 20,
+                    'cost_price' => 40.00,
                 ],
             ],
             'notes' => 'Test PO',
         ], $overrides));
 
         $id = $response->json('purchase_order.id') ?? $response->json('order.id') ?? $response->json('id');
+
         return [$response, $id];
     }
 
@@ -75,13 +82,13 @@ class PurchaseOrderWorkflowTest extends TestCase
     {
         $this->actingAs($this->cashier)->postJson('/api/purchase-orders', [
             'supplier_id' => $this->supplier->id,
-            'order_date'  => now()->toDateString(),
-            'items'       => [
+            'order_date' => now()->toDateString(),
+            'items' => [
                 [
-                    'product_id'   => $this->product->id,
+                    'product_id' => $this->product->id,
                     'product_name' => $this->product->name,
-                    'quantity'     => 5,
-                    'cost_price'   => 40.00,
+                    'quantity' => 5,
+                    'cost_price' => 40.00,
                 ],
             ],
         ])->assertStatus(403);
@@ -94,7 +101,7 @@ class PurchaseOrderWorkflowTest extends TestCase
 
         $response = $this->actingAs($this->warehouse)->postJson('/api/purchase-orders', [
             'supplier_id' => $this->supplier->id,
-            'order_date'  => now()->toDateString(),
+            'order_date' => now()->toDateString(),
             'items' => [
                 ['product_id' => $this->product->id, 'product_name' => $this->product->name, 'quantity' => 10, 'cost_price' => 40.00],
                 ['product_id' => $p2->id,            'product_name' => $p2->name,            'quantity' => 5,  'cost_price' => 20.00],
@@ -110,8 +117,8 @@ class PurchaseOrderWorkflowTest extends TestCase
     {
         $this->actingAs($this->warehouse)->postJson('/api/purchase-orders', [
             'supplier_id' => $this->supplier->id,
-            'order_date'  => now()->toDateString(),
-            'items'       => [],
+            'order_date' => now()->toDateString(),
+            'items' => [],
         ])->assertStatus(422);
     }
 
@@ -120,13 +127,13 @@ class PurchaseOrderWorkflowTest extends TestCase
     {
         $this->actingAs($this->warehouse)->postJson('/api/purchase-orders', [
             'supplier_id' => 99999,
-            'order_date'  => now()->toDateString(),
-            'items'       => [
+            'order_date' => now()->toDateString(),
+            'items' => [
                 [
-                    'product_id'   => $this->product->id,
+                    'product_id' => $this->product->id,
                     'product_name' => $this->product->name,
-                    'quantity'     => 1,
-                    'cost_price'   => 40.00,
+                    'quantity' => 1,
+                    'cost_price' => 40.00,
                 ],
             ],
         ])->assertStatus(422);
@@ -137,12 +144,12 @@ class PurchaseOrderWorkflowTest extends TestCase
     {
         $this->actingAs($this->warehouse)->postJson('/api/purchase-orders', [
             'supplier_id' => $this->supplier->id,
-            'items'       => [
+            'items' => [
                 [
-                    'product_id'   => $this->product->id,
+                    'product_id' => $this->product->id,
                     'product_name' => $this->product->name,
-                    'quantity'     => 1,
-                    'cost_price'   => 40.00,
+                    'quantity' => 1,
+                    'cost_price' => 40.00,
                 ],
             ],
         ])->assertStatus(422);
@@ -240,7 +247,7 @@ class PurchaseOrderWorkflowTest extends TestCase
 
     private function getItemId(int $poId): int
     {
-        return \Illuminate\Support\Facades\DB::table('purchase_order_items')
+        return DB::table('purchase_order_items')
             ->where('po_id', $poId)
             ->value('id');
     }

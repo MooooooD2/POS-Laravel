@@ -6,7 +6,6 @@ use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\InvoiceService;
-use App\Services\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -35,12 +34,12 @@ class InvoiceServiceTest extends TestCase
 
         $invoice = $this->service->createInvoice([
             'payment_method' => 'cash',
-            'discount'       => 0,
-            'items'          => [[
-                'product_id'   => $product->id,
+            'discount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => 2,
-                'price'        => 100.00,
+                'quantity' => 2,
+                'price' => 100.00,
             ]],
         ]);
 
@@ -57,12 +56,12 @@ class InvoiceServiceTest extends TestCase
 
         $this->service->createInvoice([
             'payment_method' => 'cash',
-            'discount'       => 0,
-            'items'          => [[
-                'product_id'   => $product->id,
+            'discount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => 3,
-                'price'        => 50.00,
+                'quantity' => 3,
+                'price' => 50.00,
             ]],
         ]);
 
@@ -75,17 +74,17 @@ class InvoiceServiceTest extends TestCase
 
         $invoice = $this->service->createInvoice([
             'payment_method' => 'cash',
-            'discount'       => 50,
-            'items'          => [[
-                'product_id'   => $product->id,
+            'discount' => 50,
+            'items' => [[
+                'product_id' => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => 1,
-                'price'        => 200.00,
+                'quantity' => 1,
+                'price' => 200.00,
             ]],
         ]);
 
         $this->assertEquals(200.00, $invoice->total);
-        $this->assertEquals(50.00,  $invoice->discount);
+        $this->assertEquals(50.00, $invoice->discount);
         $this->assertEquals(150.00, $invoice->final_total);
     }
 
@@ -97,12 +96,12 @@ class InvoiceServiceTest extends TestCase
 
         $this->service->createInvoice([
             'payment_method' => 'cash',
-            'discount'       => 0,
-            'items'          => [[
-                'product_id'   => $product->id,
+            'discount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => 99,
-                'price'        => 100.00,
+                'quantity' => 99,
+                'price' => 100.00,
             ]],
         ]);
     }
@@ -113,12 +112,12 @@ class InvoiceServiceTest extends TestCase
 
         $itemData = [
             'payment_method' => 'cash',
-            'discount'       => 0,
-            'items'          => [[
-                'product_id'   => $product->id,
+            'discount' => 0,
+            'items' => [[
+                'product_id' => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => 1,
-                'price'        => 10.00,
+                'quantity' => 1,
+                'price' => 10.00,
             ]],
         ];
 
@@ -137,8 +136,8 @@ class InvoiceServiceTest extends TestCase
 
         $invoice = $this->service->createInvoice([
             'payment_method' => 'cash',
-            'discount'       => 0,
-            'items'          => [
+            'discount' => 0,
+            'items' => [
                 ['product_id' => $p1->id, 'product_name' => $p1->name, 'quantity' => 2, 'price' => 100.00],
                 ['product_id' => $p2->id, 'product_name' => $p2->name, 'quantity' => 3, 'price' => 50.00],
             ],

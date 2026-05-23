@@ -1,16 +1,19 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class ProductRepository extends BaseRepository implements ProductRepositoryInterface
 {
     public function __construct()
     {
-        $this->model = new Product();
+        $this->model = new Product;
     }
 
     public function findById(int $id): ?Product
@@ -31,12 +34,14 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
     public function search(string $query, bool $exact = false): mixed
     {
         $query = trim(strip_tags($query));
-        if (!$query) return collect();
+        if (! $query) {
+            return collect();
+        }
 
         // Exclude batch-tracked products whose every batch is expired (no active batch left)
-        $hasActiveBatch = fn($q) => $q->whereNot(function ($sub) {
+        $hasActiveBatch = fn ($q) => $q->whereNot(function ($sub) {
             $sub->where('track_batches', true)
-                ->whereDoesntHave('batches', fn($b) => $b->active());
+                ->whereDoesntHave('batches', fn ($b) => $b->active());
         });
 
         if ($exact) {
@@ -51,12 +56,14 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
             ->where('barcode', $query)
             ->tap($hasActiveBatch)
             ->first();
-        if ($exactMatch) return collect([$exactMatch]);
+        if ($exactMatch) {
+            return collect([$exactMatch]);
+        }
 
         return Product::with('unit:id,name,abbreviation')
-            ->where(fn($q) => $q
-                ->where('name', 'like', '%' . $query . '%')
-                ->orWhere('barcode', 'like', '%' . $query . '%')
+            ->where(fn ($q) => $q
+                ->where('name', 'like', '%'.$query.'%')
+                ->orWhere('barcode', 'like', '%'.$query.'%')
             )
             ->tap($hasActiveBatch)
             ->orderByDesc('quantity')
@@ -68,14 +75,14 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
     {
         $query = Product::query()->with('unit')->orderByDesc('id');
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $s = $filters['search'];
-            $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")->orWhere('barcode', 'like', "%{$s}%"));
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$s}%")->orWhere('barcode', 'like', "%{$s}%"));
         }
-        if (!empty($filters['category'])) {
+        if (! empty($filters['category'])) {
             $query->where('category', $filters['category']);
         }
-        if (!empty($filters['low_stock'])) {
+        if (! empty($filters['low_stock'])) {
             $query->whereRaw('quantity <= min_stock AND quantity > 0');
         }
 
@@ -91,13 +98,14 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         return Product::create($data);
     }
 
-    public function update(Product|\Illuminate\Database\Eloquent\Model $product, array $data): Product
+    public function update(Product|Model $product, array $data): Product
     {
         $product->update($data);
+
         return $product->fresh();
     }
 
-    public function delete(Product|\Illuminate\Database\Eloquent\Model $product): void
+    public function delete(Product|Model $product): void
     {
         $product->delete();
     }
@@ -127,10 +135,10 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
 
     public function stats(): object
     {
-        return \Illuminate\Support\Facades\DB::table('products')->selectRaw("
+        return DB::table('products')->selectRaw('
             COUNT(*) as total,
             SUM(CASE WHEN quantity = 0 THEN 1 ELSE 0 END) as out_of_stock,
             SUM(CASE WHEN quantity > 0 AND quantity <= min_stock THEN 1 ELSE 0 END) as low_stock
-        ")->first();
+        ')->first();
     }
 }

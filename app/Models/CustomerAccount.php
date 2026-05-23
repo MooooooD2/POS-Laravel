@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CustomerAccount extends Model
 {
@@ -13,12 +14,12 @@ class CustomerAccount extends Model
     ];
 
     protected $casts = [
-        'debit'         => 'decimal:2',
-        'credit'        => 'decimal:2',
+        'debit' => 'decimal:2',
+        'credit' => 'decimal:2',
         'balance_after' => 'decimal:2',
     ];
 
-    public function customer(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }

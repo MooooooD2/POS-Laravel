@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Exports;
 
 use Illuminate\Support\Collection;
@@ -6,13 +7,13 @@ use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
-class SalesReportExport implements FromCollection, WithHeadings, ShouldAutoSize
+class SalesReportExport implements FromCollection, ShouldAutoSize, WithHeadings
 {
     public function __construct(private Collection $invoices) {}
 
     public function collection(): Collection
     {
-        return $this->invoices->map(fn($inv) => [
+        return $this->invoices->map(fn ($inv) => [
             $inv->invoice_number,
             number_format($inv->total, 2),
             number_format($inv->discount, 2),

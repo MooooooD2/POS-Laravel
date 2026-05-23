@@ -14,10 +14,10 @@ class ConnectorFactory
                 $printer->ip_address,
                 $printer->port
             ),
-            'usb'     => new UsbConnector($printer->usb_device),
+            'usb' => new UsbConnector($printer->usb_device),
             'windows' => new WindowsConnector($printer->windows_printer_name),
-            default   => throw new InvalidArgumentException(
-                "Unsupported connection type: " . $printer->connection_type
+            default => throw new InvalidArgumentException(
+                'Unsupported connection type: '.$printer->connection_type
             ),
         };
     }

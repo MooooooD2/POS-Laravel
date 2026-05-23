@@ -7,8 +7,8 @@ use App\Http\Requests\Printing\StorePrinterRequest;
 use App\Http\Requests\Printing\UpdatePrinterRequest;
 use App\Models\CashRegisterSession;
 use App\Models\Invoice;
-use App\Models\PrintJob;
 use App\Models\Printer;
+use App\Models\PrintJob;
 use App\Models\Product;
 use App\Models\SalesReturn;
 use App\Services\Printing\PrintJobManager;
@@ -16,7 +16,6 @@ use App\Services\Printing\ThermalPrinterService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class PrintController extends Controller
 {
@@ -24,7 +23,7 @@ class PrintController extends Controller
 
     public function __construct(
         private ThermalPrinterService $printerService,
-        private PrintJobManager       $jobManager
+        private PrintJobManager $jobManager
     ) {}
 
     // ── Print Actions ──────────────────────────────────────────────────────────
@@ -35,18 +34,18 @@ class PrintController extends Controller
      */
     public function printReceipt(PrintReceiptRequest $request): JsonResponse
     {
-        $type       = $request->input('document_type');
+        $type = $request->input('document_type');
         $documentId = (int) $request->input('document_id');
-        $printer    = $request->filled('printer_id')
+        $printer = $request->filled('printer_id')
             ? Printer::find($request->input('printer_id'))
             : null;
 
         $result = match ($type) {
-            'invoice'      => $this->printInvoice($documentId, $printer),
-            'return'       => $this->printReturn($documentId, $printer),
+            'invoice' => $this->printInvoice($documentId, $printer),
+            'return' => $this->printReturn($documentId, $printer),
             'shift_report' => $this->printShiftReport($documentId, $printer),
-            'barcode'      => $this->printBarcode($documentId, (int) $request->input('quantity', 1), $printer),
-            default        => ['success' => false, 'message' => 'Unknown document type'],
+            'barcode' => $this->printBarcode($documentId, (int) $request->input('quantity', 1), $printer),
+            default => ['success' => false, 'message' => 'Unknown document type'],
         };
 
         if ($result['success']) {
@@ -145,7 +144,7 @@ class PrintController extends Controller
             return $this->error('Printer is not reachable', 422);
 
         } catch (\Exception $e) {
-            return $this->error('Connection test failed: ' . $e->getMessage(), 422);
+            return $this->error('Connection test failed: '.$e->getMessage(), 422);
         }
     }
 
@@ -181,7 +180,7 @@ class PrintController extends Controller
      */
     public function retryJob(PrintJob $job): JsonResponse
     {
-        if (!$this->jobManager->retryJob($job)) {
+        if (! $this->jobManager->retryJob($job)) {
             return $this->error('Job cannot be retried (max attempts reached or wrong status)', 422);
         }
 
@@ -196,7 +195,7 @@ class PrintController extends Controller
      */
     public function cancelJob(PrintJob $job): JsonResponse
     {
-        if (!$this->jobManager->cancelJob($job)) {
+        if (! $this->jobManager->cancelJob($job)) {
             return $this->error('Job cannot be cancelled (not in pending/failed state)', 422);
         }
 
@@ -216,7 +215,9 @@ class PrintController extends Controller
     private function printInvoice(int $id, ?Printer $printer): array
     {
         $invoice = Invoice::find($id);
-        if (!$invoice) return ['success' => false, 'message' => "Invoice #{$id} not found"];
+        if (! $invoice) {
+            return ['success' => false, 'message' => "Invoice #{$id} not found"];
+        }
 
         return $this->printerService->printInvoice($invoice, $printer);
     }
@@ -224,7 +225,9 @@ class PrintController extends Controller
     private function printReturn(int $id, ?Printer $printer): array
     {
         $return = SalesReturn::find($id);
-        if (!$return) return ['success' => false, 'message' => "Return #{$id} not found"];
+        if (! $return) {
+            return ['success' => false, 'message' => "Return #{$id} not found"];
+        }
 
         return $this->printerService->printReturnReceipt($return, $printer);
     }
@@ -232,7 +235,9 @@ class PrintController extends Controller
     private function printShiftReport(int $id, ?Printer $printer): array
     {
         $session = CashRegisterSession::find($id);
-        if (!$session) return ['success' => false, 'message' => "Session #{$id} not found"];
+        if (! $session) {
+            return ['success' => false, 'message' => "Session #{$id} not found"];
+        }
 
         return $this->printerService->printShiftReport($session, $printer);
     }
@@ -240,7 +245,9 @@ class PrintController extends Controller
     private function printBarcode(int $id, int $quantity, ?Printer $printer): array
     {
         $product = Product::find($id);
-        if (!$product) return ['success' => false, 'message' => "Product #{$id} not found"];
+        if (! $product) {
+            return ['success' => false, 'message' => "Product #{$id} not found"];
+        }
 
         return $this->printerService->printBarcodeLabel($product, $quantity, $printer);
     }

@@ -23,8 +23,8 @@ class TapController extends Controller
     private function headers(): array
     {
         return [
-            'Authorization' => 'Bearer ' . config('services.tap.secret'),
-            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer '.config('services.tap.secret'),
+            'Content-Type' => 'application/json',
         ];
     }
 
@@ -33,38 +33,38 @@ class TapController extends Controller
     public function checkout(Request $request)
     {
         $data = $request->validate([
-            'plan_id'        => 'required|string|exists:mysql.plans,id',
+            'plan_id' => 'required|string|exists:mysql.plans,id',
             'billing_period' => 'required|in:monthly,annual',
         ]);
 
         $tenant = tenancy()->tenant;
-        $plan   = Plan::findOrFail($data['plan_id']);
+        $plan = Plan::findOrFail($data['plan_id']);
 
         $isAnnual = $data['billing_period'] === 'annual';
-        $price    = $isAnnual ? $plan->annual_price : $plan->monthly_price;
+        $price = $isAnnual ? $plan->annual_price : $plan->monthly_price;
 
-        if (!$price || $price <= 0) {
+        if (! $price || $price <= 0) {
             return $this->error(__('pos.invalid_plan_price'), 422);
         }
 
         $currency = config('services.tap.currency', 'SAR');
-        $months   = $isAnnual ? 12 : 1;
-        $user     = auth()->user();
+        $months = $isAnnual ? 12 : 1;
+        $user = auth()->user();
 
         $response = Http::withHeaders($this->headers())->post("{$this->baseUrl}/charges", [
-            'amount'      => (float) $price,
-            'currency'    => $currency,
-            'description' => $plan->name . ' — ' . ($isAnnual ? '12 months' : '1 month'),
-            'metadata'    => [
-                'tenant_id'      => $tenant->id,
-                'plan_id'        => $plan->id,
+            'amount' => (float) $price,
+            'currency' => $currency,
+            'description' => $plan->name.' — '.($isAnnual ? '12 months' : '1 month'),
+            'metadata' => [
+                'tenant_id' => $tenant->id,
+                'plan_id' => $plan->id,
                 'billing_period' => $data['billing_period'],
-                'months'         => $months,
+                'months' => $months,
             ],
-            'source'   => ['id' => 'src_all'],
+            'source' => ['id' => 'src_all'],
             'customer' => [
                 'first_name' => $user?->full_name ?? $tenant->name,
-                'email'      => $user?->email ?? null,
+                'email' => $user?->email ?? null,
             ],
             'redirect' => [
                 'url' => route('tap.callback'),
@@ -75,7 +75,7 @@ class TapController extends Controller
         ]);
 
         if ($response->successful()) {
-            $charge      = $response->json();
+            $charge = $response->json();
             $redirectUrl = $charge['transaction']['url'] ?? null;
 
             if ($redirectUrl) {
@@ -84,6 +84,7 @@ class TapController extends Controller
         }
 
         Log::error('Tap charge creation failed', ['response' => $response->json()]);
+
         return $this->error(__('pos.payment_error'), 500);
     }
 
@@ -93,20 +94,20 @@ class TapController extends Controller
     {
         $tapId = $request->query('tap_id');
 
-        if (!$tapId) {
+        if (! $tapId) {
             return redirect()->route('subscribe');
         }
 
         $response = Http::withHeaders($this->headers())->get("{$this->baseUrl}/charges/{$tapId}");
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return redirect()->route('subscribe')->withErrors(['payment' => __('pos.payment_failed')]);
         }
 
         $charge = $response->json();
 
         if (($charge['status'] ?? '') === 'CAPTURED') {
-            $ref    = $charge['reference']['merchant'] ?? '';
+            $ref = $charge['reference']['merchant'] ?? '';
             [$tenantId, $planId, $months] = array_pad(explode('|', $ref), 3, null);
 
             if ($tenantId && $planId && $months) {
@@ -115,10 +116,10 @@ class TapController extends Controller
 
             return view('subscription.success', [
                 'provider' => 'tap',
-                'amount'   => $charge['amount'] ?? 0,
+                'amount' => $charge['amount'] ?? 0,
                 'currency' => $charge['currency'] ?? 'SAR',
-                'txn_id'   => $charge['id'] ?? '',
-                'tenant'   => tenancy()->tenant,
+                'txn_id' => $charge['id'] ?? '',
+                'tenant' => tenancy()->tenant,
             ]);
         }
 
@@ -131,7 +132,7 @@ class TapController extends Controller
     {
         $chargeId = $request->json('id');
 
-        if (!$chargeId) {
+        if (! $chargeId) {
             return response('OK', 200);
         }
 
@@ -139,8 +140,9 @@ class TapController extends Controller
         // the webhook payload — prevents subscription activation via forged requests.
         $apiResponse = Http::withHeaders($this->headers())->get("{$this->baseUrl}/charges/{$chargeId}");
 
-        if (!$apiResponse->successful()) {
+        if (! $apiResponse->successful()) {
             Log::warning('Tap webhook: failed to verify charge', ['charge_id' => $chargeId]);
+
             return response('OK', 200);
         }
 
@@ -150,7 +152,7 @@ class TapController extends Controller
             return response('OK', 200);
         }
 
-        $ref    = $charge['reference']['merchant'] ?? '';
+        $ref = $charge['reference']['merchant'] ?? '';
         [$tenantId, $planId, $months] = array_pad(explode('|', $ref), 3, null);
 
         if ($tenantId && $planId && $months) {
@@ -165,23 +167,25 @@ class TapController extends Controller
     private function activateSubscription(string $tenantId, string $planId, int $months): void
     {
         $tenant = Tenant::find($tenantId);
-        if (!$tenant) return;
+        if (! $tenant) {
+            return;
+        }
 
         $base = ($tenant->subscription_ends_at && $tenant->subscription_ends_at->isFuture())
             ? $tenant->subscription_ends_at
             : Carbon::now();
 
         $tenant->update([
-            'plan'                 => $planId,
-            'subscription_status'  => 'active',
+            'plan' => $planId,
+            'subscription_status' => 'active',
             'subscription_ends_at' => $base->addMonths($months),
-            'is_active'            => true,
+            'is_active' => true,
         ]);
 
         Log::info('Tap subscription activated', [
             'tenant_id' => $tenantId,
-            'plan_id'   => $planId,
-            'months'    => $months,
+            'plan_id' => $planId,
+            'months' => $months,
         ]);
     }
 }

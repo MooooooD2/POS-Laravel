@@ -1,7 +1,9 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -12,7 +14,7 @@ class ValidationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
     }
 
     /** @test */
@@ -35,7 +37,7 @@ class ValidationTest extends TestCase
 
         $this->actingAs($cashier)
             ->postJson('/api/invoices', [
-                'items'          => [['product_id' => 1, 'quantity' => 1]],
+                'items' => [['product_id' => 1, 'quantity' => 1]],
                 'payment_method' => 'bitcoin',  // غير مسموح
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['payment_method']);
@@ -62,7 +64,7 @@ class ValidationTest extends TestCase
         $this->actingAs($admin)
             ->postJson('/api/journal-entries', [
                 'entry_date' => now()->addDays(10)->toDateString(),
-                'lines'      => [
+                'lines' => [
                     ['account_id' => 1, 'debit' => 100, 'credit' => 0],
                     ['account_id' => 2, 'debit' => 0, 'credit' => 100],
                 ],
@@ -79,7 +81,7 @@ class ValidationTest extends TestCase
         $this->actingAs($admin)
             ->postJson('/api/journal-entries', [
                 'entry_date' => now()->toDateString(),
-                'lines'      => [
+                'lines' => [
                     ['account_id' => 1, 'debit' => 100, 'credit' => 0],
                     ['account_id' => 2, 'debit' => 0,   'credit' => 50],  // غير متوازن
                 ],

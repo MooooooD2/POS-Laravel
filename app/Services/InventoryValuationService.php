@@ -12,8 +12,8 @@ class InventoryValuationService
 {
     public const METHODS = [
         'weighted_average' => ['ar' => 'المتوسط المرجح', 'en' => 'Weighted Average'],
-        'fifo'             => ['ar' => 'أول داخل أول خارج (FIFO)', 'en' => 'First In First Out (FIFO)'],
-        'lifo'             => ['ar' => 'آخر داخل أول خارج (LIFO)', 'en' => 'Last In First Out (LIFO)'],
+        'fifo' => ['ar' => 'أول داخل أول خارج (FIFO)', 'en' => 'First In First Out (FIFO)'],
+        'lifo' => ['ar' => 'آخر داخل أول خارج (LIFO)', 'en' => 'Last In First Out (LIFO)'],
     ];
 
     public function getMethod(): string
@@ -33,7 +33,7 @@ class InventoryValuationService
         ?int $referenceId,
         ?int $warehouseId = null
     ): void {
-        if (!in_array($this->getMethod(), ['fifo', 'lifo'])) {
+        if (! in_array($this->getMethod(), ['fifo', 'lifo'])) {
             return;
         }
 
@@ -42,13 +42,13 @@ class InventoryValuationService
         }
 
         InventoryCostLayer::create([
-            'product_id'     => $product->id,
-            'warehouse_id'   => $warehouseId,
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouseId,
             'reference_type' => $referenceType,
-            'reference_id'   => $referenceId,
-            'original_qty'   => $quantity,
-            'remaining_qty'  => $quantity,
-            'unit_cost'      => round($unitCost, 4),
+            'reference_id' => $referenceId,
+            'original_qty' => $quantity,
+            'remaining_qty' => $quantity,
+            'unit_cost' => round($unitCost, 4),
         ]);
     }
 
@@ -71,7 +71,7 @@ class InventoryValuationService
         }
 
         $query = InventoryCostLayer::where('product_id', $product->id)
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->when($warehouseId, fn ($q) => $q->where('warehouse_id', $warehouseId))
             ->lockForUpdate();
 
         $layers = $method === 'fifo'
@@ -105,7 +105,7 @@ class InventoryValuationService
 
         // Fallback for quantity not covered by existing layers (data inconsistency safeguard)
         if ($remaining > 0) {
-            $fallback   = $product->avg_cost > 0 ? (float) $product->avg_cost : (float) ($product->cost_price ?? 0);
+            $fallback = $product->avg_cost > 0 ? (float) $product->avg_cost : (float) ($product->cost_price ?? 0);
             $totalCost += $remaining * $fallback;
         }
 
@@ -133,14 +133,14 @@ class InventoryValuationService
         // ── Query 2: all active layers in FIFO order, grouped by product in PHP ──
         /** @var Collection<int, Collection<int, InventoryCostLayer>> $allLayersFifo */
         $allLayersFifo = InventoryCostLayer::whereIn('product_id', $productIds)
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->when($warehouseId, fn ($q) => $q->where('warehouse_id', $warehouseId))
             ->fifo()   // withStock() + ORDER BY created_at ASC, id ASC
             ->get()
             ->groupBy('product_id');
 
         // ── Query 3: layer count per product — one GROUP BY instead of N COUNT calls ──
         $layerCounts = InventoryCostLayer::whereIn('product_id', $productIds)
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->when($warehouseId, fn ($q) => $q->where('warehouse_id', $warehouseId))
             ->withStock()
             ->selectRaw('product_id, COUNT(*) as cnt')
             ->groupBy('product_id')
@@ -156,33 +156,33 @@ class InventoryValuationService
             $wacUnit = $product->avg_cost > 0 ? (float) $product->avg_cost : (float) ($product->cost_price ?? 0);
 
             // FIFO: layers in forward order; LIFO: reverse in-memory — zero extra DB queries
-            $layers    = $allLayersFifo->get($product->id) ?? collect();
+            $layers = $allLayersFifo->get($product->id) ?? collect();
             $fifoValue = $this->layerValueFromCollection($layers, $qty, $wacUnit);
             $lifoValue = $this->layerValueFromCollection($layers->reverse(), $qty, $wacUnit);
 
             $rows[] = [
-                'product_id'   => $product->id,
+                'product_id' => $product->id,
                 'product_name' => $product->name,
-                'quantity'     => $qty,
-                'wac_unit'     => round($wacUnit, 4),
-                'wac_value'    => round($qty * $wacUnit, 2),
-                'fifo_value'   => round($fifoValue, 2),
-                'lifo_value'   => round($lifoValue, 2),
+                'quantity' => $qty,
+                'wac_unit' => round($wacUnit, 4),
+                'wac_value' => round($qty * $wacUnit, 2),
+                'fifo_value' => round($fifoValue, 2),
+                'lifo_value' => round($lifoValue, 2),
                 'layers_count' => (int) ($layerCounts->get($product->id) ?? 0),
             ];
         }
 
         $totals = [
-            'wac_total'  => round(collect($rows)->sum('wac_value'),  2),
+            'wac_total' => round(collect($rows)->sum('wac_value'), 2),
             'fifo_total' => round(collect($rows)->sum('fifo_value'), 2),
             'lifo_total' => round(collect($rows)->sum('lifo_value'), 2),
         ];
 
         return [
-            'method'  => $this->getMethod(),
+            'method' => $this->getMethod(),
             'methods' => self::METHODS,
-            'rows'    => $rows,
-            'totals'  => $totals,
+            'rows' => $rows,
+            'totals' => $totals,
         ];
     }
 
@@ -197,12 +197,14 @@ class InventoryValuationService
         }
 
         $remaining = $totalQty;
-        $total     = 0.0;
+        $total = 0.0;
 
         foreach ($layers as $layer) {
-            if ($remaining <= 0) break;
-            $take      = min($layer->remaining_qty, $remaining);
-            $total    += $take * (float) $layer->unit_cost;
+            if ($remaining <= 0) {
+                break;
+            }
+            $take = min($layer->remaining_qty, $remaining);
+            $total += $take * (float) $layer->unit_cost;
             $remaining -= $take;
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Jobs;
 
 use App\Models\Invoice;
@@ -17,19 +18,20 @@ class GenerateSalesReport implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 3;
+    public int $tries = 3;
+
     public int $timeout = 120;
 
     public function __construct(
         private string $startDate,
         private string $endDate,
-        private int    $userId,
+        private int $userId,
         private string $cacheKey
     ) {}
 
     public function handle(): void
     {
-        $end = $this->endDate . ' 23:59:59';
+        $end = $this->endDate.' 23:59:59';
 
         $totals = Invoice::where('status', 'completed')
             ->whereBetween('created_at', [$this->startDate, $end])
@@ -53,15 +55,15 @@ class GenerateSalesReport implements ShouldQueue
             ->get();
 
         $result = [
-            'status'         => 'ready',
-            'generated_at'   => now()->toDateTimeString(),
-            'period'         => ['from' => $this->startDate, 'to' => $this->endDate],
-            'total_revenue'  => $totals->total_revenue  ?? 0,
-            'total_tax'      => $totals->total_tax      ?? 0,
+            'status' => 'ready',
+            'generated_at' => now()->toDateTimeString(),
+            'period' => ['from' => $this->startDate, 'to' => $this->endDate],
+            'total_revenue' => $totals->total_revenue ?? 0,
+            'total_tax' => $totals->total_tax ?? 0,
             'total_discount' => $totals->total_discount ?? 0,
-            'total_count'    => $totals->total_count    ?? 0,
-            'by_payment'     => $byPayment,
-            'top_products'   => $topProducts,
+            'total_count' => $totals->total_count ?? 0,
+            'by_payment' => $byPayment,
+            'top_products' => $topProducts,
         ];
 
         // نخزّن في Cache لمدة ساعة — المستخدم يسحبها بـ cacheKey

@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Invoice;
 use App\Models\SalesReturn;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,13 +32,13 @@ class FraudDetectionController extends Controller
         $since = now()->subHours($hours);
 
         return response()->json([
-            'period_hours'         => $hours,
-            'since'                => $since->toIso8601String(),
-            'realtime_signals'     => $this->realtimeSignals($since),
-            'off_hours_invoices'   => $this->offHoursInvoices($since),
-            'excessive_returns'    => $this->excessiveReturns($since),
+            'period_hours' => $hours,
+            'since' => $since->toIso8601String(),
+            'realtime_signals' => $this->realtimeSignals($since),
+            'off_hours_invoices' => $this->offHoursInvoices($since),
+            'excessive_returns' => $this->excessiveReturns($since),
             'brute_force_attempts' => $this->bruteForceAttempts($since),
-            'signal_summary'       => $this->signalSummary($since),
+            'signal_summary' => $this->signalSummary($since),
         ]);
     }
 
@@ -47,7 +48,7 @@ class FraudDetectionController extends Controller
      * Real-time anomaly events written by the AnomalyDetection middleware.
      * Groups by action type and user, returns most recent 100 events.
      */
-    private function realtimeSignals(\Carbon\Carbon $since): array
+    private function realtimeSignals(Carbon $since): array
     {
         $events = AuditLog::where('action', 'like', 'anomaly.%')
             ->where('created_at', '>=', $since)
@@ -55,21 +56,21 @@ class FraudDetectionController extends Controller
             ->limit(100)
             ->get(['action', 'username', 'user_id', 'ip_address', 'changes', 'created_at']);
 
-        $byType = $events->groupBy('action')->map(fn($g) => [
-            'count'    => $g->count(),
-            'users'    => $g->pluck('username')->unique()->values(),
-            'latest'   => $g->first()->created_at->toIso8601String(),
-            'events'   => $g->take(10)->map(fn($e) => [
-                'username'   => $e->username,
+        $byType = $events->groupBy('action')->map(fn ($g) => [
+            'count' => $g->count(),
+            'users' => $g->pluck('username')->unique()->values(),
+            'latest' => $g->first()->created_at->toIso8601String(),
+            'events' => $g->take(10)->map(fn ($e) => [
+                'username' => $e->username,
                 'ip_address' => $e->ip_address,
-                'details'    => $e->changes,
-                'at'         => $e->created_at->toIso8601String(),
+                'details' => $e->changes,
+                'at' => $e->created_at->toIso8601String(),
             ])->values(),
         ])->sortByDesc('count')->values();
 
         return [
             'total_events' => $events->count(),
-            'by_type'      => $byType,
+            'by_type' => $byType,
         ];
     }
 
@@ -77,15 +78,15 @@ class FraudDetectionController extends Controller
      * Invoices created during off-hours (configurable window, default 10pm–6am).
      * This is a server-side analytical signal — not caught by the middleware per-request.
      */
-    private function offHoursInvoices(\Carbon\Carbon $since): array
+    private function offHoursInvoices(Carbon $since): array
     {
         $start = config('security.anomaly.off_hours_start', 22);
-        $end   = config('security.anomaly.off_hours_end', 6);
+        $end = config('security.anomaly.off_hours_end', 6);
 
         // Build a HOUR() condition that spans midnight (e.g. hour >= 22 OR hour < 6)
         $rows = Invoice::where('created_at', '>=', $since)
             ->where('status', 'completed')
-            ->where(fn($q) => $q
+            ->where(fn ($q) => $q
                 ->whereRaw('HOUR(created_at) >= ?', [$start])
                 ->orWhereRaw('HOUR(created_at) < ?', [$end])
             )
@@ -94,29 +95,29 @@ class FraudDetectionController extends Controller
             ->limit(50)
             ->get(['id', 'invoice_number', 'cashier_id', 'final_total', 'payment_method', 'created_at']);
 
-        $byCashier = $rows->groupBy('cashier_id')->map(fn($g) => [
-            'cashier'       => optional($g->first()->cashier)->username,
+        $byCashier = $rows->groupBy('cashier_id')->map(fn ($g) => [
+            'cashier' => optional($g->first()->cashier)->username,
             'invoice_count' => $g->count(),
-            'total_amount'  => round($g->sum('final_total'), 2),
-            'invoices'      => $g->map(fn($i) => [
+            'total_amount' => round($g->sum('final_total'), 2),
+            'invoices' => $g->map(fn ($i) => [
                 'invoice_number' => $i->invoice_number,
-                'amount'         => $i->final_total,
+                'amount' => $i->final_total,
                 'payment_method' => $i->payment_method,
-                'at'             => $i->created_at->toIso8601String(),
+                'at' => $i->created_at->toIso8601String(),
             ])->values(),
         ])->values();
 
         return [
-            'window'        => "{$start}:00–{$end}:00",
-            'total_count'   => $rows->count(),
-            'by_cashier'    => $byCashier,
+            'window' => "{$start}:00–{$end}:00",
+            'total_count' => $rows->count(),
+            'by_cashier' => $byCashier,
         ];
     }
 
     /**
      * Cashiers with an unusually high number of completed returns in the period.
      */
-    private function excessiveReturns(\Carbon\Carbon $since): array
+    private function excessiveReturns(Carbon $since): array
     {
         $threshold = config('security.anomaly.excessive_returns_threshold', 5);
 
@@ -130,11 +131,11 @@ class FraudDetectionController extends Controller
 
         return [
             'threshold' => $threshold,
-            'flagged_cashiers' => $rows->map(fn($r) => [
-                'user_id'        => $r->processed_by,
-                'username'       => $r->processed_by_name,
-                'return_count'   => (int) $r->return_count,
-                'total_amount'   => round((float) $r->total_amount, 2),
+            'flagged_cashiers' => $rows->map(fn ($r) => [
+                'user_id' => $r->processed_by,
+                'username' => $r->processed_by_name,
+                'return_count' => (int) $r->return_count,
+                'total_amount' => round((float) $r->total_amount, 2),
             ])->values(),
         ];
     }
@@ -143,7 +144,7 @@ class FraudDetectionController extends Controller
      * IPs and usernames with the most failed login attempts in the period.
      * Reuses the auth.login_failed entries already written by AuthController.
      */
-    private function bruteForceAttempts(\Carbon\Carbon $since): array
+    private function bruteForceAttempts(Carbon $since): array
     {
         $byIp = AuditLog::where('action', 'auth.login_failed')
             ->where('created_at', '>=', $since)
@@ -164,18 +165,18 @@ class FraudDetectionController extends Controller
         $threshold = config('security.anomaly.failed_logins_threshold', 10);
 
         return [
-            'threshold'   => $threshold,
-            'top_ips'     => $byIp->map(fn($r) => [
-                'ip'           => $r->ip_address,
-                'attempts'     => (int) $r->attempts,
+            'threshold' => $threshold,
+            'top_ips' => $byIp->map(fn ($r) => [
+                'ip' => $r->ip_address,
+                'attempts' => (int) $r->attempts,
                 'last_attempt' => $r->last_attempt,
-                'flagged'      => (int) $r->attempts >= $threshold,
+                'flagged' => (int) $r->attempts >= $threshold,
             ])->values(),
-            'top_usernames' => $byUsername->map(fn($r) => [
-                'username'     => $r->username,
-                'attempts'     => (int) $r->attempts,
+            'top_usernames' => $byUsername->map(fn ($r) => [
+                'username' => $r->username,
+                'attempts' => (int) $r->attempts,
                 'last_attempt' => $r->last_attempt,
-                'flagged'      => (int) $r->attempts >= $threshold,
+                'flagged' => (int) $r->attempts >= $threshold,
             ])->values(),
         ];
     }
@@ -183,25 +184,25 @@ class FraudDetectionController extends Controller
     /**
      * One-line counts for a dashboard widget — total signals by severity category.
      */
-    private function signalSummary(\Carbon\Carbon $since): array
+    private function signalSummary(Carbon $since): array
     {
-        $anomalyCount  = AuditLog::where('action', 'like', 'anomaly.%')->where('created_at', '>=', $since)->count();
+        $anomalyCount = AuditLog::where('action', 'like', 'anomaly.%')->where('created_at', '>=', $since)->count();
         $authFailCount = AuditLog::where('action', 'auth.login_failed')->where('created_at', '>=', $since)->count();
 
         $offHoursStart = config('security.anomaly.off_hours_start', 22);
-        $offHoursEnd   = config('security.anomaly.off_hours_end', 6);
+        $offHoursEnd = config('security.anomaly.off_hours_end', 6);
         $offHoursCount = Invoice::where('created_at', '>=', $since)
             ->where('status', 'completed')
-            ->where(fn($q) => $q
+            ->where(fn ($q) => $q
                 ->whereRaw('HOUR(created_at) >= ?', [$offHoursStart])
                 ->orWhereRaw('HOUR(created_at) < ?', [$offHoursEnd])
             )->count();
 
         return [
-            'anomaly_events'    => $anomalyCount,
-            'auth_failures'     => $authFailCount,
+            'anomaly_events' => $anomalyCount,
+            'auth_failures' => $authFailCount,
             'off_hours_invoices' => $offHoursCount,
-            'total_signals'     => $anomalyCount + $authFailCount + $offHoursCount,
+            'total_signals' => $anomalyCount + $authFailCount + $offHoursCount,
         ];
     }
 }

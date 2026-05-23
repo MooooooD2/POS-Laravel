@@ -1,15 +1,17 @@
 <?php
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $guard = 'web';
 
@@ -75,9 +77,9 @@ class RolePermissionSeeder extends Seeder
         }
 
         // ── Roles ─────────────────────────────────────────────────────────────
-        $admin     = Role::firstOrCreate(['name' => 'admin',     'guard_name' => $guard]);
+        $admin = Role::firstOrCreate(['name' => 'admin',     'guard_name' => $guard]);
         $warehouse = Role::firstOrCreate(['name' => 'warehouse', 'guard_name' => $guard]);
-        $cashier   = Role::firstOrCreate(['name' => 'cashier',   'guard_name' => $guard]);
+        $cashier = Role::firstOrCreate(['name' => 'cashier',   'guard_name' => $guard]);
 
         // Admin gets everything except manage_tenants — that belongs to the master tenant only.
         // If this IS the master tenant, also grant manage_tenants.

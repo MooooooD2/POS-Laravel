@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
@@ -12,13 +13,14 @@ class ImageUploadService
 {
     // #34 الأنواع المسموحة فقط (MIME الحقيقي من محتوى الملف)
     private const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-    private const MAX_SIZE_BYTES     = 2 * 1024 * 1024; // 2MB
+
+    private const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 
     public function uploadProductImage(UploadedFile $file, ?string $oldPath = null): string
     {
         // #34 التحقق من MIME الحقيقي (ليس الامتداد فقط)
         $realMime = $file->getMimeType();
-        if (!in_array($realMime, self::ALLOWED_MIME_TYPES, true)) {
+        if (! in_array($realMime, self::ALLOWED_MIME_TYPES, true)) {
             throw new \InvalidArgumentException('نوع الملف غير مسموح به.');
         }
 
@@ -28,8 +30,8 @@ class ImageUploadService
         }
 
         // #33 اسم عشوائي — لا يعتمد على اسم المستخدم (يمنع path traversal)
-        $filename  = Str::uuid() . '.' . $file->extension();
-        $directory = 'products/' . date('Y/m');
+        $filename = Str::uuid().'.'.$file->extension();
+        $directory = 'products/'.date('Y/m');
 
         // #33 حفظ في disk منفصل (public) بعيداً عن app/
         $path = $file->storeAs($directory, $filename, 'public');

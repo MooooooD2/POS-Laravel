@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Product;
+use Illuminate\Database\Seeder;
 
 class ProductSeeder extends Seeder
 {
@@ -16,20 +16,20 @@ class ProductSeeder extends Seeder
             ['صابون سائل 500مل', 12.0,  7.0, 200, 20, '123456789004', 'منظفات',    'شركة النظافة'],
             ['شامبو 250 مل',     45.0, 30.0,  60,  6, '123456789005', 'مستحضرات',  'شركة التجميل'],
             ['مكرونة 400 جرام',  8.50,  5.0, 300, 30, '123456789006', 'أغذية',     'شركة النور'],
-            ['عصير برتقال 1 لتر',18.0, 12.0,  90,  9, '123456789007', 'مشروبات',   'شركة النور'],
-            ['مياه معدنية 1.5 لتر',3.0, 1.5, 500, 50, '123456789008', 'مشروبات',   'شركة المياه'],
+            ['عصير برتقال 1 لتر', 18.0, 12.0,  90,  9, '123456789007', 'مشروبات',   'شركة النور'],
+            ['مياه معدنية 1.5 لتر', 3.0, 1.5, 500, 50, '123456789008', 'مشروبات',   'شركة المياه'],
         ];
 
         foreach ($products as $p) {
             Product::firstOrCreate(['barcode' => $p[5]], [
-                'name'       => $p[0],
-                'price'      => $p[1],
+                'name' => $p[0],
+                'price' => $p[1],
                 'cost_price' => $p[2],
-                'quantity'   => $p[3],
-                'min_stock'  => $p[4],
-                'barcode'    => $p[5],
-                'category'   => $p[6],
-                'supplier'   => $p[7],
+                'quantity' => $p[3],
+                'min_stock' => $p[4],
+                'barcode' => $p[5],
+                'category' => $p[6],
+                'supplier' => $p[7],
             ]);
         }
     }

@@ -18,15 +18,15 @@ class WindowsConnector implements ConnectorInterface
     public function open(): void
     {
         if (empty($this->printerName)) {
-            throw new Exception("Windows printer name not configured");
+            throw new Exception('Windows printer name not configured');
         }
         $this->tempFile = tempnam(sys_get_temp_dir(), 'escpos_');
     }
 
     public function send(string $data): void
     {
-        if (!$this->tempFile) {
-            throw new Exception("Connector not open");
+        if (! $this->tempFile) {
+            throw new Exception('Connector not open');
         }
 
         file_put_contents($this->tempFile, $data);

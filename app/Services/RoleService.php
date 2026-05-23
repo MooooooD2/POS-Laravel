@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\Repositories\RoleRepositoryInterface;
@@ -24,7 +25,7 @@ class RoleService
     public function create(array $data): Role
     {
         return $this->roleRepo->create([
-            'name'       => $data['name'],
+            'name' => $data['name'],
             'guard_name' => $data['guard_name'] ?? 'web',
         ]);
     }
@@ -32,6 +33,7 @@ class RoleService
     public function update(Role $role, array $data): Role
     {
         $this->guardProtected($role);
+
         return $this->roleRepo->update($role, ['name' => $data['name']]);
     }
 

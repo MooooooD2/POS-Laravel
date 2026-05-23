@@ -1,16 +1,19 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\SupplierRepositoryInterface;
 use App\Models\Supplier;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class SupplierRepository extends BaseRepository implements SupplierRepositoryInterface
 {
     public function __construct()
     {
-        $this->model = new Supplier();
+        $this->model = new Supplier;
     }
 
     public function findOrFail(int $id): Supplier
@@ -22,9 +25,9 @@ class SupplierRepository extends BaseRepository implements SupplierRepositoryInt
     {
         $query = Supplier::orderByDesc('id');
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $s = $filters['search'];
-            $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")->orWhere('phone', 'like', "%{$s}%"));
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$s}%")->orWhere('phone', 'like', "%{$s}%"));
         }
 
         if ($fetchAll) {
@@ -39,13 +42,14 @@ class SupplierRepository extends BaseRepository implements SupplierRepositoryInt
         return Supplier::create($data);
     }
 
-    public function update(Supplier|\Illuminate\Database\Eloquent\Model $supplier, array $data): Supplier
+    public function update(Supplier|Model $supplier, array $data): Supplier
     {
         $supplier->update($data);
+
         return $supplier->fresh();
     }
 
-    public function delete(Supplier|\Illuminate\Database\Eloquent\Model $supplier): void
+    public function delete(Supplier|Model $supplier): void
     {
         $supplier->delete();
     }
@@ -57,6 +61,6 @@ class SupplierRepository extends BaseRepository implements SupplierRepositoryInt
 
     public function count(): int
     {
-        return \Illuminate\Support\Facades\DB::table('suppliers')->whereNull('deleted_at')->count();
+        return DB::table('suppliers')->whereNull('deleted_at')->count();
     }
 }

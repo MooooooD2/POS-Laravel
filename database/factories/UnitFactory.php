@@ -19,9 +19,9 @@ class UnitFactory extends Factory
         $pick = fake()->unique()->randomElement($units);
 
         return [
-            'name'         => $pick['name'],
+            'name' => $pick['name'],
             'abbreviation' => $pick['abbreviation'],
-            'is_active'    => true,
+            'is_active' => true,
         ];
     }
 

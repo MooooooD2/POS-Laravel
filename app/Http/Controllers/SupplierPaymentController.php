@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSupplierPaymentRequest;
@@ -14,23 +15,28 @@ class SupplierPaymentController extends Controller
 
     public function __construct(private SupplierPaymentService $paymentService) {}
 
-    public function index() { return view('supplier-payments.index'); }
+    public function index()
+    {
+        return view('supplier-payments.index');
+    }
 
     public function all(Request $request)
     {
         $request->validate(['supplier_id' => 'nullable|integer|exists:suppliers,id']);
+
         return $this->success(['payments' => $this->paymentService->all($request->only(['supplier_id']))]);
     }
 
     public function store(StoreSupplierPaymentRequest $request)
     {
         $this->authorize('create', SupplierPayment::class);
-        $data    = $request->validated();
+        $data = $request->validated();
         $payment = $this->paymentService->create($data);
         $this->audit('payment.created', SupplierPayment::class, (int) $payment->id, [
             'supplier_id' => $data['supplier_id'],
-            'amount'      => $data['amount'],
+            'amount' => $data['amount'],
         ]);
+
         return $this->success(message: __('pos.payment_created'), code: 201);
     }
 }

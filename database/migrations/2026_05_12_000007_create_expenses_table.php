@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -22,7 +22,7 @@ return new class extends Migration
             ['name' => 'Utilities',   'description' => 'Electricity, water, internet',     'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Salaries',    'description' => 'Employee wages and salaries',       'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Transport',   'description' => 'Delivery and transport costs',      'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Maintenance', 'description' => 'Equipment and premises maintenance','created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Maintenance', 'description' => 'Equipment and premises maintenance', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Marketing',   'description' => 'Advertising and promotions',        'created_at' => now(), 'updated_at' => now()],
             ['name' => 'Other',       'description' => 'Miscellaneous expenses',            'created_at' => now(), 'updated_at' => now()],
         ]);

@@ -19,8 +19,9 @@ class Setting extends Model
             return static::where('key', $key)->first();
         });
 
-        if (!$setting)
+        if (! $setting) {
             return $default;
+        }
 
         return match ($setting->type) {
             'boolean' => (bool) $setting->value,
@@ -47,7 +48,7 @@ class Setting extends Model
     {
         return static::where('group', $group)->get()
             ->keyBy('key')
-            ->map(fn($s) => [
+            ->map(fn ($s) => [
                 'key' => $s->key,
                 'value' => $s->value,
                 'type' => $s->type,
@@ -63,7 +64,7 @@ class Setting extends Model
     {
         return static::all()
             ->groupBy('group')
-            ->map(fn($g) => $g->keyBy('key')->map(fn($s) => [
+            ->map(fn ($g) => $g->keyBy('key')->map(fn ($s) => [
                 'value' => $s->value,
                 'type' => $s->type,
                 'label_ar' => $s->label_ar,

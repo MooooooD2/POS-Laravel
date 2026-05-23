@@ -1,8 +1,13 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\AuthServiceProvider;
+use App\Providers\PrintingServiceProvider;
+use App\Providers\RepositoryServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\AuthServiceProvider::class,
-    App\Providers\RepositoryServiceProvider::class,
-    App\Providers\PrintingServiceProvider::class,
+    AppServiceProvider::class,
+    AuthServiceProvider::class,
+    RepositoryServiceProvider::class,
+    PrintingServiceProvider::class,
 ];

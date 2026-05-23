@@ -14,9 +14,9 @@ return new class extends Migration
         });
 
         // Seed avg_cost and last_cost from existing cost_price
-        \DB::table('products')->update([
-            'avg_cost'  => \DB::raw('cost_price'),
-            'last_cost' => \DB::raw('cost_price'),
+        DB::table('products')->update([
+            'avg_cost' => DB::raw('cost_price'),
+            'last_cost' => DB::raw('cost_price'),
         ]);
     }
 

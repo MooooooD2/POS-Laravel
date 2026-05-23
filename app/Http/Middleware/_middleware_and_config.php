@@ -1,4 +1,5 @@
 <?php
+
 // =============================================================
 // MIDDLEWARE & CONFIG FILES - ملفات الوسيط والإعداد
 // =============================================================
@@ -6,6 +7,7 @@
 // ---------------------------------------------------------------
 // FILE: app/Http/Middleware/SetLocale.php
 // ---------------------------------------------------------------
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -49,6 +51,7 @@ $middleware->web(append: [
 // ---------------------------------------------------------------
 // FILE: app/Http/Middleware/Authenticate.php  (Redirect to login)
 // ---------------------------------------------------------------
+
 namespace App\Http\Middleware;
 
 use Illuminate\Auth\Middleware\Authenticate as Middleware;

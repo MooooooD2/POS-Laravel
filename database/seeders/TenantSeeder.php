@@ -24,23 +24,24 @@ class TenantSeeder extends Seeder
         // Only create if no tenants exist yet
         if (Tenant::count() > 0) {
             $this->command->info('Tenants already seeded – skipping.');
+
             return;
         }
 
         $tenant = Tenant::create([
-            'name'      => 'المتجر الرئيسي',
-            'code'      => 'main',
-            'plan'      => 'enterprise',
+            'name' => 'المتجر الرئيسي',
+            'code' => 'main',
+            'plan' => 'enterprise',
             'is_active' => true,
         ]);
         // CreateDatabase + MigrateDatabase event listeners fire automatically
 
-        $this->command->info("✅ Master tenant created:");
+        $this->command->info('✅ Master tenant created:');
         $this->command->info("   ID:   {$tenant->id}");
         $this->command->info("   Code: {$tenant->code}");
         $this->command->info("   DB:   tenant_{$tenant->id}");
         $this->command->newLine();
-        $this->command->warn("👉 Add this to your .env file:");
+        $this->command->warn('👉 Add this to your .env file:');
         $this->command->warn("   MASTER_TENANT_ID={$tenant->id}");
         $this->command->newLine();
         $this->command->info("Then seed the master tenant's data:");

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Product;
@@ -30,8 +31,8 @@ class StockReservationService
     /**
      * Reserve $qty units of a product in the given warehouse.
      *
-     * @throws \InvalidArgumentException  If $qty ≤ 0.
-     * @throws \Exception                 If available stock < $qty.
+     * @throws \InvalidArgumentException If $qty ≤ 0.
+     * @throws \Exception If available stock < $qty.
      */
     public function reserve(Product $product, int $qty, ?int $warehouseId = null): void
     {
@@ -48,7 +49,7 @@ class StockReservationService
 
             if ($available < $qty) {
                 throw new \Exception(__('pos.insufficient_available_stock', [
-                    'name'      => $product->name,
+                    'name' => $product->name,
                     'available' => $available,
                     'requested' => $qty,
                 ]));
@@ -66,7 +67,9 @@ class StockReservationService
      */
     public function release(Product $product, int $qty, ?int $warehouseId = null): void
     {
-        if ($qty <= 0) return;
+        if ($qty <= 0) {
+            return;
+        }
 
         DB::transaction(function () use ($product, $qty, $warehouseId) {
             $ws = $this->getLockedWarehouseStock($product->id, $warehouseId);
@@ -89,7 +92,7 @@ class StockReservationService
      *   2. Returned the stale model's avg_cost which is wrong for FIFO/LIFO — now
      *      uses deductLockedStock() which returns the exact unit cost consumed.
      *
-     * @return float  The unit cost actually consumed (FIFO/LIFO/WAC from cost layers).
+     * @return float The unit cost actually consumed (FIFO/LIFO/WAC from cost layers).
      */
     public function fulfill(
         Product $product,
@@ -136,6 +139,7 @@ class StockReservationService
             $ws = WarehouseStock::where('warehouse_id', $warehouseId)
                 ->where('product_id', $product->id)
                 ->first();
+
             return $ws ? $ws->available_qty : 0;
         }
 
@@ -159,7 +163,9 @@ class StockReservationService
     {
         $wid = $warehouseId ?? Warehouse::where('is_default', true)->value('id');
 
-        if (!$wid) return null;
+        if (! $wid) {
+            return null;
+        }
 
         // Ensure the row exists
         WarehouseStock::firstOrCreate(

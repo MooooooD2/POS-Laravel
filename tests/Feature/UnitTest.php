@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Product;
 use App\Models\Unit;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ class UnitTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $cashier;
 
     protected function setUp(): void
@@ -29,7 +31,7 @@ class UnitTest extends TestCase
             DB::connection('tenant')->setPdo(DB::connection()->getPdo());
         }
 
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
         $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');
@@ -82,7 +84,7 @@ class UnitTest extends TestCase
     public function admin_can_create_unit()
     {
         $res = $this->actingAs($this->admin)->postJson('/api/units', [
-            'name'         => 'كيلوغرام',
+            'name' => 'كيلوغرام',
             'abbreviation' => 'كجم',
         ]);
 
@@ -155,7 +157,7 @@ class UnitTest extends TestCase
         $unit = Unit::factory()->create(['name' => 'قديم', 'abbreviation' => 'ق']);
 
         $res = $this->actingAs($this->admin)->putJson("/api/units/{$unit->id}", [
-            'name'         => 'جديد',
+            'name' => 'جديد',
             'abbreviation' => 'ج',
         ]);
 
@@ -172,7 +174,7 @@ class UnitTest extends TestCase
         $unit = Unit::factory()->create(['name' => 'كيلوغرام']);
 
         $res = $this->actingAs($this->admin)->putJson("/api/units/{$unit->id}", [
-            'name'         => 'كيلوغرام',
+            'name' => 'كيلوغرام',
             'abbreviation' => 'كجم',
         ]);
 
@@ -220,7 +222,7 @@ class UnitTest extends TestCase
     /** @test */
     public function cannot_delete_unit_that_has_products()
     {
-        $unit    = Unit::factory()->create();
+        $unit = Unit::factory()->create();
         $product = Product::factory()->create(['unit_id' => $unit->id]);
 
         $res = $this->actingAs($this->admin)->deleteJson("/api/units/{$unit->id}");
@@ -250,10 +252,10 @@ class UnitTest extends TestCase
         $unit = Unit::factory()->create(['name' => 'كيلوغرام', 'abbreviation' => 'كجم']);
 
         $res = $this->actingAs($this->admin)->postJson('/api/products', [
-            'name'      => 'سكر',
-            'price'     => 20,
-            'cost_price'=> 15,
-            'unit_id'   => $unit->id,
+            'name' => 'سكر',
+            'price' => 20,
+            'cost_price' => 15,
+            'unit_id' => $unit->id,
         ]);
 
         $res->assertCreated()->assertJsonPath('product.unit_id', $unit->id);
@@ -263,24 +265,24 @@ class UnitTest extends TestCase
     /** @test */
     public function product_unit_is_returned_in_listing()
     {
-        $unit    = Unit::factory()->create(['name' => 'لتر', 'abbreviation' => 'لتر']);
+        $unit = Unit::factory()->create(['name' => 'لتر', 'abbreviation' => 'لتر']);
         Product::factory()->create(['unit_id' => $unit->id]);
 
         $res = $this->actingAs($this->admin)->getJson('/api/products');
 
         $res->assertOk();
         $products = $res->json('products');
-        $first    = is_array($products) ? ($products[0] ?? $products['data'][0] ?? null) : null;
+        $first = is_array($products) ? ($products[0] ?? $products['data'][0] ?? null) : null;
         $this->assertNotNull($first);
-        $this->assertEquals($unit->id,   $first['unit_id']);
-        $this->assertEquals('لتر',       $first['unit_name']);
-        $this->assertEquals('لتر',       $first['unit_abbreviation']);
+        $this->assertEquals($unit->id, $first['unit_id']);
+        $this->assertEquals('لتر', $first['unit_name']);
+        $this->assertEquals('لتر', $first['unit_abbreviation']);
     }
 
     /** @test */
     public function product_unit_is_nulled_when_unit_is_deleted()
     {
-        $unit    = Unit::factory()->create();
+        $unit = Unit::factory()->create();
         $product = Product::factory()->create(['unit_id' => $unit->id]);
 
         // SQLite with FK constraints disabled doesn't cascade nullOnDelete;
@@ -295,8 +297,8 @@ class UnitTest extends TestCase
     public function invalid_unit_id_is_rejected_on_product_creation()
     {
         $res = $this->actingAs($this->admin)->postJson('/api/products', [
-            'name'    => 'منتج',
-            'price'   => 10,
+            'name' => 'منتج',
+            'price' => 10,
             'unit_id' => 99999,
         ]);
 

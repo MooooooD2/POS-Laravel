@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\DashboardRepositoryInterface;
@@ -13,7 +14,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
 {
     public function __construct()
     {
-        $this->model = new Invoice();
+        $this->model = new Invoice;
     }
 
     public function todaySalesStats(string $date): object
@@ -63,11 +64,11 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
 
     public function productStats(): object
     {
-        return DB::table('products')->selectRaw("
+        return DB::table('products')->selectRaw('
             COUNT(*) as total,
             SUM(CASE WHEN quantity = 0 THEN 1 ELSE 0 END) as out_of_stock,
             SUM(CASE WHEN quantity > 0 AND quantity <= min_stock THEN 1 ELSE 0 END) as low_stock
-        ")->first();
+        ')->first();
     }
 
     public function totalRevenue(): float

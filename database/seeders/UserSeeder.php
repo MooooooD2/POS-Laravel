@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-use App\Models\User;
 use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
@@ -15,34 +14,34 @@ class UserSeeder extends Seeder
         // FIX-2: التحقق من وجود كلمات المرور قبل الـ seed
         $this->validatePasswords();
 
-        $adminRole     = Role::firstOrCreate(['name' => 'admin',     'guard_name' => 'web']);
-        $cashierRole   = Role::firstOrCreate(['name' => 'cashier',   'guard_name' => 'web']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin',     'guard_name' => 'web']);
+        $cashierRole = Role::firstOrCreate(['name' => 'cashier',   'guard_name' => 'web']);
         $warehouseRole = Role::firstOrCreate(['name' => 'warehouse',  'guard_name' => 'web']);
 
         $admin = User::firstOrCreate(['username' => 'admin'], [
-            'password'  => Hash::make(env('ADMIN_PASSWORD')),
+            'password' => Hash::make(env('ADMIN_PASSWORD')),
             'full_name' => 'المدير العام',
-            'role'      => 'admin',
+            'role' => 'admin',
             'is_active' => true,
-            'language'  => 'ar',
+            'language' => 'ar',
         ]);
         $admin->syncRoles([$adminRole]);
 
         $cashier = User::firstOrCreate(['username' => 'cashier'], [
-            'password'  => Hash::make(env('CASHIER_PASSWORD')),
+            'password' => Hash::make(env('CASHIER_PASSWORD')),
             'full_name' => 'أمين الصندوق',
-            'role'      => 'cashier',
+            'role' => 'cashier',
             'is_active' => true,
-            'language'  => 'ar',
+            'language' => 'ar',
         ]);
         $cashier->syncRoles([$cashierRole]);
 
         $warehouse = User::firstOrCreate(['username' => 'warehouse'], [
-            'password'  => Hash::make(env('WAREHOUSE_PASSWORD')),
+            'password' => Hash::make(env('WAREHOUSE_PASSWORD')),
             'full_name' => 'مسؤول المخزن',
-            'role'      => 'warehouse',
+            'role' => 'warehouse',
             'is_active' => true,
-            'language'  => 'ar',
+            'language' => 'ar',
         ]);
         $warehouse->syncRoles([$warehouseRole]);
 
@@ -56,8 +55,8 @@ class UserSeeder extends Seeder
     private function validatePasswords(?array $passwords = null): void
     {
         $required = $passwords ?? [
-            'ADMIN_PASSWORD'     => env('ADMIN_PASSWORD'),
-            'CASHIER_PASSWORD'   => env('CASHIER_PASSWORD'),
+            'ADMIN_PASSWORD' => env('ADMIN_PASSWORD'),
+            'CASHIER_PASSWORD' => env('CASHIER_PASSWORD'),
             'WAREHOUSE_PASSWORD' => env('WAREHOUSE_PASSWORD'),
         ];
 
@@ -68,7 +67,7 @@ class UserSeeder extends Seeder
             }
         }
 
-        if (!empty($missing)) {
+        if (! empty($missing)) {
             if ($this->command) {
                 $this->command->error('❌ الـ Seeder توقف — كلمات المرور التالية فارغة في .env:');
                 foreach ($missing as $key) {

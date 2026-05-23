@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class EnforceTwoFactor
@@ -13,11 +12,11 @@ class EnforceTwoFactor
         $user = $request->user();
 
         // Check if user is logged in and needs 2FA
-        if ($user && $user->google2fa_enabled && !$request->session()->has('2fa_passed')) {
+        if ($user && $user->google2fa_enabled && ! $request->session()->has('2fa_passed')) {
 
             // CRITICAL: Do not redirect if already on the 2FA verification or recovery pages
             // FIX: route prefix is '2fa/*', NOT 'auth/2fa*'; route name is '2fa.verify' not 'auth.2fa.verify'
-            if (!$request->is('2fa*')) {
+            if (! $request->is('2fa*')) {
                 return redirect()->route('2fa.verify');
             }
         }

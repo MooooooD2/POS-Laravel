@@ -1,16 +1,18 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\PurchaseOrderRepositoryInterface;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class PurchaseOrderRepository extends BaseRepository implements PurchaseOrderRepositoryInterface
 {
     public function __construct()
     {
-        $this->model = new PurchaseOrder();
+        $this->model = new PurchaseOrder;
     }
 
     public function findOrFail(int $id): PurchaseOrder
@@ -22,10 +24,10 @@ class PurchaseOrderRepository extends BaseRepository implements PurchaseOrderRep
     {
         $query = PurchaseOrder::with('supplier', 'items')->orderByDesc('id');
 
-        if (!empty($filters['supplier_id'])) {
+        if (! empty($filters['supplier_id'])) {
             $query->where('supplier_id', $filters['supplier_id']);
         }
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
@@ -37,9 +39,10 @@ class PurchaseOrderRepository extends BaseRepository implements PurchaseOrderRep
         return PurchaseOrder::create($data);
     }
 
-    public function update(PurchaseOrder|\Illuminate\Database\Eloquent\Model $po, array $data): PurchaseOrder
+    public function update(PurchaseOrder|Model $po, array $data): PurchaseOrder
     {
         $po->update($data);
+
         return $po->fresh();
     }
 
@@ -56,6 +59,7 @@ class PurchaseOrderRepository extends BaseRepository implements PurchaseOrderRep
     public function updateItem(PurchaseOrderItem $item, array $data): PurchaseOrderItem
     {
         $item->update($data);
+
         return $item->fresh();
     }
 }

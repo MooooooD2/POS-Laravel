@@ -1,18 +1,25 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\Tenant;
+use App\Services\CpanelTenantDatabaseManager;
+use Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper;
+use Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager;
+use Stancl\Tenancy\TenantDatabaseManagers\PostgreSQLDatabaseManager;
+use Stancl\Tenancy\TenantDatabaseManagers\SQLiteDatabaseManager;
+use Stancl\Tenancy\UUIDGenerator;
 
 return [
 
-    'tenant_model' => \App\Models\Tenant::class,
+    'tenant_model' => Tenant::class,
 
-    'id_generator' => \Stancl\Tenancy\UUIDGenerator::class,
+    'id_generator' => UUIDGenerator::class,
 
     // Not using domain-based tenancy – identification is via session after login
     'central_domains' => [],
 
     'bootstrappers' => [
-        \Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper::class,
+        DatabaseTenancyBootstrapper::class,
         // CacheTenancyBootstrapper requires a taggable driver (Redis/Memcached).
         // For file/array cache, Spatie permission cache is flushed in InitializeTenancyBySession.
         // \Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper::class,
@@ -27,14 +34,14 @@ return [
         'suffix' => '',
 
         'managers' => [
-            'sqlite'  => \Stancl\Tenancy\TenantDatabaseManagers\SQLiteDatabaseManager::class,
-            'mysql'   => env('CPANEL_USERNAME')
-                ? \App\Services\CpanelTenantDatabaseManager::class       // shared hosting (cPanel)
-                : \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,  // local / VPS
+            'sqlite' => SQLiteDatabaseManager::class,
+            'mysql' => env('CPANEL_USERNAME')
+                ? CpanelTenantDatabaseManager::class       // shared hosting (cPanel)
+                : MySQLDatabaseManager::class,  // local / VPS
             'mariadb' => env('CPANEL_USERNAME')
-                ? \App\Services\CpanelTenantDatabaseManager::class
-                : \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
-            'pgsql'   => \Stancl\Tenancy\TenantDatabaseManagers\PostgreSQLDatabaseManager::class,
+                ? CpanelTenantDatabaseManager::class
+                : MySQLDatabaseManager::class,
+            'pgsql' => PostgreSQLDatabaseManager::class,
         ],
     ],
 
@@ -66,9 +73,9 @@ return [
     // Tenant migrations live alongside central migrations.
     // Run: php artisan tenants:migrate
     'migration_parameters' => [
-        '--path'      => [database_path('migrations')],
-        '--realpath'  => true,
-        '--force'     => true,
+        '--path' => [database_path('migrations')],
+        '--realpath' => true,
+        '--force' => true,
     ],
 
     'routes' => false,

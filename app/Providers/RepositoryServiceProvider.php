@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Providers;
 
 use App\Contracts\Repositories\AccountRepositoryInterface;
@@ -40,22 +41,22 @@ class RepositoryServiceProvider extends ServiceProvider
     public function register(): void
     {
         $bindings = [
-            ProductRepositoryInterface::class             => ProductRepository::class,
-            InvoiceRepositoryInterface::class             => InvoiceRepository::class,
-            SalesReturnRepositoryInterface::class         => SalesReturnRepository::class,
-            PurchaseOrderRepositoryInterface::class       => PurchaseOrderRepository::class,
-            SupplierRepositoryInterface::class            => SupplierRepository::class,
-            SupplierPaymentRepositoryInterface::class     => SupplierPaymentRepository::class,
-            SupplierAccountRepositoryInterface::class     => SupplierAccountRepository::class,
-            UserRepositoryInterface::class                => UserRepository::class,
-            RoleRepositoryInterface::class                => RoleRepository::class,
-            AccountRepositoryInterface::class             => AccountRepository::class,
-            JournalEntryRepositoryInterface::class        => JournalEntryRepository::class,
-            SettingRepositoryInterface::class             => SettingRepository::class,
+            ProductRepositoryInterface::class => ProductRepository::class,
+            InvoiceRepositoryInterface::class => InvoiceRepository::class,
+            SalesReturnRepositoryInterface::class => SalesReturnRepository::class,
+            PurchaseOrderRepositoryInterface::class => PurchaseOrderRepository::class,
+            SupplierRepositoryInterface::class => SupplierRepository::class,
+            SupplierPaymentRepositoryInterface::class => SupplierPaymentRepository::class,
+            SupplierAccountRepositoryInterface::class => SupplierAccountRepository::class,
+            UserRepositoryInterface::class => UserRepository::class,
+            RoleRepositoryInterface::class => RoleRepository::class,
+            AccountRepositoryInterface::class => AccountRepository::class,
+            JournalEntryRepositoryInterface::class => JournalEntryRepository::class,
+            SettingRepositoryInterface::class => SettingRepository::class,
             CashRegisterSessionRepositoryInterface::class => CashRegisterSessionRepository::class,
-            StockMovementRepositoryInterface::class       => StockMovementRepository::class,
-            DashboardRepositoryInterface::class           => DashboardRepository::class,
-            ReportRepositoryInterface::class              => ReportRepository::class,
+            StockMovementRepositoryInterface::class => StockMovementRepository::class,
+            DashboardRepositoryInterface::class => DashboardRepository::class,
+            ReportRepositoryInterface::class => ReportRepository::class,
         ];
 
         foreach ($bindings as $interface => $implementation) {

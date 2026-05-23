@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\Tenant;
 
 class CheckSubscriptionActive
 {
@@ -12,7 +11,7 @@ class CheckSubscriptionActive
     {
         $tenant = tenancy()->tenant;
 
-        if (!$tenant) {
+        if (! $tenant) {
             return $next($request);
         }
 
@@ -21,7 +20,7 @@ class CheckSubscriptionActive
             return $next($request);
         }
 
-        if (!$tenant->isSubscriptionActive()) {
+        if (! $tenant->isSubscriptionActive()) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
                     'success' => false,

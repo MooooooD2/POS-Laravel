@@ -1,9 +1,11 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,7 +18,7 @@ class StockTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
         $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');
     }
@@ -29,13 +31,13 @@ class StockTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson("/api/products/{$product->id}/add-stock", [
                 'quantity' => 10,
-                'reason'   => 'شراء جديد',
+                'reason' => 'شراء جديد',
             ])->assertStatus(200);
 
         $this->assertEquals(15, $product->fresh()->quantity);
         $this->assertDatabaseHas('stock_movements', [
-            'product_id'    => $product->id,
-            'quantity'      => 10,
+            'product_id' => $product->id,
+            'quantity' => 10,
             'movement_type' => 'add',
         ]);
     }

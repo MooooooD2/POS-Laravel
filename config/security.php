@@ -6,8 +6,8 @@ return [
     ],
 
     'login' => [
-        'max_attempts'      => (int) env('LOGIN_MAX_ATTEMPTS', 5),
-        'lockout_seconds'   => (int) env('LOGIN_LOCKOUT_SECONDS', 900),
+        'max_attempts' => (int) env('LOGIN_MAX_ATTEMPTS', 5),
+        'lockout_seconds' => (int) env('LOGIN_LOCKOUT_SECONDS', 900),
     ],
 
     'anomaly' => [
@@ -22,7 +22,7 @@ return [
 
         // Invoices created between off_hours_start and off_hours_end (24h format) are flagged
         'off_hours_start' => (int) env('ANOMALY_OFF_HOURS_START', 22),
-        'off_hours_end'   => (int) env('ANOMALY_OFF_HOURS_END', 6),
+        'off_hours_end' => (int) env('ANOMALY_OFF_HOURS_END', 6),
 
         // Flag a cashier who processes more than this many returns in 24 hours
         'excessive_returns_threshold' => (int) env('ANOMALY_EXCESSIVE_RETURNS', 5),

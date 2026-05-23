@@ -4,6 +4,7 @@ namespace Tests\Feature\Security;
 
 use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -16,19 +17,22 @@ class AuthorizationTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $cashier;
+
     private User $warehouse;
+
     private User $inactiveUser;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
-        $this->admin    = User::factory()->create(['is_active' => true]);
+        $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->assignRole('admin');
 
-        $this->cashier  = User::factory()->create(['is_active' => true]);
+        $this->cashier = User::factory()->create(['is_active' => true]);
         $this->cashier->assignRole('cashier');
 
         $this->warehouse = User::factory()->create(['is_active' => true]);
@@ -54,8 +58,8 @@ class AuthorizationTest extends TestCase
         // /login requires tenant_code; without a valid tenant in test DB it returns 401
         $response = $this->postJson('/login', [
             'tenant_code' => 'nonexistent',
-            'username'    => $this->inactiveUser->username,
-            'password'    => 'password',
+            'username' => $this->inactiveUser->username,
+            'password' => 'password',
         ]);
 
         $response->assertStatus(401);
@@ -66,8 +70,8 @@ class AuthorizationTest extends TestCase
     {
         $response = $this->postJson('/login', [
             'tenant_code' => 'nonexistent',
-            'username'    => $this->cashier->username,
-            'password'    => 'wrongpassword',
+            'username' => $this->cashier->username,
+            'password' => 'wrongpassword',
         ]);
 
         $response->assertStatus(401);
@@ -80,8 +84,8 @@ class AuthorizationTest extends TestCase
         // We assert it does NOT return a 5xx server error.
         $response = $this->postJson('/login', [
             'tenant_code' => 'nonexistent',
-            'username'    => $this->admin->username,
-            'password'    => 'password',
+            'username' => $this->admin->username,
+            'password' => 'password',
         ]);
 
         $this->assertLessThan(500, $response->status());
@@ -101,7 +105,7 @@ class AuthorizationTest extends TestCase
     {
         $this->actingAs($this->cashier)->postJson('/api/reports/income-statement', [
             'start_date' => '2026-01-01',
-            'end_date'   => '2026-12-31',
+            'end_date' => '2026-12-31',
         ])->assertStatus(403);
     }
 
@@ -109,7 +113,7 @@ class AuthorizationTest extends TestCase
     public function cashier_cannot_manage_products(): void
     {
         $this->actingAs($this->cashier)->postJson('/api/products', [
-            'name'  => 'Unauthorized Product',
+            'name' => 'Unauthorized Product',
             'price' => 10,
         ])->assertStatus(403);
     }
@@ -120,7 +124,7 @@ class AuthorizationTest extends TestCase
         $product = Product::factory()->create(['price' => 50.00, 'quantity' => 10]);
 
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
         ])->assertStatus(201);
     }
@@ -148,8 +152,8 @@ class AuthorizationTest extends TestCase
 
         $this->actingAs($this->warehouse)->postJson("/api/products/{$product->id}/add-stock", [
             'quantity' => 5,
-            'cost'     => 30.00,
-            'reason'   => 'purchase',
+            'cost' => 30.00,
+            'reason' => 'purchase',
         ])->assertStatus(200);
     }
 
@@ -173,7 +177,7 @@ class AuthorizationTest extends TestCase
     {
         // /api/search-product requires search_products permission which cashier has
         $response = $this->actingAs($this->cashier)->getJson(
-            '/api/search-product?query=' . urlencode("' OR 1=1; --")
+            '/api/search-product?query='.urlencode("' OR 1=1; --")
         );
 
         // Must not crash; 200 (empty results) or 404 (no match) are both safe
@@ -184,7 +188,7 @@ class AuthorizationTest extends TestCase
     public function xss_attempt_in_customer_name_is_stored_or_rejected(): void
     {
         $response = $this->actingAs($this->admin)->postJson('/api/customers', [
-            'name'  => '<script>alert("xss")</script>',
+            'name' => '<script>alert("xss")</script>',
             'phone' => '01000000099',
         ]);
 
@@ -202,9 +206,9 @@ class AuthorizationTest extends TestCase
         $product = Product::factory()->create(['price' => 50.00, 'quantity' => 10]);
 
         $this->actingAs($this->cashier)->postJson('/api/invoices', [
-            'items'          => [['product_id' => $product->id, 'quantity' => 1]],
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'payment_method' => 'cash',
-            'notes'          => $hugeNotes,
+            'notes' => $hugeNotes,
         ])->assertStatus(422);
     }
 

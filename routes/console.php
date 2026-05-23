@@ -1,4 +1,9 @@
 <?php
+
+use App\Models\Invoice;
+use App\Models\SalesReturn;
+use App\Services\WarehouseService;
+use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Schedule;
 
 // Mark expired trials and subscriptions
@@ -20,18 +25,18 @@ Schedule::command('backup:monitor')->daily()->at('06:00');
 
 // Expire stale product batches nightly
 Schedule::call(function () {
-    app(\App\Services\WarehouseService::class)->expireOldBatches();
+    app(WarehouseService::class)->expireOldBatches();
 })->daily()->at('00:30')->name('batches.expire');
 
 // WhatsApp daily sales summary to manager
 Schedule::call(function () {
-    $service   = app(\App\Services\WhatsAppService::class);
-    $today     = now()->toDateString();
+    $service = app(WhatsAppService::class);
+    $today = now()->toDateString();
     $stats = [
-        'date'          => $today,
-        'invoice_count' => \App\Models\Invoice::whereDate('date', $today)->count(),
-        'total_sales'   => \App\Models\Invoice::whereDate('date', $today)->sum('final_total'),
-        'return_count'  => \App\Models\SalesReturn::whereDate('created_at', $today)->count(),
+        'date' => $today,
+        'invoice_count' => Invoice::whereDate('date', $today)->count(),
+        'total_sales' => Invoice::whereDate('date', $today)->sum('final_total'),
+        'return_count' => SalesReturn::whereDate('created_at', $today)->count(),
     ];
     $service->sendDailySummary($stats);
 })->dailyAt('21:00')->name('whatsapp.daily_summary');

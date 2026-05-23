@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Exports;
 
 use Illuminate\Support\Collection;
@@ -6,13 +7,13 @@ use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
-class StockReportExport implements FromCollection, WithHeadings, ShouldAutoSize
+class StockReportExport implements FromCollection, ShouldAutoSize, WithHeadings
 {
     public function __construct(private Collection $products) {}
 
     public function collection(): Collection
     {
-        return $this->products->map(fn($p) => [
+        return $this->products->map(fn ($p) => [
             $p['name'],
             $p['category'] ?? '-',
             $p['quantity'],

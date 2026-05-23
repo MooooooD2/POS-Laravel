@@ -20,11 +20,12 @@ class TenantSeedCommand extends Command
 
         if ($tenants->isEmpty()) {
             $this->error('No matching tenants found.');
+
             return self::FAILURE;
         }
 
         $seederClass = $this->option('class')
-            ? 'Database\\Seeders\\' . $this->option('class')
+            ? 'Database\\Seeders\\'.$this->option('class')
             : DatabaseSeeder::class;
 
         foreach ($tenants as $tenant) {
@@ -34,10 +35,11 @@ class TenantSeedCommand extends Command
 
             try {
                 app($seederClass)->setCommand($this)->run();
-                $this->info("  ✓ Done");
+                $this->info('  ✓ Done');
             } catch (\Throwable $e) {
                 $this->error("  ✗ {$e->getMessage()}");
                 tenancy()->end();
+
                 return self::FAILURE;
             }
 
@@ -51,7 +53,7 @@ class TenantSeedCommand extends Command
     {
         $filter = $this->option('tenant');
 
-        if (!$filter) {
+        if (! $filter) {
             return Tenant::all();
         }
 

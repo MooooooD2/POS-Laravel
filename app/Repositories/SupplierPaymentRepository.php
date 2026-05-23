@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\SupplierPaymentRepositoryInterface;
@@ -9,14 +10,14 @@ class SupplierPaymentRepository extends BaseRepository implements SupplierPaymen
 {
     public function __construct()
     {
-        $this->model = new SupplierPayment();
+        $this->model = new SupplierPayment;
     }
 
     public function paginate(array $filters): LengthAwarePaginator
     {
         $query = SupplierPayment::with('supplier')->orderByDesc('id');
 
-        if (!empty($filters['supplier_id'])) {
+        if (! empty($filters['supplier_id'])) {
             $query->where('supplier_id', $filters['supplier_id']);
         }
 
