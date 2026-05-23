@@ -4,6 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int         $id
+ * @property int         $return_id
+ * @property int         $product_id
+ * @property string      $product_name
+ * @property int         $quantity
+ * @property string      $price
+ * @property string      $subtotal
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class ReturnItem extends Model
 {
     protected $fillable = ['return_id', 'product_id', 'product_name', 'quantity', 'price', 'subtotal'];

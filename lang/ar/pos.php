@@ -142,6 +142,7 @@ return [
     'return_reason'                => 'سبب الإرجاع',
     'process_return'               => 'معالجة المرتجع',
     'return_note'                  => 'مرتجع: :ret',
+    'invalid_refund_method'        => 'طريقة رد المبلغ غير صالحة.',
     'returns_report'               => 'تقرير المرتجعات',
     'total_returned'               => 'إجمالي المرتجعات',
     'total_returned_value'         => 'إجمالي قيمة المرتجعات',
@@ -674,7 +675,6 @@ return [
     'cash_account_code'               => 'كود حساب الخزينة (للربط المحاسبي)',
     'revenue_account_code'            => 'كود حساب الإيرادات (للربط المحاسبي)',
     'weekly_cash_flow'                => 'التدفق النقدي الأسبوعي',
-    'cash_flow_report'                => 'تقرير التدفق النقدي',
     'treasury_link'                   => 'ربط الخزينة بالمحاسبة',
     'profit_margin_target'            => 'نسبة هامش الربح المستهدفة',
     'allow_cashier_price_change'      => 'السماح للكاشير بتغيير سعر البيع',
@@ -716,4 +716,10 @@ return [
     'cash_session_journal'            => 'تسوية جلسة الكاشير رقم :number',
     'cash_session_cash_line'          => 'إيرادات نقدية — جلسة :number',
     'cash_session_revenue_line'       => 'إيرادات مبيعات — جلسة :number',
+
+    // تنبيهات المخزون وإدارة الدفعات
+    'batch_received_reason'           => 'استلام دفعة: :batch_number',
+    'batch_write_off_reason'          => 'شطب دفعة: :batch',
+    'write_off_expired_reason'        => 'شطب دفعة منتهية الصلاحية: :batch',
+    'insufficient_available_stock'    => 'المخزون المتاح غير كافٍ للمنتج ":name" (المطلوب :requested، المتاح :available).',
 ];

@@ -3,6 +3,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int                   $id
+ * @property int                   $product_id
+ * @property int                   $warehouse_id
+ * @property string                $batch_number
+ * @property string|null           $lot_number
+ * @property \Carbon\Carbon|null   $manufacture_date
+ * @property \Carbon\Carbon|null   $expiry_date
+ * @property int                   $original_qty
+ * @property int                   $remaining_qty
+ * @property string|null           $cost_price
+ * @property int|null              $supplier_id
+ * @property string|null           $notes
+ * @property string                $status
+ * @property \Carbon\Carbon        $created_at
+ * @property \Carbon\Carbon        $updated_at
+ */
 class ProductBatch extends Model
 {
     protected $fillable = [
@@ -25,9 +42,12 @@ class ProductBatch extends Model
 
     public function isExpired(): bool
     {
-        return $this->expiry_date && $this->expiry_date->isPast();
+        /** @var \Carbon\Carbon|null $expiry */
+        $expiry = $this->expiry_date;
+        return $expiry !== null && $expiry->isPast();
     }
 
+    /** @param \Illuminate\Database\Eloquent\Builder $query */
     public function scopeActive($query)
     {
         return $query->where('status', 'active')
@@ -37,6 +57,7 @@ class ProductBatch extends Model
                      });
     }
 
+    /** @param \Illuminate\Database\Eloquent\Builder $query */
     public function scopeFefo($query)
     {
         return $query->active()->orderByRaw('expiry_date IS NULL, expiry_date ASC');

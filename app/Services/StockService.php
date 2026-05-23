@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Contracts\Repositories\ProductRepositoryInterface;
 use App\Contracts\Repositories\StockMovementRepositoryInterface;
+use App\Jobs\ProcessStockAlert;
 use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\Warehouse;
@@ -38,7 +39,7 @@ class StockService
 
         DB::transaction(function () use ($product, $quantity, $reason, $referenceId, $referenceType, $unitCost, $warehouseId, $batchId) {
             /** @var Product $fresh */
-            $fresh = $this->productRepo->lockForUpdate([$product->id])->first();
+            $fresh = $this->productRepo->lockForUpdate([$product->id])->firstOrFail();
 
             if ($unitCost !== null && $unitCost > 0) {
                 $currentQty = $fresh->quantity;
@@ -98,6 +99,14 @@ class StockService
         $this->syncWarehouseStock($lockedProduct->id, $warehouseId, -$quantity);
         $this->logMovement($lockedProduct, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, $batchId, $balanceAfter);
 
+        // Dispatch alert when quantity crosses min_stock threshold (job runs after outer transaction commits)
+        $minStock = (int) ($lockedProduct->min_stock ?? 0);
+        if ($minStock > 0 && $balanceAfter <= $minStock) {
+            $alertType = $balanceAfter <= 0 ? 'out_of_stock' : 'low_stock';
+            ProcessStockAlert::dispatch($lockedProduct->id, $balanceAfter, $alertType)
+                ->afterCommit();
+        }
+
         return $unitCost;
     }
 
@@ -133,6 +142,14 @@ class StockService
             $fresh->decrement('quantity', $quantity);
             $this->syncWarehouseStock($fresh->id, $warehouseId, -$quantity);
             $this->logMovement($fresh, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, $batchId, $balanceAfter);
+
+            // Dispatch alert when quantity crosses min_stock threshold (after transaction commits)
+            $minStock = (int) ($fresh->min_stock ?? 0);
+            if ($minStock > 0 && $balanceAfter <= $minStock) {
+                $alertType = $balanceAfter <= 0 ? 'out_of_stock' : 'low_stock';
+                ProcessStockAlert::dispatch($fresh->id, $balanceAfter, $alertType)
+                    ->afterCommit();
+            }
         });
     }
 
@@ -163,6 +180,12 @@ class StockService
             if ($fresh->quantity < $quantity) {
                 throw new \Exception(__('pos.insufficient_stock', ['name' => $fresh->name]));
             }
+
+            // FIX: deduct cost layers for the full quantity before batch-level allocation.
+            // Previously missing — caused FIFO/LIFO cost layers to accumulate and never
+            // be consumed when stock was sold via FEFO batch deduction, causing the
+            // inventory valuation report to overstate value over time.
+            $this->valuationService->deductLayers($fresh, $quantity, $warehouseId);
 
             // FEFO: nearest expiry first, nulls last
             $batches = ProductBatch::where('product_id', $fresh->id)
@@ -202,6 +225,15 @@ class StockService
 
             if ($remaining > 0) {
                 throw new \Exception(__('pos.insufficient_batch_stock', ['name' => $fresh->name]));
+            }
+
+            // FIX: dispatch stock alert when FEFO deduction crosses min_stock threshold
+            // ($runningBalance is the final balance after all batch allocations)
+            $minStock = (int) ($fresh->min_stock ?? 0);
+            if ($minStock > 0 && $runningBalance <= $minStock) {
+                $alertType = $runningBalance <= 0 ? 'out_of_stock' : 'low_stock';
+                ProcessStockAlert::dispatch($fresh->id, $runningBalance, $alertType)
+                    ->afterCommit();
             }
         });
 

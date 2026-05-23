@@ -3,6 +3,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int              $id
+ * @property string           $return_number
+ * @property int              $invoice_id
+ * @property string|null      $invoice_number
+ * @property string|null      $customer_name
+ * @property float            $total_amount
+ * @property float            $refund_amount
+ * @property string|null      $reason
+ * @property string           $status
+ * @property string           $refund_method
+ * @property \Carbon\Carbon   $return_date
+ * @property int|null         $processed_by
+ * @property string|null      $processed_by_name
+ * @property \Carbon\Carbon   $created_at
+ * @property \Carbon\Carbon   $updated_at
+ */
 class SalesReturn extends Model
 {
     protected $fillable = [

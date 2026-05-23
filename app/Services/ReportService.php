@@ -12,6 +12,7 @@ use App\Models\SalesReturn;
 use App\Models\SupplierPayment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ReportService
 {
@@ -107,10 +108,11 @@ class ReportService
             $query->where('stock_movements.movement_type', $filters['movement_type']);
         }
         if (!empty($filters['search'])) {
-            $s = $filters['search'];
+            // FIX: escape LIKE wildcards to prevent injection via user-supplied % or _
+            $s = '%' . Str::escapeLike($filters['search']) . '%';
             $query->where(fn($q) => $q
-                ->where('stock_movements.product_name', 'like', "%{$s}%")
-                ->orWhere('stock_movements.reason', 'like', "%{$s}%")
+                ->where('stock_movements.product_name', 'like', $s)
+                ->orWhere('stock_movements.reason', 'like', $s)
             );
         }
 

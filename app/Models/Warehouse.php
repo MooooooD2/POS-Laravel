@@ -3,6 +3,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int         $id
+ * @property int|null    $branch_id
+ * @property string      $name
+ * @property string      $code
+ * @property string|null $address
+ * @property string|null $keeper_name
+ * @property bool        $is_default
+ * @property bool        $is_active
+ * @property bool        $is_locked
+ * @property \Illuminate\Support\Carbon|null $locked_at
+ * @property \Illuminate\Support\Carbon      $created_at
+ * @property \Illuminate\Support\Carbon      $updated_at
+ */
 class Warehouse extends Model
 {
     protected $fillable = ['branch_id', 'name', 'code', 'address', 'keeper_name', 'is_default', 'is_active', 'is_locked'];

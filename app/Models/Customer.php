@@ -5,6 +5,31 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int              $id
+ * @property string|null      $code
+ * @property int|null         $customer_group_id
+ * @property string|null      $type
+ * @property string           $price_level
+ * @property string           $name
+ * @property string|null      $phone
+ * @property string|null      $email
+ * @property string|null      $national_id
+ * @property string|null      $tax_number
+ * @property string|null      $commercial_register
+ * @property string|null      $governate
+ * @property string|null      $city
+ * @property string|null      $address
+ * @property string           $credit_limit
+ * @property string           $balance
+ * @property int              $loyalty_points
+ * @property string|null      $notes
+ * @property bool             $is_active
+ * @property \Carbon\Carbon   $created_at
+ * @property \Carbon\Carbon   $updated_at
+ * @property \Carbon\Carbon|null $deleted_at
+ * @property-read float       $available_credit
+ */
 class Customer extends Model
 {
     use SoftDeletes;

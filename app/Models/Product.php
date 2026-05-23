@@ -5,6 +5,30 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int              $id
+ * @property string           $name
+ * @property string|null      $barcode
+ * @property string|null      $category
+ * @property string|null      $supplier
+ * @property string           $price
+ * @property string|null      $wholesale_price
+ * @property string|null      $vip_price
+ * @property string           $cost_price
+ * @property string|null      $avg_cost
+ * @property string|null      $last_cost
+ * @property int              $quantity
+ * @property int              $min_stock
+ * @property int|null         $reorder_point
+ * @property int|null         $reorder_qty
+ * @property bool             $track_batches
+ * @property int|null         $unit_id
+ * @property int|null         $tax_category_id
+ * @property \Carbon\Carbon   $created_at
+ * @property \Carbon\Carbon   $updated_at
+ * @property \Carbon\Carbon|null $deleted_at
+ * @property-read bool        $low_stock
+ */
 class Product extends Model
 {
     use HasFactory, SoftDeletes;

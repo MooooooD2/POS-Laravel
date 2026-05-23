@@ -61,8 +61,8 @@ class ReturnService
             $refundMethod = $data['refund_method'] ?? 'cash';
             $refundAmount = round($totalAmount * $discountRatio, 2);
 
-            if (!in_array($refundMethod, ['cash', 'store_credit', 'exchange'])) {
-                throw new \Exception('طريقة رد المبلغ غير صالحة.');
+            if (!\in_array($refundMethod, ['cash', 'store_credit', 'exchange'], true)) {
+                throw new \Exception(__('pos.invalid_refund_method'));
             }
 
             if ($refundMethod === 'exchange') {
@@ -128,15 +128,23 @@ class ReturnService
                         }
                     }
 
+                    // FIX: pass the original cost_price so FIFO/LIFO cost layers are
+                    // correctly restored.  Previously null → layers were consumed on
+                    // the original sale but never recreated on return, causing the
+                    // inventory valuation report to understate layer stock over time.
+                    $restoreCost = ($invoiceItem && (float) $invoiceItem->cost_price > 0)
+                        ? (float) $invoiceItem->cost_price
+                        : null;
+
                     $this->stockService->addStock(
                         $product,
                         $qty,
                         __('pos.return_note', ['ret' => $returnNumber]),
                         $return->id,
                         'return',
-                        null,                   // no unit cost on returns (cost already in layers)
-                        $invoice->warehouse_id, // FIX: restore to the original invoice warehouse
-                        $batchId                // FIX: link movement log to original batch
+                        $restoreCost,
+                        $invoice->warehouse_id,
+                        $batchId
                     );
                 }
             }

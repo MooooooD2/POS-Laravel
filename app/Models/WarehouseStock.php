@@ -3,6 +3,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $warehouse_id
+ * @property int $product_id
+ * @property int $quantity
+ * @property int $reserved_qty
+ * @property int $min_stock
+ * @property-read int $available_qty
+ */
 class WarehouseStock extends Model
 {
     public $timestamps = false;

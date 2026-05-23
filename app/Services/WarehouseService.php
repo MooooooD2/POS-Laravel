@@ -2,7 +2,6 @@
 namespace App\Services;
 
 use App\Models\Product;
-use App\Models\ProductBatch;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Models\WarehouseTransfer;
@@ -13,7 +12,10 @@ use Illuminate\Support\Facades\Log;
 
 class WarehouseService
 {
-    public function __construct(private StockService $stockService) {}
+    public function __construct(
+        private StockService $stockService,
+        private BatchService $batchService,
+    ) {}
 
     // ── Warehouse CRUD ──────────────────────────────────────────────────────
 
@@ -177,7 +179,7 @@ class WarehouseService
 
     public function cancelTransfer(WarehouseTransfer $transfer): void
     {
-        if (!in_array($transfer->status, ['pending', 'in_transit'])) {
+        if (!\in_array($transfer->status, ['pending', 'in_transit'], true)) {
             throw new \Exception(__('pos.transfer_cannot_be_cancelled'));
         }
 
@@ -193,42 +195,30 @@ class WarehouseService
         });
     }
 
-    // ── Product Batches ──────────────────────────────────────────────────────
+    // ── Product Batches (delegated to BatchService) ──────────────────────────
 
+    /**
+     * @deprecated  Kept for backward compatibility.  New code should inject
+     *              BatchService directly.  Previously this method bypassed
+     *              StockService (no movement logged, no cost layer created).
+     *              Now delegates to BatchService::create() which fixes both issues.
+     */
     public function createBatch(array $data): ProductBatch
     {
-        return DB::transaction(function () use ($data) {
-            $batch = ProductBatch::create(array_merge($data, [
-                'remaining_qty' => $data['original_qty'],
-                'status'        => 'active',
-            ]));
-
-            // Add stock to warehouse
-            $stock = $this->getOrCreateStock($data['warehouse_id'], $data['product_id']);
-            $stock->increment('quantity', $data['original_qty']);
-
-            // Sync product aggregate
-            Product::where('id', $data['product_id'])->increment('quantity', $data['original_qty']);
-
-            Log::channel('audit')->info('batch.created', ['batch_id' => $batch->id, 'user_id' => Auth::id()]);
-            return $batch;
-        });
+        return $this->batchService->create($data);
     }
 
     public function batchesForProduct(Product $product, ?int $warehouseId = null)
     {
-        return ProductBatch::with('warehouse:id,name,code')
-            ->where('product_id', $product->id)
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
-            ->orderByRaw('expiry_date IS NULL, expiry_date ASC')
-            ->get();
+        return $this->batchService->allForProduct($product->id, $warehouseId);
     }
 
+    /**
+     * Transition expired batches to 'expired' status (no stock deduction).
+     * Use BatchService::markExpired() directly for new callers.
+     */
     public function expireOldBatches(): int
     {
-        return ProductBatch::where('status', 'active')
-            ->whereNotNull('expiry_date')
-            ->where('expiry_date', '<', now()->toDateString())
-            ->update(['status' => 'expired']);
+        return $this->batchService->markExpired();
     }
 }

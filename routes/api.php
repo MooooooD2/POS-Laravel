@@ -27,6 +27,7 @@ use App\Http\Controllers\BackupMonitorController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\FraudDetectionController;
+use App\Http\Controllers\StockController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\PrintController;
 use App\Http\Controllers\WhatsAppController;
@@ -156,9 +157,31 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\CheckSubscripti
         Route::post('/warehouse-transfers/{transfer}/receive', [WarehouseController::class, 'receiveTransfer'])->name('warehouse-transfers.receive');
         Route::post('/warehouse-transfers/{transfer}/cancel', [WarehouseController::class, 'cancelTransfer'])->name('warehouse-transfers.cancel');
 
-        // Product Batches
+        // Product Batches (legacy WarehouseController routes kept for backward compatibility)
         Route::get('/product-batches', [WarehouseController::class, 'batches'])->name('batches.all');
         Route::post('/product-batches', [WarehouseController::class, 'createBatch'])->name('batches.store');
+
+        // ── Stock health & smart alerts (controller checks view_reports internally) ──
+        Route::get('/stock/health',                    [StockController::class, 'health'])->name('stock.health');
+        Route::get('/stock/low-stock',                 [StockController::class, 'lowStock'])->name('stock.low-stock');
+        Route::get('/stock/out-of-stock',              [StockController::class, 'outOfStock'])->name('stock.out-of-stock');
+        Route::get('/stock/near-expiry',               [StockController::class, 'nearExpiry'])->name('stock.near-expiry');
+        Route::get('/stock/expired-batches',           [StockController::class, 'expiredBatches'])->name('stock.expired-batches');
+        Route::get('/stock/reorder-suggestions',       [StockController::class, 'reorderSuggestions'])->name('stock.reorder-suggestions');
+
+        // ── Stock availability & reservations (controller checks add_stock internally) ──
+        Route::get('/stock/available/{product}',       [StockController::class, 'available'])->name('stock.available');
+        Route::post('/stock/reserve',                  [StockController::class, 'reserve'])->middleware('throttle:30,1')->name('stock.reserve');
+        Route::post('/stock/release-reservation',      [StockController::class, 'releaseReservation'])->middleware('throttle:30,1')->name('stock.release-reservation');
+
+        // ── Batch management via BatchService (controller checks add_stock / manage_roles) ──
+        Route::get('/batches',                         [StockController::class, 'batches'])->name('stock.batches.index');
+        Route::post('/batches',                        [StockController::class, 'createBatch'])->middleware('throttle:30,1')->name('stock.batches.store');
+        Route::put('/batches/{batch}/adjust',          [StockController::class, 'adjustBatch'])->name('stock.batches.adjust');
+        Route::post('/batches/{batch}/write-off',      [StockController::class, 'writeOffBatch'])->name('stock.batches.write-off');
+
+        // ── Bulk expired write-off (controller checks manage_roles internally) ──
+        Route::post('/stock/write-off-expired',        [StockController::class, 'writeOffExpired'])->middleware('throttle:10,1')->name('stock.write-off-expired');
     });
 
     // Fiscal Periods

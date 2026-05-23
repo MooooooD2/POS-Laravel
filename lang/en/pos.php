@@ -137,9 +137,10 @@ return [
     'total_liabilities' => 'Total Liabilities',
 
     // Returns
-    'return_reason' => 'Return Reason',
-    'process_return' => 'Process Return',
-    'return_note' => 'Return: :ret',
+    'return_reason'          => 'Return Reason',
+    'process_return'         => 'Process Return',
+    'return_note'            => 'Return: :ret',
+    'invalid_refund_method'  => 'Invalid refund method.',
 
     // Common
     'save' => 'Save',
@@ -708,4 +709,10 @@ return [
     'cash_session_journal'            => 'Cash register session settlement #:number',
     'cash_session_cash_line'          => 'Cash revenue — session :number',
     'cash_session_revenue_line'       => 'Sales revenue — session :number',
+
+    // Stock alerts & batch management
+    'batch_received_reason'           => 'Batch received: :batch_number',
+    'batch_write_off_reason'          => 'Batch write-off: :batch',
+    'write_off_expired_reason'        => 'Expired batch write-off: :batch',
+    'insufficient_available_stock'    => 'Insufficient available stock for ":name" (requested :requested, available :available).',
 ];

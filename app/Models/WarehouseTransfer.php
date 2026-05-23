@@ -3,6 +3,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int         $id
+ * @property string      $transfer_number
+ * @property int         $from_warehouse_id
+ * @property int         $to_warehouse_id
+ * @property int|null    $requested_by
+ * @property int|null    $received_by
+ * @property string      $status
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $received_at
+ * @property \Illuminate\Support\Carbon      $created_at
+ * @property \Illuminate\Support\Carbon      $updated_at
+ */
 class WarehouseTransfer extends Model
 {
     protected $fillable = [

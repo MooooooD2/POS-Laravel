@@ -341,14 +341,23 @@ class InvoiceService
             foreach ($locked->items as $item) {
                 $product = $this->productRepo->findById($item->product_id);
                 if ($product) {
+                    // FIX: pass original cost_price so FIFO/LIFO cost layers are recreated
+                    // on cancellation. Previously null → cost layers consumed on the original
+                    // sale were never restored, causing valuation reports to understate cost
+                    // layer stock over time (same root cause as the ReturnService fix).
+                    $restoreCost = ((float) $item->cost_price > 0)
+                        ? (float) $item->cost_price
+                        : null;
+
                     $this->stockService->addStock(
                         $product,
                         $item->quantity,
                         __('pos.invoice_cancelled_note', ['inv' => $locked->invoice_number]),
                         $locked->id,
                         'invoice_cancel',
-                        null,
-                        $warehouseId
+                        $restoreCost,
+                        $warehouseId,
+                        $item->batch_id
                     );
                 }
             }
