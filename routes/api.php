@@ -170,6 +170,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\CheckSubscripti
     Route::middleware('permission:manage_roles')->group(function () {
         Route::post('/fiscal-periods', [FiscalPeriodController::class, 'store'])->name('fiscal-periods.store');
         Route::post('/fiscal-periods/{fiscalPeriod}/close', [FiscalPeriodController::class, 'close'])->name('fiscal-periods.close');
+        Route::post('/accounts/recalculate-balances', [AccountingController::class, 'recalculateBalances'])->name('accounts.recalculate-balances');
     });
 
     // Accounting

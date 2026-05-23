@@ -23,9 +23,11 @@ class SettingController extends Controller
         $this->authorize('update_settings');
 
         $data = $request->validate([
-            'settings'         => 'required|array',
-            'settings.*.key'   => ['required', 'string', 'exists:settings,key'],
-            'settings.*.value' => 'nullable',
+            'settings'         => 'required|array|max:100',
+            'settings.*.key'   => ['required', 'string', 'max:100', 'exists:settings,key'],
+            // Values must be scalar — reject objects, nested arrays, and oversized blobs.
+            // SettingService::updateBatch() additionally runs strip_tags() and an allowlist check.
+            'settings.*.value' => ['nullable', 'scalar', 'max:2048'],
         ]);
 
         try {

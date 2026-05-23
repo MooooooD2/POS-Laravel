@@ -41,7 +41,7 @@ class TwoFactorController extends Controller
 
         if (!$valid) {
             RateLimiter::hit($key, 300);
-            return back()->withErrors(['one_time_password' => 'الرمز غير صحيح. حاول مرة أخرى.']);
+            return back()->withErrors(['one_time_password' => __('pos.2fa_invalid_code')]);
         }
 
         RateLimiter::clear($key);
@@ -80,7 +80,7 @@ class TwoFactorController extends Controller
         $google2fa = app('pragmarx.google2fa');
 
         if (!$secret || !$google2fa->verifyKey($secret, $request->one_time_password)) {
-            return back()->withErrors(['one_time_password' => 'الرمز غير صحيح. المسح مرة أخرى.']);
+            return back()->withErrors(['one_time_password' => __('pos.2fa_invalid_code')]);
         }
 
         $recoveryCodes = collect(range(1, 10))->map(fn() => Str::random(10))->toArray();
@@ -131,7 +131,7 @@ class TwoFactorController extends Controller
 
         if ($matchedIndex === null) {
             RateLimiter::hit($key, 300);
-            return back()->withErrors(['recovery_code' => 'رمز الاسترداد غير صحيح أو تم استخدامه مسبقاً.']);
+            return back()->withErrors(['recovery_code' => __('pos.2fa_invalid_recovery_code')]);
         }
 
         // Consume the code — remove it so it cannot be reused
@@ -148,8 +148,9 @@ class TwoFactorController extends Controller
     {
         $request->validate(['password' => 'required']);
 
-        if (!password_verify($request->password, Auth::user()->password)) {
-            return back()->withErrors(['password' => 'كلمة المرور غير صحيحة.']);
+        // FIX: use Hash::check() instead of password_verify() — forward-compatible with Argon2 etc.
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return back()->withErrors(['password' => __('pos.incorrect_password')]);
         }
 
         Auth::user()->update([
@@ -160,6 +161,6 @@ class TwoFactorController extends Controller
 
         $request->session()->forget('2fa_passed');
 
-        return redirect()->route('dashboard')->with('success', 'تم تعطيل التحقق بخطوتين.');
+        return redirect()->route('dashboard')->with('success', __('pos.2fa_disabled'));
     }
 }

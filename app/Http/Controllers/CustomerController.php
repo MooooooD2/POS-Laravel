@@ -10,6 +10,7 @@ use App\Services\CustomerService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -26,10 +27,11 @@ class CustomerController extends Controller
     {
         $customers = Customer::query()
             ->when($request->search, function ($q, $s) {
-                $q->where(function ($q) use ($s) {
-                    $q->where('name', 'like', "%$s%")
-                      ->orWhere('phone', 'like', "%$s%")
-                      ->orWhere('code', 'like', "%$s%");
+                $safe = Str::escapeLike($s);
+                $q->where(function ($q) use ($safe) {
+                    $q->where('name', 'like', "%{$safe}%")
+                      ->orWhere('phone', 'like', "%{$safe}%")
+                      ->orWhere('code', 'like', "%{$safe}%");
                 });
             })
             ->when($request->type, fn($q) => $q->where('type', $request->type))
@@ -44,11 +46,12 @@ class CustomerController extends Controller
     {
         $q = $request->get('q', '');
 
+        $safe = Str::escapeLike($q);
         $customers = Customer::where('is_active', true)
-            ->where(function ($query) use ($q) {
-                $query->where('name', 'like', "%$q%")
-                      ->orWhere('phone', 'like', "%$q%")
-                      ->orWhere('code', 'like', "%$q%");
+            ->where(function ($query) use ($safe) {
+                $query->where('name', 'like', "%{$safe}%")
+                      ->orWhere('phone', 'like', "%{$safe}%")
+                      ->orWhere('code', 'like', "%{$safe}%");
             })
             ->select('id', 'code', 'name', 'phone', 'type', 'balance', 'loyalty_points')
             ->orderBy('name')

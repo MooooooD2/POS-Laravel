@@ -8,6 +8,7 @@ use App\Services\PromotionService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class PromotionController extends Controller
 {
@@ -18,7 +19,7 @@ class PromotionController extends Controller
     public function index(Request $request): JsonResponse
     {
         $promotions = Promotion::query()
-            ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%$s%"))
+            ->when($request->search, fn($q, $s) => $q->where('name', 'like', '%' . Str::escapeLike($s) . '%'))
             ->when(!$request->boolean('with_inactive'), fn($q) => $q->where('is_active', true))
             ->with('product:id,name')
             ->orderBy('is_active', 'desc')
@@ -44,18 +45,24 @@ class PromotionController extends Controller
 
     public function store(StorePromotionRequest $request): JsonResponse
     {
+        $this->authorize('create', Promotion::class);
+
         $promo = Promotion::create($request->validated());
         return $this->success(['promotion' => $promo], '', 201);
     }
 
     public function update(StorePromotionRequest $request, Promotion $promotion): JsonResponse
     {
+        $this->authorize('update', $promotion);
+
         $promotion->update($request->validated());
         return $this->success(['promotion' => $promotion->fresh()]);
     }
 
     public function destroy(Promotion $promotion): JsonResponse
     {
+        $this->authorize('delete', $promotion);
+
         $promotion->delete();
         return $this->success([], __('pos.promotion_deleted'));
     }

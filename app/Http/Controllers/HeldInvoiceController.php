@@ -40,6 +40,8 @@ class HeldInvoiceController extends Controller
 
     public function discard(HeldInvoice $heldInvoice)
     {
+        $this->authorize('delete', $heldInvoice);
+
         try {
             $this->heldService->discard($heldInvoice);
             return $this->success([], __('pos.invoice_discarded'));

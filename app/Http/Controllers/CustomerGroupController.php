@@ -6,6 +6,7 @@ use App\Models\CustomerGroup;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CustomerGroupController extends Controller
 {
@@ -14,7 +15,7 @@ class CustomerGroupController extends Controller
     public function index(Request $request): JsonResponse
     {
         $groups = CustomerGroup::query()
-            ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%$s%"))
+            ->when($request->search, fn($q, $s) => $q->where('name', 'like', '%' . Str::escapeLike($s) . '%'))
             ->when(!$request->boolean('with_inactive'), fn($q) => $q->where('is_active', true))
             ->withCount('customers')
             ->orderBy('name')

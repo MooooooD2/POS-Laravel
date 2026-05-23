@@ -90,6 +90,7 @@ return [
     'po_status_cancelled' => 'Cancelled',
     'purchase_receipt' => 'Purchase order receipt: :po',
     'po_debt_note' => 'Purchase order debt: :po',
+    'purchase_receipt_journal' => 'Goods received — purchase order :po',
     'po_already_closed'    => 'Purchase order is closed and cannot be received.',
     'po_not_draft'         => 'Only draft purchase orders can be submitted for approval.',
     'po_not_pending'       => 'Only pending purchase orders can be approved or rejected.',
@@ -415,6 +416,7 @@ return [
     'purchase_return_po_not_received' => 'Cannot create a return for a purchase order that has not been received yet.',
     'purchase_return_note'            => 'Stock returned to supplier — ref: :ret',
     'purchase_return_credit_note'     => 'Credit note for purchase return :ret',
+    'purchase_return_journal'         => 'Purchase return :ret — accounts payable reduced',
     'returnable_items'                => 'Returnable Items',
     'returnable_qty'                  => 'Returnable Qty',
 
@@ -667,7 +669,6 @@ return [
     'cash_account_code'               => 'Cash Account Code (for accounting link)',
     'revenue_account_code'            => 'Revenue Account Code (for accounting link)',
     'weekly_cash_flow'                => 'Weekly Cash Flow',
-    'cash_flow_report'                => 'Cash Flow Report',
     'treasury_link'                   => 'Treasury ↔ Accounting Link',
     'profit_margin_target'            => 'Target Profit Margin %',
     'allow_cashier_price_change'      => 'Allow Cashier to Change Item Price',
@@ -685,10 +686,26 @@ return [
     // Security & validation messages
     'held_invoice_not_yours'          => 'You cannot access a held invoice belonging to another cashier.',
     'too_many_2fa_attempts'           => 'Too many attempts. Try again in :seconds seconds.',
+    '2fa_invalid_code'                => 'The code is incorrect. Please try again.',
+    '2fa_invalid_recovery_code'       => 'Invalid or already-used recovery code.',
+    '2fa_disabled'                    => 'Two-factor authentication has been disabled.',
+    'incorrect_password'              => 'The password is incorrect.',
     'product_not_in_invoice'          => 'This product does not exist in the original invoice.',
     'journal_entry_unbalanced'        => 'Unbalanced entry: total debit (:debit) does not equal total credit (:credit).',
     'expense_period_closed'           => 'The expense date falls within a closed fiscal period and cannot be modified.',
+    'expense_journal_description'     => 'Expense: :title (:number)',
+    'expense_update_reversal'         => 'Expense update — reversal of original entry for :number',
+    'expense_deletion_reversal'       => 'Expense deleted — reversal of journal entry for :number',
     'supplier_payment_exceeds_balance'=> 'Payment amount (:amount) exceeds the supplier outstanding balance (:balance).',
     'supplier_no_outstanding_balance' => 'This supplier has no outstanding balance to pay.',
     'recipe_ingredient_shortfall'     => 'Insufficient stock for recipe ingredient ":name" (needed :needed, available :available).',
+
+    // Payment & subscriptions
+    'payment_plan_not_found'          => 'The requested subscription plan was not found.',
+    'payment_amount_mismatch'         => 'The payment amount does not match the plan price. Please try again or contact support.',
+
+    // Cash register session — accounting journal
+    'cash_session_journal'            => 'Cash register session settlement #:number',
+    'cash_session_cash_line'          => 'Cash revenue — session :number',
+    'cash_session_revenue_line'       => 'Sales revenue — session :number',
 ];

@@ -2,8 +2,10 @@
 namespace App\Services;
 
 use App\Contracts\Repositories\PurchaseOrderRepositoryInterface;
+use App\Contracts\Repositories\SettingRepositoryInterface;
 use App\Contracts\Repositories\SupplierAccountRepositoryInterface;
 use App\Contracts\Repositories\SupplierRepositoryInterface;
+use App\Models\Account;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use Illuminate\Support\Facades\Auth;
@@ -13,9 +15,11 @@ use Illuminate\Support\Facades\Log;
 class PurchaseOrderService
 {
     public function __construct(
-        private StockService                    $stockService,
-        private PurchaseOrderRepositoryInterface $poRepo,
-        private SupplierRepositoryInterface     $supplierRepo,
+        private StockService                       $stockService,
+        private AccountingService                  $accountingService,
+        private SettingRepositoryInterface         $settingRepo,
+        private PurchaseOrderRepositoryInterface   $poRepo,
+        private SupplierRepositoryInterface        $supplierRepo,
         private SupplierAccountRepositoryInterface $supplierAccountRepo,
     ) {}
 
@@ -156,7 +160,12 @@ class PurchaseOrderService
 
             // Record supplier debt only when goods are actually received (not on draft creation)
             if ($receivedValue > 0.0) {
-                $this->recordSupplierDebt($po->supplier_id, $po->id, $po->po_number, round($receivedValue, 2));
+                $rounded = round($receivedValue, 2);
+                $this->recordSupplierDebt($po->supplier_id, $po->id, $po->po_number, $rounded);
+
+                // FIX: create double-entry journal for the receipt
+                // DR Inventory account, CR Accounts Payable
+                $this->postReceiptEntry($po, $rounded);
             }
 
             return $po->load('items');
@@ -179,5 +188,65 @@ class PurchaseOrderService
             'notes'            => __('pos.po_debt_note', ['po' => $poNumber]),
             'created_by'       => Auth::id(),
         ]);
+    }
+
+    /**
+     * FIX: post the double-entry journal for a goods receipt.
+     *
+     * DR  Inventory            (inventory_account_code setting)
+     * CR  Accounts Payable     (accounts_payable_account_code setting)
+     *
+     * Graceful degradation: if either account code is not configured or the
+     * account row does not exist, logs a warning and skips entry creation.
+     */
+    private function postReceiptEntry(PurchaseOrder $po, float $amount): void
+    {
+        $inventoryCode = $this->settingRepo->get('inventory_account_code') ?: null;
+        $apCode        = $this->settingRepo->get('accounts_payable_account_code') ?: null;
+
+        if (!$inventoryCode || !$apCode) {
+            Log::warning('purchase_receipt.journal_skipped: account codes not configured', [
+                'po_number' => $po->po_number,
+            ]);
+            return;
+        }
+
+        $inventoryAccount = Account::where('account_code', $inventoryCode)->first();
+        $apAccount        = Account::where('account_code', $apCode)->first();
+
+        if (!$inventoryAccount || !$apAccount) {
+            Log::warning('purchase_receipt.journal_skipped: account not found', [
+                'po_number'              => $po->po_number,
+                'inventory_account_code' => $inventoryCode,
+                'ap_account_code'        => $apCode,
+                'inventory_found'        => (bool) $inventoryAccount,
+                'ap_found'               => (bool) $apAccount,
+            ]);
+            return;
+        }
+
+        $desc  = __('pos.purchase_receipt_journal', ['po' => $po->po_number]);
+        $entry = $this->accountingService->createJournalEntry([
+            'entry_date'     => now()->format('Y-m-d'),
+            'description'    => $desc,
+            'reference_type' => 'purchase_order',
+            'reference_id'   => $po->id,
+            'lines'          => [
+                [
+                    'account_id'  => $inventoryAccount->id,
+                    'debit'       => $amount,
+                    'credit'      => 0,
+                    'description' => $desc,
+                ],
+                [
+                    'account_id'  => $apAccount->id,
+                    'debit'       => 0,
+                    'credit'      => $amount,
+                    'description' => $desc,
+                ],
+            ],
+        ]);
+
+        $this->accountingService->postEntry($entry);
     }
 }

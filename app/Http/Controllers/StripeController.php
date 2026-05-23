@@ -89,10 +89,37 @@ class StripeController extends Controller
         }
 
         if ($session->payment_status === 'paid') {
+            $planId        = $session->metadata['plan_id'] ?? null;
+            $billingPeriod = $session->metadata['billing_period'] ?? 'monthly';
+            $months        = (int) ($session->metadata['months'] ?? 1);
+
+            // SECURITY: verify that the amount Stripe actually charged matches the plan price.
+            // Protects against metadata tampering — an attacker cannot forge a $1 charge for
+            // a 12-month subscription by editing the checkout metadata after the session is created.
+            $plan = $planId ? Plan::find($planId) : null;
+            if (!$plan) {
+                Log::warning('Stripe success: plan not found', ['plan_id' => $planId, 'session_id' => $sessionId]);
+                return redirect()->route('subscribe')->withErrors(['payment' => __('pos.payment_plan_not_found')]);
+            }
+
+            $expectedPrice = $billingPeriod === 'annual' ? (float) $plan->annual_price : (float) $plan->monthly_price;
+            $paidAmount    = $session->amount_total / 100;   // Stripe stores amounts in cents
+
+            if ($expectedPrice <= 0 || abs($paidAmount - $expectedPrice) > 0.01) {
+                Log::warning('Stripe payment amount mismatch', [
+                    'session_id'     => $sessionId,
+                    'plan_id'        => $planId,
+                    'expected_price' => $expectedPrice,
+                    'paid_amount'    => $paidAmount,
+                    'tenant_id'      => $session->metadata['tenant_id'] ?? null,
+                ]);
+                return redirect()->route('subscribe')->withErrors(['payment' => __('pos.payment_amount_mismatch')]);
+            }
+
             $this->activateSubscription(
                 $session->metadata['tenant_id'],
-                $session->metadata['plan_id'],
-                (int) $session->metadata['months']
+                $planId,
+                $months
             );
         }
 
@@ -131,10 +158,34 @@ class StripeController extends Controller
     {
         if ($session->payment_status !== 'paid') return;
 
+        $planId        = $session->metadata->plan_id ?? null;
+        $billingPeriod = $session->metadata->billing_period ?? 'monthly';
+        $months        = (int) ($session->metadata->months ?? 1);
+
+        // SECURITY: server-side amount verification — same guard as the redirect handler.
+        $plan = $planId ? Plan::find($planId) : null;
+        if (!$plan) {
+            Log::warning('Stripe webhook: plan not found', ['plan_id' => $planId]);
+            return;
+        }
+
+        $expectedPrice = $billingPeriod === 'annual' ? (float) $plan->annual_price : (float) $plan->monthly_price;
+        $paidAmount    = $session->amount_total / 100;
+
+        if ($expectedPrice <= 0 || abs($paidAmount - $expectedPrice) > 0.01) {
+            Log::warning('Stripe webhook amount mismatch', [
+                'plan_id'        => $planId,
+                'expected_price' => $expectedPrice,
+                'paid_amount'    => $paidAmount,
+                'tenant_id'      => $session->metadata->tenant_id ?? null,
+            ]);
+            return;
+        }
+
         $this->activateSubscription(
             $session->metadata->tenant_id,
-            $session->metadata->plan_id,
-            (int) $session->metadata->months
+            $planId,
+            $months
         );
     }
 

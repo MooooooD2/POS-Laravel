@@ -3,6 +3,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int         $id
+ * @property string      $account_code
+ * @property string      $account_name
+ * @property string      $account_type
+ * @property int|null    $parent_id
+ * @property string|null $description
+ * @property string      $balance
+ */
 class Account extends Model
 {
     // #7 balance محذوف من fillable — يُحسب تلقائياً من journal lines

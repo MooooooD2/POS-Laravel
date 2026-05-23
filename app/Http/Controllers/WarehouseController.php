@@ -40,6 +40,8 @@ class WarehouseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', Warehouse::class);
+
         $conn = app('db')->getDefaultConnection();
         $data = $request->validate([
             'branch_id'   => "nullable|exists:{$conn}.branches,id",
@@ -56,6 +58,8 @@ class WarehouseController extends Controller
 
     public function update(Request $request, Warehouse $warehouse): JsonResponse
     {
+        $this->authorize('update', $warehouse);
+
         $data = $request->validate([
             'branch_id'   => 'nullable|exists:branches,id',
             'name'        => 'sometimes|string|max:100',
@@ -71,6 +75,8 @@ class WarehouseController extends Controller
 
     public function destroy(Warehouse $warehouse): JsonResponse
     {
+        $this->authorize('delete', $warehouse);
+
         $this->service->delete($warehouse);
         return response()->json(['success' => true, 'message' => __('pos.warehouse_deleted')]);
     }

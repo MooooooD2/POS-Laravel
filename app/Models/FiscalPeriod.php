@@ -4,6 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int                             $id
+ * @property string                          $name
+ * @property \Illuminate\Support\Carbon      $start_date
+ * @property \Illuminate\Support\Carbon      $end_date
+ * @property string                          $status
+ * @property int|null                        $closing_entry_id
+ * @property \Illuminate\Support\Carbon|null $closed_at
+ * @property int|null                        $closed_by
+ */
 class FiscalPeriod extends Model
 {
     protected $fillable = ['name', 'start_date', 'end_date', 'status', 'closing_entry_id', 'closed_at', 'closed_by'];

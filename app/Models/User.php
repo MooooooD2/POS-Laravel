@@ -14,6 +14,7 @@ class User extends Authenticatable
     // #7 is_active و role في fillable لكن id و remember_token ليسا
     protected $fillable  = [
         'username', 'password', 'full_name', 'role', 'is_active', 'language',
+        'branch_id',
         'google2fa_secret', 'google2fa_enabled', 'google2fa_recovery_codes',
     ];
     // #35 إخفاء البيانات الحساسة
@@ -27,4 +28,5 @@ class User extends Authenticatable
     public function getAuthIdentifierName() { return 'id'; }
     public function invoices()       { return $this->hasMany(Invoice::class, 'cashier_id'); }
     public function stockMovements() { return $this->hasMany(StockMovement::class, 'employee_id'); }
+    public function branch()         { return $this->belongsTo(Branch::class); }
 }

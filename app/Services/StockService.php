@@ -9,6 +9,7 @@ use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Request;
 
 class StockService
 {
@@ -30,7 +31,13 @@ class StockService
         ?int $warehouseId = null,
         ?int $batchId = null
     ): void {
+        // FIX: validate quantity
+        if ($quantity <= 0) {
+            throw new \InvalidArgumentException("addStock: quantity must be > 0 (got {$quantity})");
+        }
+
         DB::transaction(function () use ($product, $quantity, $reason, $referenceId, $referenceType, $unitCost, $warehouseId, $batchId) {
+            /** @var Product $fresh */
             $fresh = $this->productRepo->lockForUpdate([$product->id])->first();
 
             if ($unitCost !== null && $unitCost > 0) {
@@ -38,20 +45,23 @@ class StockService
                 $currentAvg = (float) ($fresh->avg_cost ?? $fresh->cost_price ?? 0);
                 $newQty     = $currentQty + $quantity;
                 $newAvgCost = $newQty > 0
-                    ? (($currentQty * $currentAvg) + ($quantity * $unitCost)) / $newQty
+                    ? ($currentQty * $currentAvg + $quantity * $unitCost) / $newQty
                     : $unitCost;
 
-                $fresh->avg_cost  = round($newAvgCost, 4);
-                $fresh->last_cost = round($unitCost, 4);
+                // Cast to string: Eloquent declares these columns as decimal (stored as string)
+                $fresh->avg_cost  = (string) round($newAvgCost, 4);
+                $fresh->last_cost = (string) round($unitCost, 4);
                 $fresh->save();
 
-                // Create FIFO/LIFO cost layer for this stock addition
                 $this->valuationService->createLayer($fresh, $quantity, $unitCost, $referenceType, $referenceId, $warehouseId);
             }
 
+            // FIX: compute balance_after BEFORE increment (prevents stale read)
+            $balanceAfter = $fresh->quantity + $quantity;
+
             $fresh->increment('quantity', $quantity);
             $this->syncWarehouseStock($fresh->id, $warehouseId, $quantity);
-            $this->logMovement($fresh, $quantity, 'add', $reason, $referenceId, $referenceType, $warehouseId, $batchId);
+            $this->logMovement($fresh, $quantity, 'add', $reason, $referenceId, $referenceType, $warehouseId, $batchId, $balanceAfter);
         });
     }
 
@@ -69,6 +79,11 @@ class StockService
         ?int $warehouseId = null,
         ?int $batchId = null
     ): float {
+        // FIX: validate quantity
+        if ($quantity <= 0) {
+            throw new \InvalidArgumentException("deductLockedStock: quantity must be > 0 (got {$quantity})");
+        }
+
         if ($lockedProduct->quantity < $quantity) {
             throw new \Exception(__('pos.insufficient_stock', ['name' => $lockedProduct->name]));
         }
@@ -76,9 +91,12 @@ class StockService
         // Deduct from FIFO/LIFO cost layers and get the actual unit COGS
         $unitCost = $this->valuationService->deductLayers($lockedProduct, $quantity, $warehouseId);
 
+        // FIX: compute balance_after BEFORE decrement (prevents stale read)
+        $balanceAfter = $lockedProduct->quantity - $quantity;
+
         $lockedProduct->decrement('quantity', $quantity);
         $this->syncWarehouseStock($lockedProduct->id, $warehouseId, -$quantity);
-        $this->logMovement($lockedProduct, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, $batchId);
+        $this->logMovement($lockedProduct, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, $batchId, $balanceAfter);
 
         return $unitCost;
     }
@@ -93,16 +111,28 @@ class StockService
         ?int $warehouseId = null,
         ?int $batchId = null
     ): void {
+        // FIX: validate quantity
+        if ($quantity <= 0) {
+            throw new \InvalidArgumentException("deductStock: quantity must be > 0 (got {$quantity})");
+        }
+
         DB::transaction(function () use ($product, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, $batchId) {
+            /** @var Product $fresh */
             $fresh = $this->productRepo->lockForUpdate([$product->id])->firstOrFail();
 
             if ($fresh->quantity < $quantity) {
                 throw new \Exception(__('pos.insufficient_stock', ['name' => $fresh->name]));
             }
 
+            // FIX: consume cost layers (was missing entirely — caused FIFO/LIFO valuation drift)
+            $this->valuationService->deductLayers($fresh, $quantity, $warehouseId);
+
+            // FIX: compute balance_after BEFORE decrement (prevents stale read)
+            $balanceAfter = $fresh->quantity - $quantity;
+
             $fresh->decrement('quantity', $quantity);
             $this->syncWarehouseStock($fresh->id, $warehouseId, -$quantity);
-            $this->logMovement($fresh, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, $batchId);
+            $this->logMovement($fresh, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, $batchId, $balanceAfter);
         });
     }
 
@@ -119,9 +149,15 @@ class StockService
         string $referenceType = 'manual',
         ?int $warehouseId = null
     ): array {
+        // FIX: validate quantity
+        if ($quantity <= 0) {
+            throw new \InvalidArgumentException("deductBatchStock: quantity must be > 0 (got {$quantity})");
+        }
+
         $allocations = [];
 
         DB::transaction(function () use ($product, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, &$allocations) {
+            /** @var Product $fresh */
             $fresh = $this->productRepo->lockForUpdate([$product->id])->firstOrFail();
 
             if ($fresh->quantity < $quantity) {
@@ -135,15 +171,23 @@ class StockService
                 ->lockForUpdate()
                 ->get();
 
-            // Decrement product total before logging so balance_after is accurate
+            // FIX: track running balance to avoid stale read in logMovement
+            // compute new balance BEFORE decrement (PHP attribute is stale after decrement())
+            $runningBalance = $fresh->quantity;   // = old total
+
             $fresh->decrement('quantity', $quantity);
             $this->syncWarehouseStock($fresh->id, $warehouseId, -$quantity);
 
             $remaining = $quantity;
             foreach ($batches as $batch) {
+                /** @var ProductBatch $batch */
                 if ($remaining <= 0) break;
 
                 $take = min($batch->remaining_qty, $remaining);
+
+                // FIX: update running balance for accurate balance_after per movement
+                $runningBalance -= $take;
+
                 $batch->decrement('remaining_qty', $take);
 
                 if ($batch->remaining_qty <= 0) {
@@ -153,7 +197,7 @@ class StockService
                 $allocations[] = ['batch_id' => $batch->id, 'quantity' => $take];
                 $remaining -= $take;
 
-                $this->logMovement($fresh, $take, $type, $reason, $referenceId, $referenceType, $batch->warehouse_id, $batch->id);
+                $this->logMovement($fresh, $take, $type, $reason, $referenceId, $referenceType, $batch->warehouse_id, $batch->id, $runningBalance);
             }
 
             if ($remaining > 0) {
@@ -170,13 +214,21 @@ class StockService
             $fresh      = $this->productRepo->lockForUpdate([$product->id])->firstOrFail();
             $difference = $newQuantity - $fresh->quantity;
 
+            if ($difference === 0) return;
+
+            // FIX: consume / restore cost layers on adjustment
+            if ($difference < 0) {
+                $this->valuationService->deductLayers($fresh, abs($difference), $warehouseId);
+            }
+
             $fresh->quantity = $newQuantity;
             $fresh->save();
 
             $this->syncWarehouseStock($fresh->id, $warehouseId, $difference);
 
             $type = $difference >= 0 ? 'adjustment_add' : 'adjustment_remove';
-            $this->logMovement($fresh, abs($difference), $type, $reason, null, 'adjustment', $warehouseId);
+            // balance_after is $newQuantity (already set on model, no stale issue here)
+            $this->logMovement($fresh, abs($difference), $type, $reason, null, 'adjustment', $warehouseId, null, $newQuantity);
         });
     }
 
@@ -190,11 +242,14 @@ class StockService
         int $transferId,
         ?int $batchId = null
     ): void {
+        // balance_after = total product quantity (transfers don't change total, only split)
+        $balance = $product->quantity;
+
         $this->movementRepo->create([
             'product_id'     => $product->id,
             'product_name'   => $product->name,
             'quantity'       => $quantity,
-            'balance_after'  => $product->quantity,
+            'balance_after'  => $balance,
             'movement_type'  => 'transfer_out',
             'reference_type' => 'transfer',
             'reference_id'   => $transferId,
@@ -203,14 +258,14 @@ class StockService
             'reason'         => "Transfer to warehouse #{$toWarehouseId}",
             'employee_id'    => Auth::id(),
             'employee_name'  => Auth::user()?->full_name,
-            'ip_address'     => request()->ip(),
+            'ip_address'     => Request::ip(),
         ]);
 
         $this->movementRepo->create([
             'product_id'     => $product->id,
             'product_name'   => $product->name,
             'quantity'       => $quantity,
-            'balance_after'  => $product->quantity,
+            'balance_after'  => $balance,
             'movement_type'  => 'transfer_in',
             'reference_type' => 'transfer',
             'reference_id'   => $transferId,
@@ -219,7 +274,7 @@ class StockService
             'reason'         => "Transfer from warehouse #{$fromWarehouseId}",
             'employee_id'    => Auth::id(),
             'employee_name'  => Auth::user()?->full_name,
-            'ip_address'     => request()->ip(),
+            'ip_address'     => Request::ip(),
         ]);
     }
 
@@ -256,13 +311,15 @@ class StockService
         ?int $referenceId,
         string $referenceType,
         ?int $warehouseId = null,
-        ?int $batchId = null
+        ?int $batchId = null,
+        // FIX: explicit balance_after prevents stale PHP-object reads after increment/decrement
+        ?int $balanceAfter = null
     ): void {
         $this->movementRepo->create([
             'product_id'     => $product->id,
             'product_name'   => $product->name,
             'quantity'       => $quantity,
-            'balance_after'  => $product->quantity,
+            'balance_after'  => $balanceAfter ?? $product->quantity,
             'movement_type'  => $type,
             'reference_type' => $referenceType,
             'reference_id'   => $referenceId,
@@ -271,7 +328,7 @@ class StockService
             'reason'         => $reason,
             'employee_id'    => Auth::id(),
             'employee_name'  => Auth::user()?->full_name,
-            'ip_address'     => request()->ip(),
+            'ip_address'     => Request::ip(),
         ]);
     }
 }

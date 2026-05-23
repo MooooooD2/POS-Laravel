@@ -134,7 +134,9 @@ class AuthController extends Controller
                 'user_agent' => $this->sanitizeUa($request->userAgent()),
                 'created_at' => now(),
             ]);
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            Log::error('auth.audit_db_failed', ['action' => 'auth.logout', 'error' => $e->getMessage()]);
+        }
 
         return redirect()->route('login');
     }
@@ -165,9 +167,13 @@ class AuthController extends Controller
             ...$extra,
         ];
 
+        // Audit writes must never crash the auth flow, but failures should be
+        // surfaced to the application log so they are not silently lost.
         try {
             Log::channel('audit')->info($action, $context);
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            Log::error('auth.audit_channel_failed', ['action' => $action, 'error' => $e->getMessage()]);
+        }
 
         try {
             AuditLog::create([
@@ -181,7 +187,9 @@ class AuthController extends Controller
                 'changes'    => $extra ?: null,
                 'created_at' => now(),
             ]);
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            Log::error('auth.audit_db_failed', ['action' => $action, 'error' => $e->getMessage()]);
+        }
     }
 
     private function sanitizeIp(?string $ip): string

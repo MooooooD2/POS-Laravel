@@ -2,49 +2,27 @@
 
 namespace App\Providers;
 
-use App\Models\SalesReturn;
-use App\Models\Invoice;
-use App\Models\Product;
-use App\Models\Account;
-use App\Models\Supplier;
-use App\Models\SupplierPayment;
-use App\Models\PurchaseOrder;
-use App\Models\User;
-use App\Policies\SalesReturnPolicy;
-use App\Policies\InvoicePolicy;
-use App\Policies\ProductPolicy;
-use App\Policies\AccountPolicy;
-use App\Policies\SupplierPolicy;
-use App\Policies\SupplierPaymentPolicy;
-use App\Policies\PurchaseOrderPolicy;
-use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Foundation\Support\Providers\AuthServiceProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\ServiceProvider;
 
-class AppServiceProvider extends AuthServiceProvider
+/**
+ * SECURITY FIX: previously extended AuthServiceProvider, which caused every policy
+ * to be registered twice — once here and once in AuthServiceProvider — leading to
+ * unpredictable policy resolution depending on provider boot order.
+ *
+ * All policy registrations live exclusively in AuthServiceProvider.  This class now
+ * extends the plain ServiceProvider and handles only application bootstrap concerns
+ * (rate limiting, Blade directives).
+ */
+class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * FIX-3: تسجيل كل الـ Policies صراحةً — لا اعتماد على الـ auto-discovery وحده
-     */
-    protected $policies = [
-        SalesReturn::class    => SalesReturnPolicy::class,
-        Invoice::class        => InvoicePolicy::class,
-        Product::class        => ProductPolicy::class,
-        Account::class        => AccountPolicy::class,
-        Supplier::class       => SupplierPolicy::class,
-        SupplierPayment::class => SupplierPaymentPolicy::class,
-        PurchaseOrder::class  => PurchaseOrderPolicy::class,
-        User::class           => UserPolicy::class,
-    ];
-
     public function register(): void {}
 
     public function boot(): void
     {
-        $this->registerPolicies();
 
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
@@ -56,24 +34,33 @@ class AppServiceProvider extends AuthServiceProvider
         });
 
         // Custom Blade directives for permissions
+        // Cast to App\Models\User so the IDE resolves Spatie HasRoles methods correctly.
         Blade::if('permission', function ($permission) {
-            return auth()->user() && auth()->user()->can($permission);
+            /** @var \App\Models\User|null $user */
+            $user = auth()->user();
+            return $user && $user->can($permission);
         });
 
         Blade::if('role', function ($role) {
-            return auth()->user() && auth()->user()->hasRole($role);
+            /** @var \App\Models\User|null $user */
+            $user = auth()->user();
+            return $user && $user->hasRole($role);
         });
 
         Blade::if('anyrole', function ($roles) {
-            if (!auth()->user()) return false;
-            $roles = is_array($roles) ? $roles : func_get_args();
-            return auth()->user()->hasAnyRole($roles);
+            /** @var \App\Models\User|null $user */
+            $user = auth()->user();
+            if (!$user) return false;
+            $roles = \is_array($roles) ? $roles : \func_get_args();
+            return $user->hasAnyRole($roles);
         });
 
         Blade::if('allroles', function ($roles) {
-            if (!auth()->user()) return false;
-            $roles = is_array($roles) ? $roles : func_get_args();
-            return auth()->user()->hasAllRoles($roles);
+            /** @var \App\Models\User|null $user */
+            $user = auth()->user();
+            if (!$user) return false;
+            $roles = \is_array($roles) ? $roles : \func_get_args();
+            return $user->hasAllRoles($roles);
         });
     }
 }

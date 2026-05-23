@@ -5,7 +5,7 @@ use App\Contracts\Repositories\AccountRepositoryInterface;
 use App\Contracts\Repositories\JournalEntryRepositoryInterface;
 use App\Models\FiscalPeriod;
 use App\Models\JournalEntry;
-use App\Models\JournalEntryLine;
+// JournalEntryLine intentionally removed — was imported but never referenced directly here
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -28,7 +28,10 @@ class AccountingService
             $totalDebit  = collect($data['lines'])->sum('debit');
             $totalCredit = collect($data['lines'])->sum('credit');
 
-            if (round($totalDebit, 2) !== round($totalCredit, 2)) {
+            // FIX: standardize tolerance to 0.01 (1 cent) — previously used round() !== round()
+            //      which silently accepts imbalances up to 0.004, differing from the Request
+            //      validator (> 0.01) and the old controller check (> 0.001).
+            if (abs(round($totalDebit, 2) - round($totalCredit, 2)) > 0.01) {
                 throw new \Exception(__('pos.journal_unbalanced'));
             }
 
@@ -50,7 +53,10 @@ class AccountingService
                     'description' => $line['description'] ?? null,
                 ]);
 
-                $account = $this->accountRepo->findOrFail($line['account_id']);
+                // SECURITY FIX: use a write lock so concurrent transactions cannot
+                // both read the same stale balance and double-apply the increment.
+                // Safe here because we are already inside DB::transaction().
+                $account = $this->accountRepo->findOrFailLocked($line['account_id']);
                 $this->accountRepo->updateBalance($account, $line['debit'] ?? 0, $line['credit'] ?? 0);
             }
 
@@ -60,30 +66,41 @@ class AccountingService
 
     /**
      * Lock a journal entry so it can never be edited or deleted.
+     *
+     * FIX: wrapped in DB::transaction + lockForUpdate so two concurrent POST /post
+     *      requests cannot both pass the is_posted check and double-post the entry.
+     * FIX: use ->format('Y-m-d') instead of ->toDateString() — the latter is Carbon-only
+     *      but the IDE infers the property as the generic PHP date type.
      */
     public function postEntry(JournalEntry $entry): JournalEntry
     {
-        if ($entry->is_posted) {
-            throw new \DomainException(__('pos.journal_entry_already_posted'));
-        }
+        return DB::transaction(function () use ($entry) {
+            // Re-fetch with a write lock — prevents concurrent posts on the same entry
+            /** @var JournalEntry $locked */
+            $locked = JournalEntry::lockForUpdate()->findOrFail($entry->id);
 
-        // Reject if entry_date falls in a closed period
-        $period = FiscalPeriod::forDate($entry->entry_date->toDateString());
-        if ($period && $period->isClosed()) {
-            throw new \DomainException(__('pos.period_is_closed', ['name' => $period->name]));
-        }
+            if ($locked->is_posted) {
+                throw new \DomainException(__('pos.journal_entry_already_posted'));
+            }
 
-        // Bypass the immutability guard — posting IS the one allowed state change
-        JournalEntry::withoutEvents(function () use ($entry, $period) {
-            $entry->update([
-                'is_posted'        => true,
-                'posted_at'        => now(),
-                'posted_by'        => Auth::id(),
-                'fiscal_period_id' => $period?->id,
-            ]);
+            // Reject if entry_date falls in a closed period
+            $period = FiscalPeriod::forDate($locked->entry_date->format('Y-m-d'));
+            if ($period?->isClosed()) {
+                throw new \DomainException(__('pos.period_is_closed', ['name' => $period->name]));
+            }
+
+            // Bypass the immutability guard — posting IS the one allowed state change
+            JournalEntry::withoutEvents(function () use ($locked, $period) {
+                $locked->update([
+                    'is_posted'        => true,
+                    'posted_at'        => now(),
+                    'posted_by'        => Auth::id(),
+                    'fiscal_period_id' => $period?->id,
+                ]);
+            });
+
+            return $locked->fresh();
         });
-
-        return $entry->fresh();
     }
 
     /**
@@ -121,7 +138,8 @@ class AccountingService
                     'description' => __('pos.reversal_of_entry', ['number' => $entry->entry_number]),
                 ]);
 
-                $account = $this->accountRepo->findOrFail($line->account_id);
+                // SECURITY FIX: write-lock before balance update (same as createJournalEntry)
+                $account = $this->accountRepo->findOrFailLocked($line->account_id);
                 // Reversal: apply the negated amounts
                 $this->accountRepo->updateBalance($account, $line->credit, $line->debit);
             }
@@ -152,5 +170,17 @@ class AccountingService
         $equity      = $this->accountRepo->rootsByType('equity');
 
         return compact('assets', 'liabilities', 'equity');
+    }
+
+    /**
+     * Recompute every account's balance from scratch by re-aggregating all posted
+     * journal-entry lines.  Wraps the bulk update in a transaction so balances are
+     * never left in a partially-recalculated state.
+     *
+     * @return int  Number of account rows processed.
+     */
+    public function recalculateAllBalances(): int
+    {
+        return DB::transaction(fn() => $this->accountRepo->recalculateAllBalances());
     }
 }

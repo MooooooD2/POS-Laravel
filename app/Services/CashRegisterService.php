@@ -2,9 +2,11 @@
 namespace App\Services;
 
 use App\Contracts\Repositories\CashRegisterSessionRepositoryInterface;
+use App\Models\Account;
 use App\Models\CashRegisterSession;
 use App\Models\CashSessionMovement;
 use App\Models\Invoice;
+use App\Models\JournalEntry;
 use App\Models\SalesReturn;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +15,10 @@ use Illuminate\Support\Facades\Log;
 
 class CashRegisterService
 {
-    public function __construct(private CashRegisterSessionRepositoryInterface $sessionRepo) {}
+    public function __construct(
+        private CashRegisterSessionRepositoryInterface $sessionRepo,
+        private AccountingService                      $accountingService,
+    ) {}
 
     public function currentSession(): ?CashRegisterSession
     {
@@ -194,51 +199,63 @@ class CashRegisterService
 
     /**
      * Optionally post a summary journal entry when a session closes.
-     * Only runs if accounts tagged 'cash_account' and 'revenue_account' exist.
+     *
+     * SECURITY FIX: previously this method created JournalEntry and JournalEntryLine
+     * rows directly, bypassing AccountingService entirely — no balance check, no fiscal
+     * period check, no sequence generation, and is_posted was set to true by hand.
+     *
+     * Now routes through AccountingService::createJournalEntry() + postEntry() so all
+     * invariants (balanced lines, open period, write-locked balance updates, sequence
+     * numbering) are enforced consistently.
+     *
+     * Entry represents only the cash portion of the session (debit cash, credit revenue
+     * for the cash-sales amount) so the two lines are always balanced. Card / transfer
+     * sales follow separate settlement flows.
      */
     private function postSessionToAccounting(CashRegisterSession $session, array $stats, float $actualCash): void
     {
         try {
-            $cashAccount    = \App\Models\Account::where('account_code', Setting::get('cash_account_code', ''))->first();
-            $revenueAccount = \App\Models\Account::where('account_code', Setting::get('revenue_account_code', ''))->first();
+            $cashAccount    = Account::where('account_code', Setting::get('cash_account_code', ''))->first();
+            $revenueAccount = Account::where('account_code', Setting::get('revenue_account_code', ''))->first();
 
-            if (!$cashAccount || !$revenueAccount || $stats['total_sales'] <= 0) {
+            $cashSales = round((float) $stats['cash_sales'], 2);
+
+            if (!$cashAccount || !$revenueAccount || $cashSales <= 0) {
                 return;
             }
 
-            $entryNumber = 'CASH-SES-' . $session->session_number;
-            if (\App\Models\JournalEntry::where('reference_type', 'cash_session')
+            // Idempotency guard — do not double-post if somehow called twice
+            if (JournalEntry::where('reference_type', 'cash_session')
                     ->where('reference_id', $session->id)->exists()) {
-                return; // already posted
+                return;
             }
 
-            $entry = \App\Models\JournalEntry::create([
-                'entry_number'   => $entryNumber,
-                'entry_date'     => $session->closed_at?->toDateString() ?? today()->toDateString(),
-                'description'    => 'تسوية جلسة الكاشير ' . $session->session_number,
+            $entryDate   = $session->closed_at?->toDateString() ?? today()->toDateString();
+            $description = __('pos.cash_session_journal', ['number' => $session->session_number]);
+
+            $entry = $this->accountingService->createJournalEntry([
+                'entry_date'     => $entryDate,
+                'description'    => $description,
                 'reference_type' => 'cash_session',
                 'reference_id'   => $session->id,
-                'created_by'     => $session->cashier_id,
-                'is_posted'      => true,
+                'lines'          => [
+                    [
+                        'account_id'  => $cashAccount->id,
+                        'debit'       => $cashSales,
+                        'credit'      => 0,
+                        'description' => __('pos.cash_session_cash_line', ['number' => $session->session_number]),
+                    ],
+                    [
+                        'account_id'  => $revenueAccount->id,
+                        'debit'       => 0,
+                        'credit'      => $cashSales,
+                        'description' => __('pos.cash_session_revenue_line', ['number' => $session->session_number]),
+                    ],
+                ],
             ]);
 
-            // Debit cash account (actual cash received)
-            \App\Models\JournalEntryLine::create([
-                'entry_id'    => $entry->id,
-                'account_id'  => $cashAccount->id,
-                'debit'       => $actualCash,
-                'credit'      => 0,
-                'description' => 'إيرادات نقدية - جلسة ' . $session->session_number,
-            ]);
+            $this->accountingService->postEntry($entry);
 
-            // Credit revenue account (total sales)
-            \App\Models\JournalEntryLine::create([
-                'entry_id'    => $entry->id,
-                'account_id'  => $revenueAccount->id,
-                'debit'       => 0,
-                'credit'      => round($stats['total_sales'], 2),
-                'description' => 'إيرادات مبيعات - جلسة ' . $session->session_number,
-            ]);
         } catch (\Throwable $e) {
             // Non-fatal: accounting link is optional; log and continue
             Log::warning('cash_session.accounting_link_failed', [

@@ -136,8 +136,10 @@ class InvoiceService
             $blendedTaxRate = $afterDiscount > 0 ? round($taxAmount / $afterDiscount * 100, 4) : 0.0;
             $finalTotal     = $afterDiscount + ($taxInclusive ? 0 : $taxAmount);
 
-            $isSplit       = !empty($data['payments']);
-            $paymentMethod = $isSplit ? $data['payments'][0]['method'] : $data['payment_method'];
+            $isSplit = !empty($data['payments']);
+            // FIX: store 'split' for split payments — was incorrectly storing the first method,
+            //      which broke cancellation credit-reversal and report payment-method grouping.
+            $paymentMethod = $isSplit ? 'split' : $data['payment_method'];
 
             $cashReceived = null;
             $changeAmount = null;
@@ -170,7 +172,10 @@ class InvoiceService
             $warehouseId = $data['warehouse_id'] ?? \App\Models\Warehouse::where('is_default', true)->value('id');
 
             if ($warehouseId) {
-                $warehouse = \App\Models\Warehouse::find($warehouseId);
+                // FIX: use lockForUpdate so is_locked is read atomically with the stock deductions —
+                //      a plain find() would let another transaction lock the warehouse between
+                //      this check and the decrement calls below.
+                $warehouse = \App\Models\Warehouse::lockForUpdate()->find($warehouseId);
                 if ($warehouse?->is_locked) {
                     throw new \Exception(__('pos.warehouse_locked'));
                 }

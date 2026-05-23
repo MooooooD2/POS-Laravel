@@ -22,6 +22,8 @@ class BranchController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', Branch::class);
+
         $data = $request->validate([
             'name'       => 'required|string|max:100',
             'code'       => 'required|string|max:20|unique:branches,code',
@@ -37,6 +39,8 @@ class BranchController extends Controller
 
     public function update(Request $request, Branch $branch): JsonResponse
     {
+        $this->authorize('update', $branch);
+
         $data = $request->validate([
             'name'       => 'sometimes|string|max:100',
             'code'       => "sometimes|string|max:20|unique:branches,code,{$branch->id}",
@@ -52,6 +56,8 @@ class BranchController extends Controller
 
     public function destroy(Branch $branch): JsonResponse
     {
+        $this->authorize('delete', $branch);
+
         $this->service->delete($branch);
         return response()->json(['success' => true, 'message' => __('pos.branch_deleted')]);
     }

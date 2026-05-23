@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Contracts\Repositories\ProductRepositoryInterface;
+use App\Contracts\Repositories\SettingRepositoryInterface;
 use App\Contracts\Repositories\SupplierAccountRepositoryInterface;
+use App\Models\Account;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\PurchaseReturn;
@@ -16,6 +18,8 @@ class PurchaseReturnService
 {
     public function __construct(
         private StockService                       $stockService,
+        private AccountingService                  $accountingService,
+        private SettingRepositoryInterface         $settingRepo,
         private ProductRepositoryInterface         $productRepo,
         private SupplierAccountRepositoryInterface $supplierAccountRepo,
     ) {}
@@ -104,7 +108,12 @@ class PurchaseReturnService
                 }
             }
 
-            $this->recordSupplierCredit($po->supplier_id, $return->id, $returnNumber, round($totalAmount, 2));
+            $rounded = round($totalAmount, 2);
+            $this->recordSupplierCredit($po->supplier_id, $return->id, $returnNumber, $rounded);
+
+            // FIX: create double-entry journal for the purchase return
+            // DR Accounts Payable, CR Inventory
+            $this->postReturnEntry($return, $rounded);
 
             Log::channel('audit')->info('purchase_return.processed', [
                 'return_number' => $returnNumber,
@@ -154,5 +163,65 @@ class PurchaseReturnService
             'notes'            => __('pos.purchase_return_credit_note', ['ret' => $returnNumber]),
             'created_by'       => Auth::id(),
         ]);
+    }
+
+    /**
+     * FIX: post the double-entry journal for a purchase return.
+     *
+     * DR  Accounts Payable     (accounts_payable_account_code setting)
+     * CR  Inventory            (inventory_account_code setting)
+     *
+     * Graceful degradation: if either account code is not configured or the
+     * account row does not exist, logs a warning and skips entry creation.
+     */
+    private function postReturnEntry(PurchaseReturn $return, float $amount): void
+    {
+        $apCode        = $this->settingRepo->get('accounts_payable_account_code') ?: null;
+        $inventoryCode = $this->settingRepo->get('inventory_account_code') ?: null;
+
+        if (!$apCode || !$inventoryCode) {
+            Log::warning('purchase_return.journal_skipped: account codes not configured', [
+                'return_number' => $return->return_number,
+            ]);
+            return;
+        }
+
+        $apAccount        = Account::where('account_code', $apCode)->first();
+        $inventoryAccount = Account::where('account_code', $inventoryCode)->first();
+
+        if (!$apAccount || !$inventoryAccount) {
+            Log::warning('purchase_return.journal_skipped: account not found', [
+                'return_number'          => $return->return_number,
+                'ap_account_code'        => $apCode,
+                'inventory_account_code' => $inventoryCode,
+                'ap_found'               => (bool) $apAccount,
+                'inventory_found'        => (bool) $inventoryAccount,
+            ]);
+            return;
+        }
+
+        $desc  = __('pos.purchase_return_journal', ['ret' => $return->return_number]);
+        $entry = $this->accountingService->createJournalEntry([
+            'entry_date'     => now()->format('Y-m-d'),
+            'description'    => $desc,
+            'reference_type' => 'purchase_return',
+            'reference_id'   => $return->id,
+            'lines'          => [
+                [
+                    'account_id'  => $apAccount->id,
+                    'debit'       => $amount,
+                    'credit'      => 0,
+                    'description' => $desc,
+                ],
+                [
+                    'account_id'  => $inventoryAccount->id,
+                    'debit'       => 0,
+                    'credit'      => $amount,
+                    'description' => $desc,
+                ],
+            ],
+        ]);
+
+        $this->accountingService->postEntry($entry);
     }
 }

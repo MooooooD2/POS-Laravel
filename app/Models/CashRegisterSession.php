@@ -3,6 +3,27 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int    $id
+ * @property string $session_number
+ * @property int    $cashier_id
+ * @property string $cashier_name
+ * @property float  $opening_amount
+ * @property float  $expected_cash
+ * @property float  $actual_cash
+ * @property float  $difference
+ * @property float  $total_sales
+ * @property float  $total_returns
+ * @property float  $total_card
+ * @property float  $total_transfer
+ * @property int    $invoices_count
+ * @property string $status
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon      $opened_at
+ * @property \Illuminate\Support\Carbon|null $closed_at
+ * @property \Illuminate\Support\Carbon      $created_at
+ * @property \Illuminate\Support\Carbon      $updated_at
+ */
 class CashRegisterSession extends Model
 {
     protected $fillable = [

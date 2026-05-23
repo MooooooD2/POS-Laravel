@@ -11,6 +11,7 @@ use App\Traits\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ReturnController extends Controller
 {
@@ -32,11 +33,12 @@ class ReturnController extends Controller
         ]);
 
         $query = SalesReturn::with('items')
-            ->when($request->search, fn($q, $s) =>
-                $q->where('return_number', 'like', "%$s%")
-                  ->orWhere('invoice_number', 'like', "%$s%")
-                  ->orWhere('customer_name', 'like', "%$s%")
-            )
+            ->when($request->search, function ($q, $s) {
+                $safe = Str::escapeLike($s);
+                $q->where('return_number', 'like', "%{$safe}%")
+                  ->orWhere('invoice_number', 'like', "%{$safe}%")
+                  ->orWhere('customer_name', 'like', "%{$safe}%");
+            })
             ->latest();
 
         $perPage = (int) ($request->per_page ?? 20);

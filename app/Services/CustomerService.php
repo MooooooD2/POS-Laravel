@@ -97,6 +97,33 @@ class CustomerService
         return $points * $value;
     }
 
+    /**
+     * Apply store credit to a customer's account balance.
+     * Reduces the customer's outstanding balance (or creates a negative balance meaning
+     * the store owes the customer). Used when a return is refunded as store credit.
+     */
+    public function recordStoreCredit(Customer $customer, float $amount, int $returnId): void
+    {
+        DB::transaction(function () use ($customer, $amount, $returnId) {
+            $locked     = Customer::lockForUpdate()->findOrFail($customer->id);
+            $newBalance = $locked->balance - $amount;
+
+            CustomerAccount::create([
+                'customer_id'    => $locked->id,
+                'type'           => 'store_credit',
+                'credit'         => $amount,
+                'balance_after'  => $newBalance,
+                'reference_type' => 'return',
+                'reference_id'   => $returnId,
+                'notes'          => "Store credit from return #{$returnId}",
+                'created_by'     => Auth::id(),
+            ]);
+
+            $locked->balance = $newBalance;
+            $locked->save();
+        });
+    }
+
     public function nextCode(): string
     {
         $last = Customer::withTrashed()->orderByDesc('id')->value('code');

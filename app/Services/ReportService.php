@@ -8,7 +8,9 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\PurchaseReturn;
+use App\Models\SalesReturn;
 use App\Models\SupplierPayment;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ReportService
@@ -173,15 +175,17 @@ class ReportService
                 customers.phone,
                 invoices.invoice_number,
                 customer_accounts.debit as amount,
-                DATEDIFF(NOW(), invoices.date) as age_days
+                invoices.date as invoice_date
             ')
             ->get();
 
         $result = [];
         foreach ($rows as $row) {
-            $bucket = 'over_90';
+            // FIX: compute age in PHP — DATEDIFF() is MySQL-only and breaks SQLite/PostgreSQL tests
+            $ageDays = now()->startOfDay()->diffInDays(Carbon::parse($row->invoice_date)->startOfDay());
+            $bucket  = 'over_90';
             foreach ($buckets as $key => [$min, $max]) {
-                if ($row->age_days >= $min && $row->age_days <= $max) {
+                if ($ageDays >= $min && $ageDays <= $max) {
                     $bucket = $key;
                     break;
                 }
@@ -233,15 +237,17 @@ class ReportService
                 suppliers.phone,
                 purchase_orders.po_number,
                 supplier_accounts.debit as amount,
-                DATEDIFF(NOW(), purchase_orders.order_date) as age_days
+                purchase_orders.order_date as po_order_date
             ')
             ->get();
 
         $result = [];
         foreach ($rows as $row) {
-            $bucket = 'over_90';
+            // FIX: compute age in PHP — DATEDIFF() is MySQL-only
+            $ageDays = now()->startOfDay()->diffInDays(Carbon::parse($row->po_order_date)->startOfDay());
+            $bucket  = 'over_90';
             foreach ($buckets as $key => [$min, $max]) {
-                if ($row->age_days >= $min && $row->age_days <= $max) {
+                if ($ageDays >= $min && $ageDays <= $max) {
                     $bucket = $key;
                     break;
                 }
@@ -389,13 +395,21 @@ class ReportService
                 products.barcode,
                 products.category,
                 products.price,
-                warehouses.name as warehouse_name,
-                DATEDIFF(product_batches.expiry_date, NOW()) as days_to_expiry
+                warehouses.name as warehouse_name
             ')
             ->orderBy('product_batches.expiry_date')
-            ->get();
+            ->get()
+            // FIX: compute days_to_expiry in PHP — DATEDIFF() is MySQL-only.
+            // Signed: positive = days until expiry, negative = days past expiry.
+            ->transform(function ($batch) {
+                $batch->days_to_expiry = (int) now()->startOfDay()->diffInDays(
+                    Carbon::parse($batch->expiry_date)->startOfDay(),
+                    false
+                );
+                return $batch;
+            });
 
-        $expired = $batches->where('days_to_expiry', '<', 0);
+        $expired  = $batches->where('days_to_expiry', '<', 0);
         $expiring = $batches->where('days_to_expiry', '>=', 0);
 
         return [
@@ -411,7 +425,7 @@ class ReportService
     {
         $endOfDay = $end . ' 23:59:59';
 
-        // Inflows: sales by payment method
+        // Inflows: sales by payment method (all methods shown; 'credit' is AR, not cash)
         $salesInflows = InvoicePayment::whereHas(
             'invoice',
             fn($q) => $q->whereBetween('created_at', [$start, $endOfDay])
@@ -442,18 +456,30 @@ class ReportService
                 ($r->category?->name ?? __('pos.uncategorized')) => (float) $r->total,
             ]);
 
-        $totalSalesInflow      = (float) $salesInflows->sum();
+        // Outflows: cash refunds paid back to customers on sales returns
+        // FIX: was missing entirely — cash leaves the business when refund_method='cash'
+        $salesReturnCashRefunds = (float) SalesReturn::whereBetween('return_date', [$start, $end])
+            ->where('refund_method', 'cash')
+            ->where('status', 'completed')
+            ->sum('refund_amount');
+
+        // FIX: 'credit' method payments are accounts-receivable entries, not cash received.
+        //      Keep the per-method breakdown intact for display; exclude 'credit' from the total.
+        $totalCashSalesInflow  = (float) $salesInflows->reject(fn($v, $k) => $k === 'credit')->sum();
         $totalSupplierOutflow  = (float) $supplierPaymentsByMethod->sum();
         $totalExpenseOutflow   = (float) $expensesByCategory->sum();
-        $totalInflows          = $totalSalesInflow + $purchaseReturnRefunds;
-        $totalOutflows         = $totalSupplierOutflow + $totalExpenseOutflow;
+        $totalInflows          = $totalCashSalesInflow + $purchaseReturnRefunds;
+        // FIX: include sales-return cash refunds in total outflows
+        $totalOutflows         = $totalSupplierOutflow + $totalExpenseOutflow + $salesReturnCashRefunds;
 
         // Daily breakdown
+        // FIX: exclude 'credit' method so daily inflows reflect only actual cash received
         $dailyInflows = InvoicePayment::whereHas(
             'invoice',
             fn($q) => $q->whereBetween('created_at', [$start, $endOfDay])
                         ->whereNotIn('status', ['cancelled', 'draft'])
-        )->selectRaw('DATE(created_at) as day, SUM(amount) as total')
+        )->where('method', '!=', 'credit')
+            ->selectRaw('DATE(created_at) as day, SUM(amount) as total')
             ->groupBy('day')
             ->orderBy('day')
             ->pluck('total', 'day');
@@ -464,26 +490,65 @@ class ReportService
             ->orderBy('day')
             ->pluck('total', 'day');
 
-        $dailyDates = collect($dailyInflows->keys()->merge($dailyExpenses->keys())->unique()->sort());
+        // FIX: supplier payments were missing from the daily breakdown
+        $dailySupplierPayments = SupplierPayment::whereBetween('payment_date', [$start, $end])
+            ->selectRaw('payment_date as day, SUM(amount) as total')
+            ->groupBy('day')
+            ->orderBy('day')
+            ->pluck('total', 'day');
+
+        // FIX: cash refunds to customers were missing from the daily breakdown
+        $dailySalesReturnRefunds = SalesReturn::whereBetween('return_date', [$start, $end])
+            ->where('refund_method', 'cash')
+            ->where('status', 'completed')
+            ->selectRaw('return_date as day, SUM(refund_amount) as total')
+            ->groupBy('day')
+            ->orderBy('day')
+            ->pluck('total', 'day');
+
+        $dailyDates = collect(
+            $dailyInflows->keys()
+                ->merge($dailyExpenses->keys())
+                ->merge($dailySupplierPayments->keys())
+                ->merge($dailySalesReturnRefunds->keys())
+                ->unique()
+                ->sort()
+        );
 
         $dailyRows = $dailyDates->map(fn($date) => [
-            'date'     => $date,
-            'inflow'   => round((float) ($dailyInflows[$date] ?? 0), 2),
-            'outflow'  => round((float) ($dailyExpenses[$date] ?? 0), 2),
-            'net'      => round((float) ($dailyInflows[$date] ?? 0) - (float) ($dailyExpenses[$date] ?? 0), 2),
+            'date'    => $date,
+            'inflow'  => round((float) ($dailyInflows[$date] ?? 0), 2),
+            'outflow' => round(
+                (float) ($dailyExpenses[$date]          ?? 0)
+                + (float) ($dailySupplierPayments[$date]   ?? 0)
+                + (float) ($dailySalesReturnRefunds[$date] ?? 0),
+                2
+            ),
+            'net'     => round(
+                (float) ($dailyInflows[$date]            ?? 0)
+                - (float) ($dailyExpenses[$date]          ?? 0)
+                - (float) ($dailySupplierPayments[$date]   ?? 0)
+                - (float) ($dailySalesReturnRefunds[$date] ?? 0),
+                2
+            ),
         ])->values();
 
         return [
             'period'        => ['from' => $start, 'to' => $end],
             'inflows'       => [
-                'sales'              => $salesInflows->map(fn($v) => round((float) $v, 2))->toArray(),
-                'purchase_refunds'   => round($purchaseReturnRefunds, 2),
-                'total'              => round($totalInflows, 2),
+                // Full per-method breakdown (includes 'credit' for AR visibility)
+                'sales'            => $salesInflows->map(fn($v) => round((float) $v, 2))->toArray(),
+                // FIX: expose AR total so consumers can distinguish cash vs. credit-sale AR
+                'credit_sales_ar'  => round((float) ($salesInflows->get('credit', 0)), 2),
+                'purchase_refunds' => round($purchaseReturnRefunds, 2),
+                'total'            => round($totalInflows, 2),
             ],
             'outflows'      => [
-                'supplier_payments'  => $supplierPaymentsByMethod->map(fn($v) => round((float) $v, 2))->toArray(),
-                'expenses'           => $expensesByCategory->map(fn($v) => round($v, 2))->toArray(),
-                'total'              => round($totalOutflows, 2),
+                'supplier_payments'    => $supplierPaymentsByMethod->map(fn($v) => round((float) $v, 2))->toArray(),
+                'expenses'             => $expensesByCategory->map(fn($v) => round($v, 2))->toArray(),
+                // FIX: was missing
+                'sales_return_refunds' => round($salesReturnCashRefunds, 2),
+                'total'                => round($totalOutflows, 2),
             ],
             'net_cash_flow' => round($totalInflows - $totalOutflows, 2),
             'daily'         => $dailyRows,
@@ -578,40 +643,65 @@ class ReportService
      */
     public function inventoryTurnover(string $start, string $end): array
     {
-        $end .= ' 23:59:59';
+        $endOfDay = $end . ' 23:59:59';
 
         $sold = DB::table('invoice_items')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->where('invoices.status', 'completed')
-            ->whereBetween('invoices.date', [$start, $end])
+            ->whereBetween('invoices.date', [$start, $endOfDay])
             ->selectRaw('
                 invoice_items.product_id,
-                SUM(invoice_items.quantity)                        AS units_sold,
+                SUM(invoice_items.quantity)                            AS units_sold,
                 SUM(invoice_items.quantity * invoice_items.cost_price) AS cogs
             ')
             ->groupBy('invoice_items.product_id')
             ->get()
             ->keyBy('product_id');
 
+        $productIds = $sold->keys()->toArray();
+
         $products = DB::table('products')
-            ->whereIn('id', $sold->keys())
+            ->whereIn('id', $productIds)
             ->select('id', 'name', 'quantity', 'avg_cost', 'cost_price')
             ->get();
 
-        $rows = $products->map(function ($p) use ($sold) {
-            $s         = $sold[$p->id];
-            $cogs      = (float) $s->cogs;
-            $unitCost  = $p->avg_cost > 0 ? $p->avg_cost : $p->cost_price;
-            $stockVal  = $p->quantity * $unitCost;
-            $turnover  = $stockVal > 0 ? round($cogs / $stockVal, 2) : null;
+        // FIX: use average stock = (opening_qty + closing_qty) / 2 instead of end-period stock.
+        // Opening qty = balance_after of the last stock movement BEFORE the period start.
+        // Subquery: for each product, find the most recent movement id before $start.
+        $lastMovementIds = DB::table('stock_movements')
+            ->whereIn('product_id', $productIds)
+            ->where('created_at', '<', $start)
+            ->selectRaw('product_id, MAX(id) as last_id')
+            ->groupBy('product_id');
+
+        $openingQtys = DB::table('stock_movements')
+            ->joinSub($lastMovementIds, 'lm', fn($j) => $j->on('stock_movements.id', '=', 'lm.last_id'))
+            ->pluck('balance_after', 'stock_movements.product_id');
+
+        $rows = $products->map(function ($p) use ($sold, $openingQtys) {
+            $s          = $sold[$p->id];
+            $cogs       = (float) $s->cogs;
+            $unitCost   = $p->avg_cost > 0 ? (float) $p->avg_cost : (float) $p->cost_price;
+            $closingQty = (int) $p->quantity;
+
+            // If no movement exists before the period, fall back to closing qty as the estimate
+            $openingQty = isset($openingQtys[$p->id])
+                ? (int) $openingQtys[$p->id]
+                : $closingQty;
+
+            $avgQty      = ($openingQty + $closingQty) / 2;
+            $avgStockVal = $avgQty * $unitCost;
+            $turnover    = $avgStockVal > 0 ? round($cogs / $avgStockVal, 2) : null;
+
             return [
-                'product_id'    => $p->id,
-                'product_name'  => $p->name,
-                'units_sold'    => (int) $s->units_sold,
-                'cogs'          => round($cogs, 2),
-                'current_stock' => $p->quantity,
-                'stock_value'   => round($stockVal, 2),
-                'turnover_rate' => $turnover,
+                'product_id'     => $p->id,
+                'product_name'   => $p->name,
+                'units_sold'     => (int) $s->units_sold,
+                'cogs'           => round($cogs, 2),
+                'opening_stock'  => $openingQty,
+                'closing_stock'  => $closingQty,
+                'avg_stock_value'=> round($avgStockVal, 2),
+                'turnover_rate'  => $turnover,
             ];
         })->sortByDesc('turnover_rate')->values()->toArray();
 
@@ -966,6 +1056,9 @@ class ReportService
      */
     public function supplierRatingReport(string $start, string $end): array
     {
+        // FIX: use portable date-diff helper so the query runs on MySQL, SQLite, and PostgreSQL
+        $leadDiff = $this->datediffSql('purchase_orders.received_date', 'purchase_orders.order_date');
+
         $rows = DB::table('purchase_orders')
             ->join('suppliers', 'suppliers.id', '=', 'purchase_orders.supplier_id')
             ->whereBetween('purchase_orders.order_date', [$start, $end])
@@ -983,7 +1076,7 @@ class ReportService
                           AND purchase_orders.expected_date IS NOT NULL
                           THEN 1 ELSE 0 END)                AS with_deadline_count,
                 AVG(CASE WHEN purchase_orders.status = 'received' AND purchase_orders.received_date IS NOT NULL
-                          THEN DATEDIFF(purchase_orders.received_date, purchase_orders.order_date)
+                          THEN {$leadDiff}
                           END)                              AS avg_lead_days,
                 SUM(CASE WHEN purchase_orders.status = 'received' THEN purchase_orders.total_amount ELSE 0 END) AS total_value
             ")
@@ -1011,5 +1104,34 @@ class ReportService
             'end_date'   => $end,
             'suppliers'  => $rows->values(),
         ];
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Returns a portable SQL expression for (dateA - dateB) in whole days.
+     * Works on MySQL/MariaDB (default), SQLite, and PostgreSQL.
+     *
+     * @param  string $dateA  Column or SQL expression for the minuend date
+     * @param  string $dateB  Column or SQL expression for the subtrahend date
+     */
+    private function datediffSql(string $dateA, string $dateB): string
+    {
+        $nowA = $dateA === 'NOW()' || $dateA === 'now()';
+        $nowB = $dateB === 'NOW()' || $dateB === 'now()';
+
+        return match (DB::getDriverName()) {
+            'sqlite' => sprintf(
+                'CAST(JULIANDAY(%s) - JULIANDAY(%s) AS INTEGER)',
+                $nowA ? "'now'" : $dateA,
+                $nowB ? "'now'" : $dateB
+            ),
+            'pgsql' => sprintf(
+                "EXTRACT(EPOCH FROM (%s::date - %s::date))::INTEGER",
+                $nowA ? 'CURRENT_DATE' : $dateA,
+                $nowB ? 'CURRENT_DATE' : $dateB
+            ),
+            default => "DATEDIFF($dateA, $dateB)",   // MySQL / MariaDB
+        };
     }
 }

@@ -53,8 +53,14 @@ class PeriodClosingService
      * Generate the closing journal entry, lock all revenue/expense accounts to zero,
      * and mark the period closed — all inside a single transaction.
      */
+    /**
+     * FIX: period row is now locked inside the transaction before the isClosed() check.
+     * Without lockForUpdate, two concurrent requests could both pass the pre-transaction
+     * guard, then race to generate two closing entries for the same period.
+     */
     public function closePeriod(FiscalPeriod $period, int $retainedEarningsAccountId): FiscalPeriod
     {
+        // Fast pre-flight check outside transaction (avoids unnecessary lock contention)
         if ($period->isClosed()) {
             throw new \DomainException(__('pos.period_already_closed'));
         }
@@ -65,17 +71,23 @@ class PeriodClosingService
         }
 
         return DB::transaction(function () use ($period, $retainedEarnings) {
-            $closingEntry = $this->generateClosingEntry($period, $retainedEarnings);
+            // FIX: re-fetch with write lock and re-check inside transaction
+            /** @var FiscalPeriod $locked */
+            $locked = FiscalPeriod::lockForUpdate()->findOrFail($period->id);
+            if ($locked->isClosed()) {
+                throw new \DomainException(__('pos.period_already_closed'));
+            }
 
-            // Update period — bypass model events since there are none, but keep explicit
-            $period->update([
+            $closingEntry = $this->generateClosingEntry($locked, $retainedEarnings);
+
+            $locked->update([
                 'status'           => 'closed',
                 'closed_at'        => now(),
                 'closed_by'        => Auth::id(),
                 'closing_entry_id' => $closingEntry->id,
             ]);
 
-            return $period->fresh(['closingEntry', 'closedBy']);
+            return $locked->fresh(['closingEntry', 'closedBy']);
         });
     }
 
@@ -109,7 +121,7 @@ class PeriodClosingService
         }
 
         $entry = $this->accountingService->createJournalEntry([
-            'entry_date'     => $period->end_date->toDateString(),
+            'entry_date'     => $period->end_date->format('Y-m-d'),
             'description'    => __('pos.closing_entry_description', ['name' => $period->name]),
             'reference_type' => 'fiscal_period',
             'reference_id'   => $period->id,
@@ -128,8 +140,8 @@ class PeriodClosingService
      */
     private function buildClosingLines(FiscalPeriod $period): array
     {
-        $start = $period->start_date->toDateString();
-        $end   = $period->end_date->toDateString();
+        $start = $period->start_date->format('Y-m-d');
+        $end   = $period->end_date->format('Y-m-d');
 
         $revenues = $this->accountRepo->totalsByType('revenue', $start, $end);
         $expenses = $this->accountRepo->totalsByType('expense', $start, $end);

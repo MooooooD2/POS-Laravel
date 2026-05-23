@@ -4,6 +4,7 @@ namespace App\Repositories;
 use App\Contracts\Repositories\AccountRepositoryInterface;
 use App\Models\Account;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class AccountRepository extends BaseRepository implements AccountRepositoryInterface
 {
@@ -20,6 +21,11 @@ class AccountRepository extends BaseRepository implements AccountRepositoryInter
     public function findOrFail(int $id): Account
     {
         return Account::findOrFail($id);
+    }
+
+    public function findOrFailLocked(int $id): Account
+    {
+        return Account::lockForUpdate()->findOrFail($id);
     }
 
     public function create(array $data): Account
@@ -76,5 +82,54 @@ class AccountRepository extends BaseRepository implements AccountRepositoryInter
         } else {
             $account->increment('balance', $credit - $debit);
         }
+    }
+
+    public function recalculateBalance(Account $account): void
+    {
+        $row = DB::table('journal_entry_lines as jel')
+            ->join('journal_entries as je', 'je.id', '=', 'jel.entry_id')
+            ->where('je.is_posted', true)
+            ->where('jel.account_id', $account->id)
+            ->selectRaw('SUM(jel.debit) as total_debit, SUM(jel.credit) as total_credit')
+            ->first();
+
+        $totalDebit  = (float) ($row->total_debit  ?? 0);
+        $totalCredit = (float) ($row->total_credit ?? 0);
+
+        $balance = in_array($account->account_type, ['asset', 'expense'])
+            ? $totalDebit - $totalCredit
+            : $totalCredit - $totalDebit;
+
+        // Use DB::table to bypass the Eloquent immutability observer on JournalEntryLine
+        DB::table('accounts')->where('id', $account->id)->update(['balance' => round($balance, 4)]);
+        $account->balance = (string) round($balance, 4);
+    }
+
+    public function recalculateAllBalances(): int
+    {
+        // Single aggregation query across all posted lines
+        $computed = DB::table('journal_entry_lines as jel')
+            ->join('journal_entries as je', 'je.id', '=', 'jel.entry_id')
+            ->join('accounts as a', 'a.id', '=', 'jel.account_id')
+            ->where('je.is_posted', true)
+            ->selectRaw('jel.account_id, a.account_type, SUM(jel.debit) as total_debit, SUM(jel.credit) as total_credit')
+            ->groupBy('jel.account_id', 'a.account_type')
+            ->get();
+
+        // Zero out all accounts first so accounts with no posted activity land at 0
+        $count = Account::count();
+        DB::table('accounts')->update(['balance' => 0]);
+
+        foreach ($computed as $row) {
+            $balance = in_array($row->account_type, ['asset', 'expense'])
+                ? (float) $row->total_debit - (float) $row->total_credit
+                : (float) $row->total_credit - (float) $row->total_debit;
+
+            DB::table('accounts')
+                ->where('id', $row->account_id)
+                ->update(['balance' => round($balance, 4)]);
+        }
+
+        return $count;
     }
 }

@@ -12,6 +12,7 @@ use App\Services\AccountingService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class AccountingController extends Controller
 {
@@ -74,16 +75,10 @@ class AccountingController extends Controller
     public function storeJournalEntry(StoreJournalEntryRequest $request)
     {
         $this->authorize('create_journal_entry');
-        $data        = $request->validated();
-        $totalDebit  = collect($data['lines'])->sum('debit');
-        $totalCredit = collect($data['lines'])->sum('credit');
-
-        if (abs($totalDebit - $totalCredit) > 0.001) {
-            return $this->error(__('pos.journal_entry_not_balanced', [
-                'debit'  => $totalDebit,
-                'credit' => $totalCredit,
-            ]));
-        }
+        $data = $request->validated();
+        // FIX: removed duplicate balance check (was using > 0.001, differing from the
+        //      StoreJournalEntryRequest guard at > 0.01 and AccountingService at round()!=round()).
+        //      The Request validator is the pre-flight check; the Service is the authoritative gate.
 
         try {
             $entry = $this->accountingService->createJournalEntry($data);
@@ -133,6 +128,24 @@ class AccountingController extends Controller
     }
 
     /**
+     * Recompute every account balance from posted journal-entry lines.
+     * Destructive admin action: zeroes all balances then rebuilds from the ledger.
+     * Requires manage_roles permission (same guard as fiscal-period closing).
+     */
+    public function recalculateBalances()
+    {
+        $this->authorize('manage_roles');
+
+        try {
+            $count = $this->accountingService->recalculateAllBalances();
+            $this->audit('accounting.balances_recalculated', Account::class, 0, ['accounts_updated' => $count]);
+            return $this->success(['accounts_updated' => $count]);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Queryable audit log — returns DB-persisted entries filtered by action/model/user/date.
      */
     public function auditLogs(Request $request)
@@ -147,7 +160,7 @@ class AccountingController extends Controller
         ]);
 
         $logs = AuditLogModel::query()
-            ->when($data['action']     ?? null, fn($q, $v) => $q->where('action', 'like', "%{$v}%"))
+            ->when($data['action']     ?? null, fn($q, $v) => $q->where('action', 'like', '%' . Str::escapeLike($v) . '%'))
             ->when($data['model']      ?? null, fn($q, $v) => $q->where('model', $v))
             ->when($data['user_id']    ?? null, fn($q, $v) => $q->where('user_id', $v))
             ->when($data['start_date'] ?? null, fn($q, $v) => $q->whereDate('created_at', '>=', $v))

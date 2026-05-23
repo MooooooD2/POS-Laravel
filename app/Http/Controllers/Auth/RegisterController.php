@@ -71,7 +71,7 @@ class RegisterController extends Controller
                 'full_name' => $data['full_name'],
                 'role'      => 'admin',
                 'is_active' => true,
-                'language'  => 'ar',
+                'language'  => config('app.locale', 'en'),
             ]);
 
             $user->syncRoles([$adminRole]);

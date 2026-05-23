@@ -101,7 +101,32 @@ class PayPalController extends Controller
                 [$tenantId, $planId, $months] = array_pad(explode('|', $ref), 3, null);
 
                 if ($tenantId && $planId && $months) {
-                    $this->activateSubscription($tenantId, $planId, (int) $months);
+                    // SECURITY: verify that PayPal actually charged the correct plan price.
+                    // An attacker cannot place a $1 order then tamper with reference_id to
+                    // claim 12 months — we compare the captured amount against the DB price.
+                    $plan = Plan::find($planId);
+                    $months = (int) $months;
+
+                    if (!$plan) {
+                        Log::warning('PayPal return: plan not found', ['plan_id' => $planId]);
+                        return redirect()->route('subscribe')->withErrors(['payment' => __('pos.payment_plan_not_found')]);
+                    }
+
+                    $isAnnual      = $months >= 12;
+                    $expectedPrice = $isAnnual ? (float) $plan->annual_price : (float) $plan->monthly_price;
+                    $capturedAmt   = (float) ($capture['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? 0);
+
+                    if ($expectedPrice <= 0 || abs($capturedAmt - $expectedPrice) > 0.01) {
+                        Log::warning('PayPal payment amount mismatch', [
+                            'plan_id'        => $planId,
+                            'expected_price' => $expectedPrice,
+                            'captured_amount'=> $capturedAmt,
+                            'tenant_id'      => $tenantId,
+                        ]);
+                        return redirect()->route('subscribe')->withErrors(['payment' => __('pos.payment_amount_mismatch')]);
+                    }
+
+                    $this->activateSubscription($tenantId, $planId, $months);
                 }
 
                 return view('subscription.success', [

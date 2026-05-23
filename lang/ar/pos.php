@@ -91,6 +91,7 @@ return [
     'po_status_cancelled'          => 'ملغى',
     'purchase_receipt'             => 'إيصال أمر الشراء: :po',
     'po_debt_note'                 => 'دين أمر شراء رقم :po',
+    'purchase_receipt_journal'     => 'استلام بضاعة — أمر الشراء :po',
     'po_already_closed'            => 'أمر الشراء مغلق ولا يمكن استلامه.',
     'po_not_draft'                 => 'يمكن إرسال أوامر الشراء للاعتماد في حالة المسودة فقط.',
     'po_not_pending'               => 'يمكن اعتماد أو رفض أوامر الشراء المعلقة فقط.',
@@ -422,6 +423,7 @@ return [
     'purchase_return_po_not_received' => 'لا يمكن إنشاء مرتجع لأمر شراء لم يتم استلامه بعد.',
     'purchase_return_note'            => 'بضاعة مُرتجعة للمورد — المرجع: :ret',
     'purchase_return_credit_note'     => 'إشعار دائن لمرتجع مشتريات :ret',
+    'purchase_return_journal'         => 'مرتجع مشتريات :ret — تخفيض الذمم الدائنة',
     'returnable_items'                => 'الأصناف القابلة للإرجاع',
     'returnable_qty'                  => 'الكمية القابلة للإرجاع',
 
@@ -693,7 +695,25 @@ return [
     'product_not_in_invoice'          => 'هذا المنتج غير موجود في الفاتورة الأصلية.',
     'journal_entry_unbalanced'        => 'القيد محير: إجمالي المدين (:debit) لا يساوي إجمالي الدائن (:credit).',
     'expense_period_closed'           => 'تاريخ المصروف يقع ضمن فترة مالية مغلقة ولا يمكن تعديله.',
+    'expense_journal_description'     => 'مصروف: :title (:number)',
+    'expense_update_reversal'         => 'تعديل مصروف — عكس القيد الأصلي للمصروف :number',
+    'expense_deletion_reversal'       => 'حذف مصروف — عكس القيد المحاسبي للمصروف :number',
     'supplier_payment_exceeds_balance'=> 'مبلغ الدفعة (:amount) يتجاوز رصيد المورد المستحق (:balance).',
     'supplier_no_outstanding_balance' => 'لا يوجد رصيد مستحق لهذا المورد.',
     'recipe_ingredient_shortfall'     => 'مخزون غير كافٍ لمكوّن الوصفة ":name" (مطلوب :needed، متاح :available).',
+
+    // المصادقة الثنائية (2FA)
+    '2fa_invalid_code'                => 'الرمز غير صحيح. يرجى التحقق من التطبيق والمحاولة مجدداً.',
+    '2fa_invalid_recovery_code'       => 'رمز الاسترداد غير صحيح أو مستخدم بالفعل.',
+    '2fa_disabled'                    => 'تم تعطيل التحقق بخطوتين بنجاح.',
+    'incorrect_password'              => 'كلمة المرور غير صحيحة.',
+
+    // الدفع والاشتراكات
+    'payment_plan_not_found'          => 'خطة الاشتراك المطلوبة غير موجودة.',
+    'payment_amount_mismatch'         => 'مبلغ الدفع لا يتطابق مع سعر الخطة. يُرجى المحاولة مجدداً أو التواصل مع الدعم.',
+
+    // جلسات الكاشير — القيود المحاسبية
+    'cash_session_journal'            => 'تسوية جلسة الكاشير رقم :number',
+    'cash_session_cash_line'          => 'إيرادات نقدية — جلسة :number',
+    'cash_session_revenue_line'       => 'إيرادات مبيعات — جلسة :number',
 ];

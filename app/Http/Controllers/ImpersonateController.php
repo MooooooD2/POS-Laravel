@@ -11,6 +11,10 @@ class ImpersonateController extends Controller
 {
     public function start(Request $request, User $user)
     {
+        // SECURITY FIX: require manage_roles permission — previously any authenticated user
+        // could call this endpoint and impersonate any other user in the tenant.
+        $this->authorize('manage_roles');
+
         $admin = Auth::user();
 
         if ($admin->id === $user->id) {

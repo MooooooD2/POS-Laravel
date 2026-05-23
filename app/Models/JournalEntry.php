@@ -5,6 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\FiscalPeriod;
 
+/**
+ * @property int                              $id
+ * @property string                           $entry_number
+ * @property \Illuminate\Support\Carbon       $entry_date
+ * @property string                           $description
+ * @property string|null                      $reference_type
+ * @property int|null                         $reference_id
+ * @property int|null                         $created_by
+ * @property bool                             $is_posted
+ * @property \Illuminate\Support\Carbon|null  $posted_at
+ * @property int|null                         $posted_by
+ * @property int|null                         $reversal_of
+ * @property int|null                         $fiscal_period_id
+ */
 class JournalEntry extends Model
 {
     protected $fillable = [
