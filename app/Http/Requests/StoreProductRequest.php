@@ -8,7 +8,12 @@ class StoreProductRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->user()?->can('add_product');
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+        // Warehouse managers need add_product; cashiers can quick-add from the POS (view_pos).
+        return $user->can('add_product') || $user->can('view_pos');
     }
 
     protected function prepareForValidation(): void

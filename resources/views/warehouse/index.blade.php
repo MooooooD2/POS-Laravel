@@ -19,12 +19,20 @@ DESCRIPTION: Product management with search, CRUD, stock management
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fas fa-boxes me-2"></i>{{ __('pos.warehouse') }}</span>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#unitsModal">
                 <i class="fas fa-ruler me-1"></i>{{ __('pos.manage_units') }}
             </button>
             <button class="btn btn-outline-success btn-sm" data-fn="openBarcodeScanner">
                 <i class="fas fa-barcode me-1"></i>{{ app()->getLocale() === 'ar' ? 'مسح باركود' : 'Scan Barcode' }}
+            </button>
+            {{-- ── Import button ── --}}
+            <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#importProductsModal">
+                <i class="fas fa-file-excel me-1"></i>{{ __('pos.import_products') }}
+            </button>
+            {{-- ── Export button ── --}}
+            <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#exportProductsModal">
+                <i class="fas fa-file-download me-1"></i>{{ __('pos.export_products') }}
             </button>
             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
                 <i class="fas fa-plus me-1"></i>{{ __('pos.add_product') }}
@@ -304,6 +312,217 @@ DESCRIPTION: Product management with search, CRUD, stock management
             <div id="barcodeScanResult" class="d-none"></div>
         </div>
     </div>
+</div>
+
+{{-- ═══════════════════════════════════════════════════════════════
+     Import Products Modal
+═══════════════════════════════════════════════════════════════ --}}
+@php $isAr = app()->getLocale() === 'ar'; @endphp
+<div class="modal fade" id="importProductsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-file-excel text-success me-2"></i>{{ __('pos.import_products') }}
+        </h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        {{-- Step 1: Download template --}}
+        <div class="alert alert-info d-flex align-items-center gap-3 mb-4">
+          <i class="fas fa-circle-info fa-lg flex-shrink-0"></i>
+          <div>
+            <strong>{{ $isAr ? 'الخطوة 1: تحميل القالب' : 'Step 1: Download the template' }}</strong><br>
+            <small class="text-muted">
+              {{ $isAr
+                ? 'حمّل ملف Excel القالب، أدخل بياناتك ثم ارفع الملف أدناه.'
+                : 'Download the Excel template, fill in your products, then upload below.' }}
+            </small>
+          </div>
+          <a href="{{ route('products.import.template') }}" class="btn btn-sm btn-outline-primary ms-auto flex-shrink-0">
+            <i class="fas fa-download me-1"></i>{{ __('pos.import_download_template') }}
+          </a>
+        </div>
+
+        {{-- Column reference --}}
+        <div class="table-responsive mb-4">
+          <table class="table table-sm table-bordered align-middle" style="font-size:.82rem">
+            <thead class="table-dark text-center">
+              <tr>
+                <th>{{ $isAr ? 'العمود' : 'Column' }}</th>
+                <th>{{ $isAr ? 'مطلوب' : 'Required' }}</th>
+                <th>{{ $isAr ? 'الوصف' : 'Description' }}</th>
+                <th>{{ $isAr ? 'مثال' : 'Example' }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach([
+                ['name (اسم_المنتج)',        true,  $isAr ? 'اسم المنتج'              : 'Product name',            $isAr ? 'أرز بسمتي 1 كيلو'   : 'Basmati Rice 1kg'],
+                ['barcode (الباركود)',        false, $isAr ? 'باركود المنتج (اختياري)' : 'Product barcode',         '6281234567890'],
+                ['category (الفئة)',          false, $isAr ? 'تصنيف المنتج'            : 'Category name',           $isAr ? 'حبوب'                : 'Grains'],
+                ['price (السعر)',             true,  $isAr ? 'سعر البيع'               : 'Selling price',           '25.00'],
+                ['cost_price (سعر_التكلفة)', false, $isAr ? 'سعر التكلفة'             : 'Cost price',              '18.00'],
+                ['wholesale_price',           false, $isAr ? 'سعر الجملة'              : 'Wholesale price',         '22.00'],
+                ['vip_price',                 false, $isAr ? 'سعر VIP'                 : 'VIP price',               '24.00'],
+                ['min_stock (الحد_الادنى)',   false, $isAr ? 'الحد الأدنى للمخزون'    : 'Min stock alert level',   '10'],
+                ['initial_qty (الكمية_الابتدائية)', false, $isAr ? 'كمية الافتتاح (للمنتجات الجديدة فقط)' : 'Opening stock (new products only)', '50'],
+                ['description (الوصف)',       false, $isAr ? 'وصف المنتج'              : 'Product description',     $isAr ? 'وصف مختصر'           : 'Short description'],
+                ['is_active (نشط)',           false, $isAr ? '1 = نشط ، 0 = غير نشط'  : '1 = Active, 0 = Inactive','1'],
+              ] as [$col, $req, $desc, $ex])
+              <tr>
+                <td><code>{{ $col }}</code></td>
+                <td class="text-center">
+                  @if($req)
+                    <span class="badge bg-danger">{{ $isAr ? 'مطلوب' : 'Required' }}</span>
+                  @else
+                    <span class="text-muted">—</span>
+                  @endif
+                </td>
+                <td>{{ $desc }}</td>
+                <td class="text-muted font-monospace">{{ $ex }}</td>
+              </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+
+        {{-- Step 2: Upload --}}
+        <div class="mb-3">
+          <label class="form-label fw-semibold">
+            <i class="fas fa-upload me-1"></i>
+            {{ $isAr ? 'الخطوة 2: رفع الملف (xlsx, xls, csv)' : 'Step 2: Upload file (xlsx, xls, csv)' }}
+          </label>
+          <input type="file" class="form-control" id="importFile" accept=".xlsx,.xls,.csv">
+          <div class="form-text">
+            {{ $isAr ? 'الحد الأقصى: 10 MB — يمكنك استخدام أسماء الأعمدة بالعربية أو الإنجليزية.' : 'Max 10 MB — Arabic or English column names are both accepted.' }}
+          </div>
+        </div>
+
+        {{-- Progress bar --}}
+        <div id="importProgress" class="d-none mb-3">
+          <div class="progress" style="height:8px">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success w-100"></div>
+          </div>
+          <small class="text-muted mt-1 d-block text-center">
+            {{ $isAr ? 'جاري المعالجة…' : 'Processing…' }}
+          </small>
+        </div>
+
+        {{-- Result area --}}
+        <div id="importResult" class="d-none"></div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">
+          {{ $isAr ? 'إغلاق' : 'Close' }}
+        </button>
+        <button class="btn btn-success" id="btnRunImport">
+          <i class="fas fa-file-import me-1"></i>{{ $isAr ? 'استيراد الآن' : 'Import Now' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{{-- ═══════════════════════════════════════════════════════════════
+     Export Products Modal
+═══════════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="exportProductsModal" tabindex="-1">
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-file-download text-success me-2"></i>{{ __('pos.export_products') }}
+        </h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <p class="text-muted small mb-4">
+          {{ $isAr
+            ? 'اختر الفلاتر المناسبة ثم اضغط "تصدير" لتحميل ملف Excel يحتوي على المنتجات المطلوبة.'
+            : 'Apply filters, then click Export to download an Excel file with the matching products.' }}
+        </p>
+
+        <div class="row g-3">
+
+          {{-- Category filter --}}
+          <div class="col-12 col-sm-6">
+            <label class="form-label fw-semibold">
+              <i class="fas fa-tag me-1 text-muted"></i>{{ __('pos.category') }}
+            </label>
+            <select class="form-select" id="exportCategory">
+              <option value="">{{ $isAr ? 'جميع الفئات' : 'All Categories' }}</option>
+            </select>
+          </div>
+
+          {{-- Stock filter --}}
+          <div class="col-12 col-sm-6">
+            <label class="form-label fw-semibold">
+              <i class="fas fa-boxes me-1 text-muted"></i>{{ __('pos.status') }}
+            </label>
+            <select class="form-select" id="exportStock">
+              <option value="">{{ $isAr ? 'كل المخزون' : 'All Stock Levels' }}</option>
+              <option value="low">{{ __('pos.low_stock') }}</option>
+              <option value="out">{{ __('pos.out_of_stock') }}</option>
+            </select>
+          </div>
+
+          {{-- Active filter --}}
+          <div class="col-12 col-sm-6">
+            <label class="form-label fw-semibold">
+              <i class="fas fa-toggle-on me-1 text-muted"></i>{{ $isAr ? 'حالة المنتج' : 'Product Status' }}
+            </label>
+            <select class="form-select" id="exportActive">
+              <option value="">{{ $isAr ? 'الكل (نشط + غير نشط)' : 'All (active & inactive)' }}</option>
+              <option value="1">{{ $isAr ? 'النشطة فقط' : 'Active only' }}</option>
+              <option value="0">{{ $isAr ? 'غير النشطة فقط' : 'Inactive only' }}</option>
+            </select>
+          </div>
+
+          {{-- Format --}}
+          <div class="col-12 col-sm-6">
+            <label class="form-label fw-semibold">
+              <i class="fas fa-file me-1 text-muted"></i>{{ $isAr ? 'صيغة الملف' : 'File Format' }}
+            </label>
+            <select class="form-select" id="exportFormat">
+              <option value="xlsx">Excel (.xlsx)</option>
+              <option value="csv">CSV (.csv)</option>
+            </select>
+          </div>
+
+        </div>
+
+        {{-- Info note --}}
+        <div class="alert alert-light border mt-4 mb-0 d-flex align-items-start gap-2" style="font-size:.82rem">
+          <i class="fas fa-info-circle text-primary mt-1 flex-shrink-0"></i>
+          <span>
+            {{ $isAr
+              ? 'يشمل التصدير: الاسم، الباركود، الفئة، الأسعار، الكمية، الحد الأدنى، الوصف، الحالة، وتاريخ الإضافة.'
+              : 'Export includes: name, barcode, category, prices, quantity, min stock, description, status, and creation date.' }}
+          </span>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">
+          {{ $isAr ? 'إغلاق' : 'Close' }}
+        </button>
+        <a id="btnExportDownload" href="#" class="btn btn-success" target="_blank">
+          <i class="fas fa-download me-1"></i>{{ $isAr ? 'تصدير وتحميل' : 'Export & Download' }}
+        </a>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 @endsection
@@ -925,5 +1144,170 @@ function _esc(str) {
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 // ─────────────────────────────────────────────────────────────────────────────
+</script>
+
+{{-- ── Product Export Script ─────────────────────────────────────────── --}}
+<script @nonce>
+(function () {
+  const IS_AR      = {{ app()->getLocale() === 'ar' ? 'true' : 'false' }};
+  const exportBase = '{{ route("products.export") }}';
+  const expModal   = document.getElementById('exportProductsModal');
+  const btnDl      = document.getElementById('btnExportDownload');
+
+  function buildExportUrl() {
+    const params = new URLSearchParams();
+    const cat    = document.getElementById('exportCategory').value;
+    const stock  = document.getElementById('exportStock').value;
+    const active = document.getElementById('exportActive').value;
+    const fmt    = document.getElementById('exportFormat').value;
+    if (cat)         params.set('category', cat);
+    if (stock)       params.set('stock',    stock);
+    if (active !== '') params.set('active', active);
+    params.set('format', fmt);
+    return exportBase + (params.toString() ? '?' + params.toString() : '');
+  }
+
+  // Populate category dropdown from already-loaded products when modal opens
+  expModal.addEventListener('show.bs.modal', function () {
+    const sel  = document.getElementById('exportCategory');
+    const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+    sel.innerHTML = `<option value="">${IS_AR ? 'جميع الفئات' : 'All Categories'}</option>` +
+      cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    btnDl.href = buildExportUrl();
+  });
+
+  // Live-update href as filters change
+  ['exportCategory', 'exportStock', 'exportActive', 'exportFormat'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      btnDl.href = buildExportUrl();
+    });
+  });
+
+  // Auto-close modal after clicking download
+  btnDl.addEventListener('click', function () {
+    setTimeout(() => {
+      const bsModal = bootstrap.Modal.getInstance(expModal);
+      if (bsModal) bsModal.hide();
+    }, 700);
+  });
+})();
+</script>
+
+{{-- ── Product Import Script ─────────────────────────────────────────── --}}
+<script @nonce>
+(function () {
+  const IS_AR      = {{ app()->getLocale() === 'ar' ? 'true' : 'false' }};
+  const CSRF       = document.querySelector('meta[name="csrf-token"]').content;
+  const importUrl  = '{{ route("products.import") }}';
+
+  const btnRun     = document.getElementById('btnRunImport');
+  const fileInput  = document.getElementById('importFile');
+  const progress   = document.getElementById('importProgress');
+  const resultBox  = document.getElementById('importResult');
+
+  // Reset UI whenever the modal opens
+  document.getElementById('importProductsModal').addEventListener('show.bs.modal', () => {
+    fileInput.value = '';
+    progress.classList.add('d-none');
+    resultBox.classList.add('d-none');
+    resultBox.innerHTML = '';
+  });
+
+  btnRun.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) {
+      Swal.fire({
+        icon: 'warning',
+        title: IS_AR ? 'لم يتم اختيار ملف' : 'No file selected',
+        text:  IS_AR ? 'الرجاء اختيار ملف Excel أو CSV أولاً.' : 'Please choose an Excel or CSV file first.',
+      });
+      return;
+    }
+
+    // Show progress
+    btnRun.disabled = true;
+    progress.classList.remove('d-none');
+    resultBox.classList.add('d-none');
+
+    const form = new FormData();
+    form.append('file', file);
+    form.append('_token', CSRF);
+
+    try {
+      const res  = await fetch(importUrl, { method: 'POST', body: form });
+      const data = await res.json();
+
+      progress.classList.add('d-none');
+      resultBox.classList.remove('d-none');
+
+      if (data.success) {
+        // ── Success result ──────────────────────────────────────────────────
+        let html = `
+          <div class="alert alert-success">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>${IS_AR ? 'تم الاستيراد بنجاح!' : 'Import completed!'}</strong>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-4">
+              <div class="card border-0 bg-success bg-opacity-10 text-center p-3">
+                <div class="fs-2 fw-bold text-success">${data.imported}</div>
+                <div class="small">${IS_AR ? 'منتج جديد' : 'New products'}</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="card border-0 bg-primary bg-opacity-10 text-center p-3">
+                <div class="fs-2 fw-bold text-primary">${data.updated}</div>
+                <div class="small">${IS_AR ? 'منتج محدَّث' : 'Updated'}</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="card border-0 bg-${data.errors.length ? 'danger' : 'secondary'} bg-opacity-10 text-center p-3">
+                <div class="fs-2 fw-bold text-${data.errors.length ? 'danger' : 'secondary'}">${data.errors.length}</div>
+                <div class="small">${IS_AR ? 'أخطاء' : 'Errors'}</div>
+              </div>
+            </div>
+          </div>`;
+
+        if (data.errors.length) {
+          html += `
+            <div class="alert alert-warning mb-0">
+              <strong><i class="fas fa-exclamation-triangle me-1"></i>${IS_AR ? 'تفاصيل الأخطاء:' : 'Error details:'}</strong>
+              <ul class="mb-0 mt-2 ps-3">
+                ${data.errors.map(e => `<li>${IS_AR ? 'صف' : 'Row'} ${e.row}: ${escHtml(e.error)}</li>`).join('')}
+              </ul>
+            </div>`;
+        }
+
+        resultBox.innerHTML = html;
+
+        // Refresh the products table
+        if (typeof loadProducts === 'function') loadProducts();
+
+      } else {
+        // ── Validation / server error ───────────────────────────────────────
+        let errHtml = `<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i><strong>${escHtml(data.message ?? '')}</strong></div>`;
+        if (data.errors?.length) {
+          errHtml += `<ul class="list-group">
+            ${data.errors.map(e => `<li class="list-group-item list-group-item-danger py-1">
+              <strong>${IS_AR ? 'صف' : 'Row'} ${e.row}:</strong> ${escHtml(e.error)}
+            </li>`).join('')}
+          </ul>`;
+        }
+        resultBox.innerHTML = errHtml;
+      }
+
+    } catch (err) {
+      progress.classList.add('d-none');
+      resultBox.classList.remove('d-none');
+      resultBox.innerHTML = `<div class="alert alert-danger"><i class="fas fa-wifi me-2"></i>${IS_AR ? 'تعذّر الاتصال بالخادم.' : 'Could not reach the server.'}</div>`;
+    } finally {
+      btnRun.disabled = false;
+    }
+  });
+
+  function escHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
 </script>
 @endpush

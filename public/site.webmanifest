@@ -1,18 +1,56 @@
 {
-    "name": "POS System",
+    "name": "POS System — نظام نقطة البيع",
     "short_name": "POS",
-    "description": "Point of Sale - Offline Capable",
-    "start_url": "/pos",
+    "description": "Offline-capable Point of Sale with AI forecasting",
+    "start_url": "/pos?pwa=1",
+    "scope": "/",
     "display": "standalone",
+    "display_override": ["window-controls-overlay", "standalone", "browser"],
     "background_color": "#1e293b",
     "theme_color": "#1e293b",
     "orientation": "landscape-primary",
+    "lang": "ar",
+    "dir": "rtl",
+    "categories": ["business", "productivity"],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "نقطة البيع",
+            "short_name": "POS",
+            "description": "افتح شاشة البيع",
+            "url": "/pos?pwa=1",
+            "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+        },
+        {
+            "name": "المخزون",
+            "short_name": "Stock",
+            "description": "إدارة المخزون",
+            "url": "/warehouses?pwa=1",
+            "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+        },
+        {
+            "name": "شاشة المطبخ",
+            "short_name": "Kitchen",
+            "description": "Kitchen Display System",
+            "url": "/kitchen?pwa=1",
+            "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+        }
+    ],
     "icons": [
         {
-            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%231e293b'/><text x='50' y='62' text-anchor='middle' font-size='60'>🏪</text></svg>",
+            "src": "/icons/icon.svg",
             "sizes": "any",
             "type": "image/svg+xml",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
         }
-    ]
+    ],
+    "related_applications": [],
+    "prefer_related_applications": false,
+    "protocol_handlers": [{ "protocol": "web+pos", "url": "/pos?barcode=%s" }]
 }

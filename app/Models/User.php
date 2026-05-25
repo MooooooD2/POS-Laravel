@@ -49,4 +49,14 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Branch::class);
     }
+
+    // ── Query scopes ──────────────────────────────────────────────────────────
+
+    /**
+     * Scope: only active employees (used by PayrollService and HR reports).
+     */
+    public function scopeActive(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('is_active', true);
+    }
 }

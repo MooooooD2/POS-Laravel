@@ -32,7 +32,7 @@ class AiForecastingService
             $historical = $this->getDailySalesHistory($historyDays);
 
             if ($historical->count() < 7) {
-                return ['error' => 'Insufficient historical data (need at least 7 days)'];
+                return ['error' => __('pos.forecast_insufficient_data')];
             }
 
             $values     = $historical->pluck('total_sales')->toArray();

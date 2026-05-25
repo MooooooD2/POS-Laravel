@@ -7,15 +7,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="csp-nonce" content="{{ app('csp-nonce') ?? '' }}">
-    <title>@yield('title', __('pos.app_name'))</title>
+    <title>@yield('title', isset($branding) && $branding?->app_name ? $branding->app_name : __('pos.app_name'))</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <link rel="manifest" href="/site.webmanifest">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    {{-- Remove default favicon / No icon --}}
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' dominant-baseline='middle' font-size='80'>🏪</text></svg>">
+    {{-- Favicon: custom brand favicon or default emoji --}}
+    @if(isset($branding) && $branding?->favicon_path)
+        <link rel="icon" href="{{ Storage::url($branding->favicon_path) }}">
+    @else
+        <link rel="icon"
+            href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' dominant-baseline='middle' font-size='80'>🏪</text></svg>">
+    @endif
 
     {{-- Bootstrap RTL/LTR --}}
     @if (app()->getLocale() === 'ar')
@@ -29,13 +33,56 @@
     {{-- SweetAlert2 --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
-    {{-- Arabic Font --}}
-    {{-- Arabic Font - Cairo (Most Reliable) --}}
-    @if (app()->getLocale() === 'ar')
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap"
-            rel="stylesheet">
+    {{-- Font: white-label font or Arabic default --}}
+    @php
+        $_wlFont = $branding?->font_family ?? null;
+        $_fontMap = [
+            'Tajawal'              => 'https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap',
+            'Cairo'                => 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap',
+            'IBM Plex Sans Arabic' => 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap',
+            'Inter'                => 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
+            'Roboto'               => 'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
+            'Poppins'              => 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap',
+        ];
+        // If no brand font chosen, default to Cairo for Arabic locale
+        if (!$_wlFont && app()->getLocale() === 'ar') {
+            $_wlFont = 'Cairo';
+        }
+    @endphp
+    @if($_wlFont && isset($_fontMap[$_wlFont]))
+        <link href="{{ $_fontMap[$_wlFont] }}" rel="stylesheet">
     @endif
+
     <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v={{ filemtime(public_path('css/styles.css')) }}">
+
+    {{-- White-label: CSS custom properties + custom CSS --}}
+    @if(isset($branding) && $branding)
+    <style @nonce>
+        :root {
+            @if($branding->primary_color)   --color-primary:   {{ $branding->primary_color }};   @endif
+            @if($branding->secondary_color) --color-secondary: {{ $branding->secondary_color }}; @endif
+            @if($branding->accent_color)    --color-accent:    {{ $branding->accent_color }};    @endif
+            @if($branding->text_color)      --color-text:      {{ $branding->text_color }};      @endif
+            @if($branding->bg_color)        --color-bg:        {{ $branding->bg_color }};        @endif
+            @if($_wlFont)                   --font-family:     '{{ $_wlFont }}', sans-serif;      @endif
+        }
+        @if($_wlFont)
+        body, .form-control, .btn, .nav-label, .card {
+            font-family: '{{ $_wlFont }}', sans-serif;
+        }
+        @endif
+        @if($branding->primary_color)
+        .sidebar { background: {{ $branding->primary_color }} !important; }
+        .btn-primary { background: {{ $branding->primary_color }} !important; border-color: {{ $branding->primary_color }} !important; }
+        @endif
+        @if($branding->accent_color)
+        .btn-success, .badge.bg-success { background: {{ $branding->accent_color }} !important; border-color: {{ $branding->accent_color }} !important; }
+        @endif
+        @if($branding->custom_css)
+        {!! $branding->custom_css !!}
+        @endif
+    </style>
+    @endif
 
     {{-- Apply saved theme before first paint to avoid flash --}}
     <script @nonce>
@@ -54,10 +101,17 @@
     {{-- Sidebar --}}
     <nav id="sidebar">
         <div class="sidebar-brand">
-            <div class="brand-logo me-2">
-                <i class="fas fa-crosshairs"></i>
-            </div>
-            <span class="brand-text">{{ __('pos.app_name') }}</span>
+            @if(isset($branding) && $branding?->logo_path)
+                <img src="{{ Storage::url($branding->logo_path) }}"
+                     alt="{{ $branding->app_name ?? config('app.name') }}"
+                     class="me-2"
+                     style="max-height:36px;max-width:110px;object-fit:contain;filter:brightness(0) invert(1)">
+            @else
+                <div class="brand-logo me-2">
+                    <i class="fas fa-crosshairs"></i>
+                </div>
+            @endif
+            <span class="brand-text">{{ $branding?->app_name ?? __('pos.app_name') }}</span>
             {{-- Compact toggle: desktop only --}}
             <button class="btn btn-sm d-none d-md-flex ms-auto sidebar-compact-btn" data-fn="toggleSidebarCompact"
                 title="{{ app()->getLocale() === 'ar' ? 'تصغير القائمة' : 'Compact menu' }}">
@@ -120,6 +174,20 @@
         </a>
         <a href="{{ route('qr-tables') }}" class="{{ request()->routeIs('qr-tables*') ? 'active' : '' }}">
             <i class="fas fa-qrcode"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'طلبات QR' : 'QR Ordering' }}</span>
+        </a>
+        {{-- Phase 11: Kiosk --}}
+        <a href="{{ route('kiosk') }}" class="{{ request()->routeIs('kiosk*') ? 'active' : '' }}" target="_blank">
+            <i class="fas fa-tablet-screen-button"></i><span class="nav-label"> {{ __('pos.kiosk_mode') }}</span>
+        </a>
+        @endpermission
+
+        {{-- Phase 2: Shift Management --}}
+        <a href="{{ route('shifts.my') }}" class="{{ request()->routeIs('shifts.my') ? 'active' : '' }}">
+            <i class="fas fa-clock"></i><span class="nav-label"> {{ __('pos.my_shift') }}</span>
+        </a>
+        @permission('view_reports')
+        <a href="{{ route('shifts.index') }}" class="{{ request()->routeIs('shifts.index') ? 'active' : '' }}">
+            <i class="fas fa-user-clock"></i><span class="nav-label"> {{ __('pos.shift_management') }}</span>
         </a>
         @endpermission
 
@@ -223,6 +291,28 @@
         <a href="{{ route('forecasting') }}" class="{{ request()->routeIs('forecasting*') ? 'active' : '' }}">
             <i class="fas fa-robot"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'التنبؤ بالذكاء الاصطناعي' : 'AI Forecasting' }}</span>
         </a>
+        {{-- Phase 10: Franchise Royalties --}}
+        <a href="{{ route('franchise.royalties') }}" class="{{ request()->routeIs('franchise*') ? 'active' : '' }}">
+            <i class="fas fa-handshake"></i><span class="nav-label"> {{ __('pos.franchise_royalties') }}</span>
+        </a>
+        @endpermission
+
+        {{-- ──────────── HR MODULE ──────────── --}}
+        @permission('manage_settings')
+        <hr class="sidebar-divider">
+        <div class="sidebar-section-label">{{ __('pos.hr_module') }}</div>
+        <a href="{{ route('hr.employees') }}" class="{{ request()->routeIs('hr.employees') ? 'active' : '' }}">
+            <i class="fas fa-users-gear"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الموظفون' : 'Employees' }}</span>
+        </a>
+        <a href="{{ route('hr.attendance') }}" class="{{ request()->routeIs('hr.attendance') ? 'active' : '' }}">
+            <i class="fas fa-fingerprint"></i><span class="nav-label"> {{ __('pos.attendance') }}</span>
+        </a>
+        <a href="{{ route('hr.payroll') }}" class="{{ request()->routeIs('hr.payroll') ? 'active' : '' }}">
+            <i class="fas fa-money-check-dollar"></i><span class="nav-label"> {{ __('pos.payroll') }}</span>
+        </a>
+        <a href="{{ route('hr.leaves') }}" class="{{ request()->routeIs('hr.leaves') ? 'active' : '' }}">
+            <i class="fas fa-umbrella-beach"></i><span class="nav-label"> {{ __('pos.leaves') }}</span>
+        </a>
         @endpermission
 
         {{-- ──────────── CONFIGURATION ──────────── --}}
@@ -240,6 +330,16 @@
         </a>
         <a href="{{ route('whatsapp') }}" class="{{ request()->routeIs('whatsapp') ? 'active' : '' }}">
             <i class="fab fa-whatsapp"></i><span class="nav-label"> {{ __('pos.whatsapp') }}</span>
+        </a>
+        @endpermission
+
+        {{-- Phase 4: White Label & Phase 10: Multi-Currency --}}
+        @permission('manage_settings')
+        <a href="{{ route('white-label') }}" class="{{ request()->routeIs('white-label*') ? 'active' : '' }}">
+            <i class="fas fa-palette"></i><span class="nav-label"> {{ __('pos.white_label') }}</span>
+        </a>
+        <a href="{{ route('currencies.index') }}" class="{{ request()->routeIs('currencies*') ? 'active' : '' }}">
+            <i class="fas fa-coins"></i><span class="nav-label"> {{ __('pos.currencies') }}</span>
         </a>
         @endpermission
 
@@ -438,6 +538,25 @@
         <div class="page-content">
             @yield('content')
         </div>
+
+        {{-- White-label footer --}}
+        @php
+            $_showFooter = isset($branding)
+                ? ($branding?->footer_text || !($branding?->hide_powered_by))
+                : true;  // default footer when no branding saved
+        @endphp
+        @if($_showFooter)
+        <div class="text-center text-muted py-2" style="font-size:.78rem;border-top:1px solid rgba(0,0,0,.06);margin-top:.5rem">
+            @if(isset($branding) && $branding?->footer_text)
+                {{ $branding->footer_text }}
+                @if(!($branding?->hide_powered_by)) &nbsp;·&nbsp; @endif
+            @endif
+            @if(!isset($branding) || !($branding?->hide_powered_by))
+                {{ app()->getLocale() === 'ar' ? 'بتقنية' : 'Powered by' }}
+                <strong>{{ $branding?->app_name ?? config('app.name') }}</strong>
+            @endif
+        </div>
+        @endif
     </div>
 
     {{-- Toast Container --}}
@@ -791,6 +910,17 @@ function toggleSidebarCompact() {
                 }
             }
         });
+    })();
+
+    // ── Sidebar: scroll active item into view on every page load ─────────────
+    (function () {
+        const menu   = document.querySelector('.sidebar-menu');
+        const active = menu && menu.querySelector('a.active');
+        if (!menu || !active) return;
+        // Centre the active link inside the scrollable menu — no animation so
+        // there is no visible "jump" after the page has painted.
+        const target = active.offsetTop - (menu.clientHeight / 2) + (active.clientHeight / 2);
+        menu.scrollTop = Math.max(0, target);
     })();
     // ────────────────────────────────────────────────────────────────────
     </script>

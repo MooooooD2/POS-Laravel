@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             CustomerSeeder::class,
             TenantSeeder::class,
             PlanSeeder::class,
+            CurrencySeeder::class,
         ]);
     }
 }

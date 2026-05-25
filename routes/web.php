@@ -95,6 +95,10 @@ Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class])->g
         Route::get('/warehouses', [WarehouseController::class, 'page'])->name('warehouses');
         Route::get('/waste', [WasteController::class, 'index'])->name('waste');
         Route::get('/suppliers', fn () => view('suppliers.index'))->name('suppliers');
+        // ── Product Import / Export ───────────────────────────────────────────
+        Route::get('/products/import/template', [\App\Http\Controllers\ProductImportController::class, 'template'])->name('products.import.template');
+        Route::post('/products/import', [\App\Http\Controllers\ProductImportController::class, 'import'])->name('products.import');
+        Route::get('/products/export', [\App\Http\Controllers\ProductImportController::class, 'export'])->name('products.export');
         Route::get('/purchase-orders', fn () => view('purchase-orders.index'))->name('purchase-orders');
         Route::get('/supplier-payments', fn () => view('supplier-payments.index'))->name('supplier-payments');
         Route::get('/supplier-accounts', fn () => view('supplier-accounts.index'))->name('supplier-accounts');
@@ -207,4 +211,51 @@ Route::prefix('qr')->name('qr.')->group(function () {
 Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:view_pos'])->group(function () {
     Route::get('/qr-tables', [QrOrderController::class, 'manage'])->name('qr-tables');
     Route::post('/qr-tables', [QrOrderController::class, 'generate'])->name('qr-tables.generate');
+});
+
+// ── Phase 11: Kiosk (public self-service, no auth required) ──────────────
+Route::middleware(['tenancy', 'throttle:30,1'])->group(function () {
+    Route::get('/kiosk', [\App\Http\Controllers\KioskController::class, 'index'])->name('kiosk');
+});
+
+// ── Phase 2: Shift Management ─────────────────────────────────────────────
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class])->group(function () {
+    Route::get('/shifts', [\App\Http\Controllers\ShiftController::class, 'index'])
+         ->middleware('permission:view_reports')->name('shifts.index');
+    Route::get('/my-shift', [\App\Http\Controllers\ShiftController::class, 'myShift'])->name('shifts.my');
+});
+
+// ── Phase 4: White Label Settings ─────────────────────────────────────────
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:manage_settings'])->group(function () {
+    Route::get('/white-label', [\App\Http\Controllers\WhiteLabelController::class, 'index'])->name('white-label');
+    Route::get('/white-label/css', [\App\Http\Controllers\WhiteLabelController::class, 'cssVars'])->name('white-label.css');
+});
+
+// ── Phase 10: HR Module ────────────────────────────────────────────────────
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:manage_settings'])->group(function () {
+    Route::get('/hr/attendance', function () {
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        return view('hr.attendance', compact('branches'));
+    })->name('hr.attendance');
+    Route::get('/hr/payroll', function () {
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        return view('hr.payroll', compact('branches'));
+    })->name('hr.payroll');
+    Route::get('/hr/leaves', fn () => view('hr.leaves'))->name('hr.leaves');
+
+    // Employees — manage salaries and leave allocations
+    Route::get('/hr/employees', function () {
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        return view('hr.employees', compact('branches'));
+    })->name('hr.employees');
+});
+
+// ── Phase 10: Multi-Currency ───────────────────────────────────────────────
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:manage_settings'])->group(function () {
+    Route::get('/currencies', fn () => view('currencies.index'))->name('currencies.index');
+});
+
+// ── Phase 10: Franchise Royalties ──────────────────────────────────────────
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:view_reports'])->group(function () {
+    Route::get('/franchise/royalties', fn () => view('franchise.royalties'))->name('franchise.royalties');
 });

@@ -33,13 +33,17 @@ class SecurityHeaders
         }
 
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
-        $response->headers->set('X-XSS-Protection', '1; mode=block');
+        // X-XSS-Protection: 0 is the modern recommendation; CSP replaces it
+        $response->headers->set('X-XSS-Protection', '0');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         // camera=(self) — allow camera on the same origin for barcode scanning (warehouse page)
-        // microphone/geolocation remain fully blocked
-        $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+        // microphone/geolocation remain fully blocked; payment=(self) for Paymob/PayPal
+        $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=(self), usb=()');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
         $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+        // Remove fingerprinting headers
+        $response->headers->remove('X-Powered-By');
+        $response->headers->remove('Server');
         $response->headers->set('Content-Security-Policy',
             "default-src 'self'; ".
             "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; ".
@@ -49,7 +53,7 @@ class SecurityHeaders
             "style-src-attr 'unsafe-inline'; ".
             "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://fonts.bunny.net data:; ".
             "img-src 'self' data: blob: https://api.qrserver.com; ".
-            "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; ".
+            "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://sentry.io https://*.sentry.io wss: ws:; ".
             "object-src 'none'; ".
             "base-uri 'self'; ".
             "form-action 'self';"

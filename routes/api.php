@@ -82,6 +82,73 @@ Route::middleware(['auth', 'throttle:60,1', CheckSubscriptionActive::class])->gr
     Route::middleware('permission:view_pos')->group(function () {
         Route::get('/search-product', [InvoiceController::class, 'searchProduct'])->name('products.search');
         Route::get('/products/for-cache', [InvoiceController::class, 'productsForCache'])->name('products.for-cache');
+
+        // Barcode name lookup proxy — server-side so CSP connect-src 'self' is respected
+        Route::get('/barcode-lookup/{barcode}', function (string $barcode) {
+            // Validate: only numeric EAN/UPC barcodes (6–14 digits)
+            if (! preg_match('/^\d{6,14}$/', $barcode)) {
+                return response()->json(['name' => null], 400);
+            }
+
+            $locale = app()->getLocale();
+
+            // 1. Try Open Food Facts (free, no key, supports Arabic)
+            try {
+                $off = \Illuminate\Support\Facades\Http::timeout(6)
+                    ->withoutVerifying()
+                    ->get("https://world.openfoodfacts.org/api/v2/product/{$barcode}.json", [
+                        'fields' => 'product_name,product_name_ar,brands,categories_tags',
+                    ]);
+
+                if ($off->successful()) {
+                    $data = $off->json();
+                    if (($data['status'] ?? 0) === 1 && isset($data['product'])) {
+                        $p    = $data['product'];
+                        $name = $locale === 'ar'
+                            ? ($p['product_name_ar'] ?? $p['product_name'] ?? null)
+                            : ($p['product_name'] ?? null);
+                        $name = trim($name ?? '');
+
+                        if ($name !== '') {
+                            return response()->json([
+                                'name'   => $name,
+                                'brand'  => isset($p['brands']) ? trim(explode(',', $p['brands'])[0]) : null,
+                                'source' => 'openfoodfacts',
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Throwable) {
+                // silent fallback
+            }
+
+            // 2. Fallback: UPC Item DB (free trial, no key, general products)
+            try {
+                $upc = \Illuminate\Support\Facades\Http::timeout(5)
+                    ->withoutVerifying()
+                    ->get("https://api.upcitemdb.com/prod/trial/lookup", ['upc' => $barcode]);
+
+                if ($upc->successful()) {
+                    $data  = $upc->json();
+                    $items = $data['items'] ?? [];
+                    if (! empty($items)) {
+                        $item = $items[0];
+                        $name = trim($item['title'] ?? '');
+                        if ($name !== '') {
+                            return response()->json([
+                                'name'   => $name,
+                                'brand'  => isset($item['brand']) ? trim($item['brand']) : null,
+                                'source' => 'upcitemdb',
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Throwable) {
+                // silent fallback
+            }
+
+            return response()->json(['name' => null]);
+        })->name('barcode.lookup')->middleware('throttle:60,1');
         Route::post('/offline/sync', [OfflineSyncController::class, 'sync'])->name('offline.sync');
         Route::post('/invoices', [InvoiceController::class, 'createInvoice'])->name('invoices.create');
         Route::get('/invoices', [InvoiceController::class, 'getByNumber'])->name('invoices.by-number');
@@ -444,3 +511,5 @@ Route::middleware(['auth', 'permission:view_warehouse', 'throttle:60,1'])->prefi
     Route::get('/follow-ups',                [CrmController::class, 'followUps'])->name('api.crm.followups');
     Route::get('/stats',                     [CrmController::class, 'stats'])->name('api.crm.stats');
 });
+
+require __DIR__.'/_api_additions.php';

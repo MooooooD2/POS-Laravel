@@ -1,0 +1,112 @@
+name: CD — Deploy POS Laravel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options: [production, staging]
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'production' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    concurrency:
+      group: deploy-${{ github.event.inputs.environment || 'production' }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, json, bcmath, pdo
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install PHP dependencies (production)
+        run: composer install --prefer-dist --no-interaction --no-dev --optimize-autoloader
+
+      - name: Build assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy via SSH (zero-downtime)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            # Pull latest code
+            git pull origin main
+
+            # Install production dependencies
+            composer install --prefer-dist --no-interaction --no-dev --optimize-autoloader
+
+            # Run migrations (with backup)
+            php artisan migrate --force --backup
+
+            # Clear & rebuild all caches
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+            php artisan icons:cache
+
+            # Reload queue workers gracefully
+            php artisan queue:restart
+
+            # Restart Horizon
+            php artisan horizon:terminate
+
+            echo "✅ Deploy complete at $(date)"
+
+      - name: Notify Sentry of deployment
+        if: success()
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          curl -sS https://sentry.io/api/0/organizations/${SENTRY_ORG}/releases/ \
+            -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"version\": \"${GITHUB_SHA}\", \"projects\": [\"${SENTRY_PROJECT}\"]}" || true
+
+          curl -sS https://sentry.io/api/0/organizations/${SENTRY_ORG}/releases/${GITHUB_SHA}/deploys/ \
+            -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"environment\": \"${{ github.event.inputs.environment || 'production' }}\"}" || true
+
+      - name: Send deploy notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            *POS Deploy* — ${{ job.status == 'success' && '✅' || '❌' }}
+            Environment: `${{ github.event.inputs.environment || 'production' }}`
+            Branch: `${{ github.ref_name }}`
+            Commit: `${{ github.sha }}`
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true

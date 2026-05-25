@@ -205,8 +205,12 @@
                             <input type="text" class="form-control form-control-lg" id="searchInput"
                                 placeholder="{{ __('pos.scan_barcode') }} / {{ __('pos.search_product') }}"
                                 autocomplete="off" autofocus>
-                            <button class="btn btn-outline-secondary" id="cameraScanBtn" title="Camera scan">
+                            <button class="btn btn-outline-secondary" id="cameraScanBtn" title="{{ app()->getLocale() === 'ar' ? 'مسح بالكاميرا' : 'Camera scan' }}">
                                 <i class="fas fa-camera"></i>
+                            </button>
+                            <button class="btn btn-outline-success" id="posAddProductBtn"
+                                title="{{ app()->getLocale() === 'ar' ? 'إضافة منتج جديد' : 'Add new product' }}">
+                                <i class="fas fa-plus"></i>
                             </button>
                             <button class="btn btn-primary" id="searchTriggerBtn">
                                 <i class="fas fa-search"></i>
@@ -438,79 +442,136 @@
         </div>
     </div>
 
-    {{-- ─── CAMERA BARCODE SCANNER MODAL ─────────────────────────────────────── --}}
+    {{-- ─── CAMERA BARCODE SCANNER MODAL (html5-qrcode — identical to warehouse) ── --}}
     <div class="modal fade" id="cameraScanModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
+                <div class="modal-header">
                     <h5 class="modal-title">
                         <i class="fas fa-camera me-2"></i>
-                        {{ app()->getLocale() === 'ar' ? 'مسح الباركود بالكاميرا' : 'Camera Barcode Scan' }}
+                        {{ app()->getLocale() === 'ar' ? 'مسح الباركود' : 'Scan Barcode' }}
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-0 bg-black" style="position:relative;min-height:320px">
-                    <video id="cameraVideo" style="width:100%;display:block;max-height:400px;object-fit:cover" autoplay
-                        muted playsinline></video>
-                    {{-- Scan frame overlay --}}
-                    <div id="scanOverlay"
-                        style="
-                    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-                    width:220px;height:140px;border:3px solid rgba(255,255,255,0.8);
-                    border-radius:12px;pointer-events:none;
-                    box-shadow:0 0 0 9999px rgba(0,0,0,0.45);
-                    transition:border-color 0.3s,box-shadow 0.3s;
-                ">
-                        <div
-                            style="position:absolute;top:-2px;left:-2px;width:22px;height:22px;border-top:4px solid #00B04E;border-left:4px solid #00B04E;border-radius:3px 0 0 0">
-                        </div>
-                        <div
-                            style="position:absolute;top:-2px;right:-2px;width:22px;height:22px;border-top:4px solid #00B04E;border-right:4px solid #00B04E;border-radius:0 3px 0 0">
-                        </div>
-                        <div
-                            style="position:absolute;bottom:-2px;left:-2px;width:22px;height:22px;border-bottom:4px solid #00B04E;border-left:4px solid #00B04E;border-radius:0 0 0 3px">
-                        </div>
-                        <div
-                            style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-bottom:4px solid #00B04E;border-right:4px solid #00B04E;border-radius:0 0 3px 0">
-                        </div>
-                        {{-- Scan line animation --}}
-                        <div
-                            style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#00B04E,transparent);animation:scanLine 2s linear infinite">
+                <div class="modal-body p-0">
+                    {{-- html5-qrcode renders the viewfinder + scan frame here --}}
+                    <div id="posScannerReader" class="w-100"></div>
+
+                    {{-- Manual / physical-scanner fallback --}}
+                    <div class="p-3 border-top">
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-keyboard me-1"></i>
+                            {{ app()->getLocale() === 'ar'
+                                ? 'أو أدخل الباركود يدوياً (يدعم الماسح الضوئي الفيزيائي):'
+                                : 'Or enter barcode manually (physical scanner supported):' }}
+                        </p>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-monospace" id="posManualBarcodeInput"
+                                placeholder="{{ app()->getLocale() === 'ar' ? 'اكتب أو امسح واضغط Enter' : 'Type or scan & press Enter' }}"
+                                autocomplete="off">
+                            <button class="btn btn-primary" id="posManualSearchBtn">
+                                <i class="fas fa-search"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-dark text-white d-flex justify-content-between align-items-center">
-                    <span id="cameraStatus" class="small text-light">
-                        <i class="fas fa-spinner fa-spin me-1"></i>
-                        {{ app()->getLocale() === 'ar' ? 'جاري التحميل...' : 'Loading...' }}
-                    </span>
-                    <button id="switchCameraBtn" class="btn btn-sm btn-outline-light" style="display:none">
-                        <i class="fas fa-rotate me-1"></i>
-                        {{ app()->getLocale() === 'ar' ? 'تبديل الكاميرا' : 'Switch Camera' }}
+            </div>
+        </div>
+    </div>
+
+    {{-- ─── QUICK-ADD PRODUCT MODAL (POS) ────────────────────────────────────── --}}
+    @php $isAr = app()->getLocale() === 'ar'; @endphp
+    <div class="modal fade" id="posAddProductModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="posAddProductTitle">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        {{ $isAr ? 'إضافة منتج جديد' : 'Add New Product' }}
+                    </h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+
+                    {{-- Barcode not-found notice (shown only when triggered from failed scan) --}}
+                    <div id="posBarcodeNotFoundAlert" class="alert alert-warning d-flex align-items-center gap-2 py-2 d-none mb-3">
+                        <i class="fas fa-barcode flex-shrink-0"></i>
+                        <div>
+                            <strong>{{ $isAr ? 'الباركود غير موجود' : 'Barcode not found' }}</strong>
+                            <div class="small">{{ $isAr ? 'يمكنك إضافة المنتج الآن وسيُضاف للفاتورة تلقائياً.' : 'Add the product now and it will be added to the cart automatically.' }}</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">
+                                {{ __('pos.product_name') }} <span class="text-danger">*</span>
+                                <span id="posNameLookupBadge" class="d-none ms-2 small text-muted">
+                                    <span class="spinner-border spinner-border-sm align-middle me-1" style="width:.75rem;height:.75rem;"></span>
+                                    {{ $isAr ? 'جاري البحث...' : 'Looking up…' }}
+                                </span>
+                                <span id="posNameFoundBadge" class="d-none ms-2 small text-success">
+                                    <i class="fas fa-check-circle me-1"></i>{{ $isAr ? 'تم جلب الاسم' : 'Name fetched' }}
+                                </span>
+                            </label>
+                            <input type="text" class="form-control" id="posNewName"
+                                placeholder="{{ $isAr ? 'اسم المنتج' : 'Product name' }}" autocomplete="off">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">{{ __('pos.selling_price') }} <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="posNewPrice" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">{{ __('pos.cost_price') }}</label>
+                            <input type="number" class="form-control" id="posNewCostPrice" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">{{ __('pos.barcode') }}</label>
+                            <input type="text" class="form-control font-monospace" id="posNewBarcode"
+                                placeholder="{{ $isAr ? 'باركود (اختياري)' : 'Barcode (optional)' }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">{{ __('pos.category') }}</label>
+                            <input type="text" class="form-control" id="posNewCategory" list="posCategoryList"
+                                placeholder="{{ $isAr ? 'الفئة (اختياري)' : 'Category (optional)' }}">
+                            <datalist id="posCategoryList"></datalist>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">{{ $isAr ? 'كمية البداية' : 'Initial Stock' }}</label>
+                            <input type="number" class="form-control" id="posNewQuantity" min="0" value="0">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">{{ __('pos.min_stock') }}</label>
+                            <input type="number" class="form-control" id="posNewMinStock" min="0" value="5">
+                        </div>
+                    </div>
+
+                    {{-- Add to cart checkbox --}}
+                    <div class="form-check mt-3 p-3 bg-success bg-opacity-10 rounded">
+                        <input class="form-check-input" type="checkbox" id="posAddToCartAfterSave" checked>
+                        <label class="form-check-label fw-semibold text-success" for="posAddToCartAfterSave">
+                            <i class="fas fa-cart-plus me-1"></i>
+                            {{ $isAr ? 'أضف للفاتورة الحالية بعد الحفظ' : 'Add to current cart after saving' }}
+                        </label>
+                    </div>
+
+                    {{-- Saving error --}}
+                    <div id="posAddProductError" class="alert alert-danger mt-3 d-none py-2"></div>
+
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">
+                        {{ $isAr ? 'إلغاء' : 'Cancel' }}
+                    </button>
+                    <button class="btn btn-success" id="posSaveNewProductBtn">
+                        <i class="fas fa-floppy-disk me-1"></i>
+                        {{ $isAr ? 'حفظ المنتج' : 'Save Product' }}
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <style @nonce>
-        @keyframes scanLine {
-            0% {
-                top: 0;
-                opacity: 1;
-            }
-
-            90% {
-                top: calc(100% - 2px);
-                opacity: 1;
-            }
-
-            100% {
-                top: 0;
-                opacity: 0;
-            }
-        }
-    </style>
 @endsection
 
 @push('scripts')
@@ -593,6 +654,8 @@
                     addToCart(product);
                     document.getElementById('searchInput').value = '';
                     if (POS_SETTINGS.posSound) beep();
+                } else if (isScanner) {
+                    openAddProductModal(query, true);
                 } else {
                     showToast('{{ __('pos.product_not_found') }}', 'danger');
                     document.getElementById('searchInput').value = '';
@@ -609,8 +672,13 @@
                 });
                 const res = await response.json();
                 if (!res.success) {
-                    showToast(res.message || '{{ __('pos.product_not_found') }}', 'danger');
-                    document.getElementById('searchInput').value = '';
+                    // Barcode scan: offer to create the product instead of just a toast
+                    if (isScanner) {
+                        openAddProductModal(query, true);   // use captured 'query', not stale DOM value
+                    } else {
+                        showToast(res.message || '{{ __('pos.product_not_found') }}', 'danger');
+                        document.getElementById('searchInput').value = '';
+                    }
                     return;
                 }
                 if (res.single) {
@@ -630,6 +698,8 @@
                     addToCart(product);
                     document.getElementById('searchInput').value = '';
                     if (POS_SETTINGS.posSound) beep();
+                } else if (isScanner) {
+                    openAddProductModal(query, true);
                 } else {
                     showToast('{{ __('pos.product_not_found') }}', 'danger');
                 }
@@ -686,7 +756,8 @@
         function renderSearchDropdown(products) {
             lastSearchResults = products;
             const container = document.getElementById('searchResults');
-            container.innerHTML = products.map((p, i) => `
+            const isAr = LOCALE === 'ar';
+            let html = products.map((p, i) => `
         <div class="search-item" data-product-idx="${i}">
             <div>
                 <div class="fw-semibold">${escapeHtml(p.name)}</div>
@@ -695,9 +766,15 @@
             <div class="text-end">
                 <div class="fw-bold text-success">${formatCurrency(p.price)}</div>
                 ${p.barcode ? `<span class="barcode-badge">${escapeHtml(p.barcode)}</span>` : ''}
-                <small class="text-${p.quantity > 0 ? 'success' : 'danger'} d-block">${p.quantity} ${p.unit_abbreviation || p.unit_name || '{{ app()->getLocale() === 'ar' ? 'قطعة' : 'pcs' }}'}</small>
+                <small class="text-${p.quantity > 0 ? 'success' : 'danger'} d-block">${p.quantity} ${p.unit_abbreviation || p.unit_name || (isAr ? 'قطعة' : 'pcs')}</small>
             </div>
         </div>`).join('');
+            // "Add new product" footer
+            html += `<div class="search-item text-success border-top" style="font-size:.85rem" id="posAddFromSearchOption">
+                <i class="fas fa-plus-circle me-1"></i>
+                ${isAr ? 'إضافة منتج جديد' : 'Add new product'}
+            </div>`;
+            container.innerHTML = html;
             container.classList.add('show');
         }
 
@@ -1602,168 +1679,113 @@
             return await response.json();
         }
 
-        // ─── CAMERA BARCODE SCANNER ───────────────────────────────────────────────
-        let cameraStream = null;
-        let scannerActive = false;
-        let zxingReader = null;
+        // ─── CAMERA BARCODE SCANNER (html5-qrcode — same library as warehouse) ──────
 
-        async function openCameraModal() {
-            const modal = new bootstrap.Modal(document.getElementById('cameraScanModal'));
-            modal.show();
+        let _posHtml5QrCode = null;
+
+        function openCameraModal() {
+            new bootstrap.Modal(document.getElementById('cameraScanModal')).show();
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('cameraScanModal').addEventListener('shown.bs.modal', startCameraScanner);
-            document.getElementById('cameraScanModal').addEventListener('hidden.bs.modal', stopCameraScanner);
-        });
-
-        async function startCameraScanner() {
-            const video = document.getElementById('cameraVideo');
-            const statusEl = document.getElementById('cameraStatus');
-            const switchBtn = document.getElementById('switchCameraBtn');
-
-            scannerActive = true;
-            statusEl.textContent =
-                '{{ app()->getLocale() === 'ar' ? 'جاري تشغيل الكاميرا...' : 'Starting camera...' }}';
-
-            try {
-                // Load ZXing dynamically
-                if (!window.ZXing) {
-                    statusEl.textContent =
-                        '{{ app()->getLocale() === 'ar' ? 'جاري تحميل مكتبة المسح...' : 'Loading scanner library...' }}';
-                    await loadScript('https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js');
-                }
-
-                zxingReader = new ZXing.BrowserMultiFormatReader();
-
-                // Get available cameras
-                // Get available cameras
-                // Get available cameras
-                const devices = await zxingReader.listVideoInputDevices();
-
-                if (!devices.length) {
-                    throw new Error('No camera found');
-                }
-
-                // في اللابتوب اختار أول كاميرا مباشرة
-                let selectedDevice = devices[0];
-
-                // لو موبايل حاول يجيب الخلفية
-                const backCam = devices.find(d =>
-                    /back|rear|environment/i.test(d.label)
-                );
-
-                if (backCam) {
-                    selectedDevice = backCam;
-                }
-
-                window._cameraDevices = devices;
-                window._currentCamIdx = devices.indexOf(selectedDevice);
-
-                if (devices.length > 1) {
-                    switchBtn.style.display = 'inline-flex';
-                }
-
-                switchBtn.onclick = async () => {
-
-    if (!window._cameraDevices?.length) return;
-
-    window._currentCamIdx =
-        (window._currentCamIdx + 1) % window._cameraDevices.length;
-
-    const nextDevice =
-        window._cameraDevices[window._currentCamIdx];
-
-    statusEl.innerHTML =
-        '<i class="fas fa-rotate fa-spin me-1"></i>' +
-        '{{ app()->getLocale() === 'ar' ? 'جاري تبديل الكاميرا...' : 'Switching camera...' }}';
-
-    await startDecode(nextDevice.deviceId);
-};
-                startDecode(selectedDevice.deviceId);
-
-            } catch (err) {
-                statusEl.innerHTML =
-                    `<span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>${err.message || '{{ app()->getLocale() === 'ar' ? 'تعذر الوصول للكاميرا' : 'Cannot access camera' }}'}</span>`;
-                console.error('Camera error:', err);
-            }
-        }
-
-        async function startDecode(deviceId) {
-    const video = document.getElementById('cameraVideo');
-    const statusEl = document.getElementById('cameraStatus');
-    const overlay = document.getElementById('scanOverlay');
-
-    statusEl.textContent =
-        '{{ app()->getLocale() === 'ar' ? 'وجّه الكاميرا نحو الباركود...' : 'Point camera at barcode...' }}';
-
-    // وقف أي قراءة قديمة
-    try {
-        zxingReader.reset();
-    } catch (e) {}
-
-    zxingReader.decodeFromConstraints(
-        {
-            video: {
-                deviceId: deviceId ? { exact: deviceId } : undefined,
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        },
-        video,
-        (result, err) => {
-
-            if (!scannerActive) return;
-
-            if (result) {
-                const code = result.getText();
-
-                overlay.style.borderColor = '#22c55e';
-                overlay.style.boxShadow =
-                    '0 0 0 4px rgba(34,197,94,0.4)';
-
-                setTimeout(() => {
-                    overlay.style.borderColor = '';
-                    overlay.style.boxShadow = '';
-                }, 500);
-
-                if (POS_SETTINGS.posSound) beep();
-
-                bootstrap.Modal
-                    .getInstance(
-                        document.getElementById('cameraScanModal')
-                    )
-                    .hide();
-
-                document.getElementById('searchInput').value = code;
-
-                handleSearch(code, true);
-            }
-        }
-    );
-}
-        function stopCameraScanner() {
-            scannerActive = false;
-            if (zxingReader) {
-                try {
-                    zxingReader.reset();
-                } catch (e) {}
-                zxingReader = null;
-            }
-        }
-
-        function loadScript(src) {
+        // Lazy-load html5-qrcode (shared CDN URL with warehouse page — browser caches it)
+        function _loadHtml5QrCode() {
             return new Promise((resolve, reject) => {
-                if (document.querySelector(`script[src="${src}"]`)) {
-                    resolve();
-                    return;
-                }
-                const s = document.createElement('script');
-                s.src = src;
-                s.onload = resolve;
-                s.onerror = reject;
+                if (window.Html5Qrcode) { resolve(); return; }
+                const s    = document.createElement('script');
+                s.src      = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
+                s.onload   = resolve;
+                s.onerror  = reject;
                 document.head.appendChild(s);
             });
+        }
+
+        // Start camera once the modal is fully visible
+        document.getElementById('cameraScanModal').addEventListener('shown.bs.modal', async function () {
+            const readerEl = document.getElementById('posScannerReader');
+            readerEl.innerHTML = '';
+            document.getElementById('posManualBarcodeInput').value = '';
+
+            try {
+                await _loadHtml5QrCode();
+            } catch (_) {
+                readerEl.innerHTML = `<div class="text-center py-4 text-danger p-3">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>
+                    <span class="small">${LOCALE === 'ar' ? 'فشل تحميل مكتبة الماسح.' : 'Failed to load scanner library.'}</span>
+                </div>`;
+                return;
+            }
+
+            _posHtml5QrCode = new Html5Qrcode('posScannerReader');
+            _posHtml5QrCode.start(
+                { facingMode: 'environment' },              // rear camera on mobile
+                { fps: 10, qrbox: { width: 280, height: 120 } },
+                _onPosScanSuccess,
+                null                                        // suppress per-frame errors
+            ).catch(() => {
+                readerEl.innerHTML = `<div class="text-center py-4 text-muted p-3">
+                    <i class="fas fa-camera-slash fa-2x mb-2 d-block"></i>
+                    <span class="small">${LOCALE === 'ar'
+                        ? 'لا يمكن الوصول للكاميرا. استخدم الإدخال اليدوي أدناه.'
+                        : 'Camera unavailable. Use manual input below.'}</span>
+                </div>`;
+            });
+
+            // Focus manual input so USB physical scanners send straight into it
+            setTimeout(() => document.getElementById('posManualBarcodeInput').focus(), 350);
+        });
+
+        // Stop camera when modal starts closing
+        document.getElementById('cameraScanModal').addEventListener('hide.bs.modal', function () {
+            if (_posHtml5QrCode) {
+                _posHtml5QrCode.stop().catch(() => {});
+                _posHtml5QrCode = null;
+            }
+        });
+
+        // Called by html5-qrcode on a successful frame decode
+        function _onPosScanSuccess(code) {
+            if (_posHtml5QrCode) {
+                _posHtml5QrCode.stop().catch(() => {});
+                _posHtml5QrCode = null;
+            }
+            if (POS_SETTINGS.posSound) beep();
+            _processPosBarcode(code);
+        }
+
+        // Manual input — Enter key (physical USB scanner sends code + Enter)
+        document.getElementById('posManualBarcodeInput').addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const v = this.value.trim();
+            if (!v) return;
+            if (_posHtml5QrCode) { _posHtml5QrCode.stop().catch(() => {}); _posHtml5QrCode = null; }
+            _processPosBarcode(v);
+        });
+
+        // Manual input — search button
+        document.getElementById('posManualSearchBtn').addEventListener('click', function () {
+            const v = document.getElementById('posManualBarcodeInput').value.trim();
+            if (!v) return;
+            if (_posHtml5QrCode) { _posHtml5QrCode.stop().catch(() => {}); _posHtml5QrCode = null; }
+            _processPosBarcode(v);
+        });
+
+        // Core: close camera modal first, then search (avoids Bootstrap backdrop conflict)
+        function _processPosBarcode(code) {
+            const cameraModalEl   = document.getElementById('cameraScanModal');
+            const cameraModalInst = bootstrap.Modal.getInstance(cameraModalEl);
+
+            function _run() {
+                document.getElementById('searchInput').value = code;
+                handleSearch(code, true);
+            }
+
+            if (cameraModalInst) {
+                cameraModalEl.addEventListener('hidden.bs.modal', _run, { once: true });
+                cameraModalInst.hide();
+            } else {
+                _run();
+            }
         }
 
         // ─── EVENT DELEGATION: cart table ────────────────────────────────────────
@@ -1787,12 +1809,18 @@
         // ─── EVENT DELEGATION: search dropdown ───────────────────────────────────
         document.getElementById('searchResults').addEventListener('click', function(e) {
             const item = e.target.closest('[data-product-idx]');
-            if (!item) return;
-            selectProduct(lastSearchResults[parseInt(item.dataset.productIdx)]);
+            if (item) { selectProduct(lastSearchResults[parseInt(item.dataset.productIdx)]); return; }
+            if (e.target.closest('#posAddFromSearchOption')) {
+                closeSearch();
+                openAddProductModal(document.getElementById('searchInput').value.trim(), false);
+            }
         });
 
         // ─── STATIC BUTTON LISTENERS ─────────────────────────────────────────────
         document.getElementById('cameraScanBtn').addEventListener('click', openCameraModal);
+        document.getElementById('posAddProductBtn').addEventListener('click', function() {
+            openAddProductModal(document.getElementById('searchInput').value.trim(), false);
+        });
         document.getElementById('searchTriggerBtn').addEventListener('click', triggerSearch);
         document.getElementById('clearCartBtn').addEventListener('click', clearCart);
         document.getElementById('discountInput').addEventListener('change', updateTotals);
@@ -2007,6 +2035,201 @@
                 document.querySelectorAll('.price-override-input').forEach(el => el.setAttribute('readonly', true));
             });
         }
+
+        // ─── QUICK-ADD PRODUCT FROM POS ──────────────────────────────────────────
+        // Holds categories already loaded in POS session (from lastSearchResults + any cached list)
+        const _posKnownCategories = new Set();
+
+        /**
+         * Open the quick-add modal.
+         * @param {string} prefillBarcode  - barcode value to pre-fill (empty string = blank form)
+         * @param {boolean} fromFailedScan - true when triggered by a barcode that wasn't found
+         */
+        function openAddProductModal(prefillBarcode, fromFailedScan) {
+            const isAr = LOCALE === 'ar';
+
+            // Reset form
+            document.getElementById('posNewName').value      = '';
+            document.getElementById('posNewPrice').value     = '';
+            document.getElementById('posNewCostPrice').value = '';
+            document.getElementById('posNewBarcode').value   = prefillBarcode || '';
+            document.getElementById('posNewCategory').value  = '';
+            document.getElementById('posNewQuantity').value  = 0;
+            document.getElementById('posNewMinStock').value  = 5;
+            document.getElementById('posAddToCartAfterSave').checked = true;
+            document.getElementById('posAddProductError').classList.add('d-none');
+            document.getElementById('posNameLookupBadge').classList.add('d-none');
+            document.getElementById('posNameFoundBadge').classList.add('d-none');
+
+            // Show / hide "barcode not found" notice
+            const notice = document.getElementById('posBarcodeNotFoundAlert');
+            if (fromFailedScan && prefillBarcode) {
+                notice.classList.remove('d-none');
+            } else {
+                notice.classList.add('d-none');
+            }
+
+            // Populate category datalist from known categories
+            const dl = document.getElementById('posCategoryList');
+            dl.innerHTML = [..._posKnownCategories].map(c => `<option value="${escapeHtml(c)}">`).join('');
+
+            // Show modal
+            new bootstrap.Modal(document.getElementById('posAddProductModal')).show();
+
+            // Focus name field after animation
+            setTimeout(() => document.getElementById('posNewName').focus(), 350);
+
+            // Auto-lookup product name via server-side proxy (avoids CSP connect-src block)
+            if (fromFailedScan && prefillBarcode && /^\d{6,14}$/.test(prefillBarcode)) {
+                _lookupBarcodeName(prefillBarcode);
+            }
+        }
+
+        /**
+         * Fetch product name from the server-side barcode proxy.
+         * The proxy tries Open Food Facts, then UPC Item DB — all server-side,
+         * so there is no CSP connect-src issue.
+         * Fills the name field only if the user hasn't typed yet.
+         */
+        async function _lookupBarcodeName(barcode) {
+            const nameEl    = document.getElementById('posNewName');
+            const spinnerEl = document.getElementById('posNameLookupBadge');
+            const foundEl   = document.getElementById('posNameFoundBadge');
+
+            spinnerEl.classList.remove('d-none');
+
+            try {
+                const res  = await fetch(
+                    `{{ url('/api/barcode-lookup') }}/${encodeURIComponent(barcode)}`,
+                    {
+                        headers: {
+                            'Accept':       'application/json',
+                            'X-CSRF-TOKEN': CSRF_TOKEN,
+                        },
+                        credentials: 'same-origin',
+                    }
+                );
+                const json = await res.json();
+
+                spinnerEl.classList.add('d-none');
+
+                const name = json.name?.trim();
+                if (name && !nameEl.value.trim()) {
+                    nameEl.value = name;
+                    foundEl.classList.remove('d-none');
+                    // Pre-fill brand as category hint if category is still empty
+                    if (!document.getElementById('posNewCategory').value && json.brand) {
+                        document.getElementById('posNewCategory').value = json.brand;
+                    }
+                }
+            } catch (_) {
+                spinnerEl.classList.add('d-none');
+            }
+        }
+
+        // Collect categories from search results to power the datalist
+        const _origRenderDropdown = renderSearchDropdown;
+        renderSearchDropdown = function(products) {
+            products.forEach(p => { if (p.category) _posKnownCategories.add(p.category); });
+            _origRenderDropdown(products);
+        };
+
+        // Save new product handler
+        document.getElementById('posSaveNewProductBtn').addEventListener('click', async function () {
+            const isAr   = LOCALE === 'ar';
+            const name   = document.getElementById('posNewName').value.trim();
+            const price  = parseFloat(document.getElementById('posNewPrice').value);
+            const errEl  = document.getElementById('posAddProductError');
+
+            errEl.classList.add('d-none');
+
+            if (!name) {
+                errEl.textContent = isAr ? 'اسم المنتج مطلوب.' : 'Product name is required.';
+                errEl.classList.remove('d-none');
+                document.getElementById('posNewName').focus();
+                return;
+            }
+            if (!price || price <= 0) {
+                errEl.textContent = isAr ? 'سعر البيع مطلوب ويجب أن يكون أكبر من صفر.' : 'Selling price is required and must be greater than 0.';
+                errEl.classList.remove('d-none');
+                document.getElementById('posNewPrice').focus();
+                return;
+            }
+
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + (isAr ? 'جاري الحفظ...' : 'Saving...');
+
+            const payload = {
+                name:             name,
+                price:            price,
+                cost_price:       parseFloat(document.getElementById('posNewCostPrice').value) || 0,
+                barcode:          document.getElementById('posNewBarcode').value.trim() || null,
+                category:         document.getElementById('posNewCategory').value.trim() || null,
+                initial_quantity: parseInt(document.getElementById('posNewQuantity').value) || 0,
+                min_stock:        parseInt(document.getElementById('posNewMinStock').value) || 5,
+                is_active:        true,
+            };
+
+            try {
+                const res = await apiCall('{{ route("products.store") }}', 'POST', payload);
+
+                if (res.success || res.product) {
+                    const savedProduct = res.product ?? res;
+
+                    // Track category for future datalist suggestions
+                    if (savedProduct.category) _posKnownCategories.add(savedProduct.category);
+
+                    // Close modal
+                    bootstrap.Modal.getInstance(document.getElementById('posAddProductModal')).hide();
+
+                    // Clear search bar
+                    document.getElementById('searchInput').value = '';
+
+                    showToast(isAr ? `✅ تم حفظ "${name}"` : `✅ "${name}" saved`);
+
+                    // Add to cart if checkbox is checked
+                    if (document.getElementById('posAddToCartAfterSave').checked) {
+                        // Build a minimal product object compatible with addToCart()
+                        const cartProduct = {
+                            id:       savedProduct.id,
+                            name:     savedProduct.name     ?? name,
+                            price:    savedProduct.price    ?? price,
+                            quantity: savedProduct.quantity ?? (payload.initial_quantity || 1),
+                            min_stock: savedProduct.min_stock ?? 5,
+                            barcode:   savedProduct.barcode  ?? null,
+                            category:  savedProduct.category ?? null,
+                            unit_abbreviation: savedProduct.unit_abbreviation ?? null,
+                            unit_name:         savedProduct.unit_name         ?? null,
+                        };
+                        // Allow adding even if initial qty = 0 (cashier created product on the fly)
+                        if (cartProduct.quantity <= 0) cartProduct.quantity = 1;
+                        addToCart(cartProduct);
+                        if (POS_SETTINGS.posSound) beep();
+                    }
+
+                } else {
+                    errEl.textContent = res.message || (isAr ? 'حدث خطأ أثناء الحفظ.' : 'An error occurred while saving.');
+                    errEl.classList.remove('d-none');
+                }
+            } catch (e) {
+                errEl.textContent = isAr ? 'تعذّر الاتصال بالخادم.' : 'Could not reach the server.';
+                errEl.classList.remove('d-none');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-floppy-disk me-1"></i>${isAr ? 'حفظ المنتج' : 'Save Product'}`;
+            }
+        });
+
+        // Allow Enter in Name/Price fields to trigger save
+        ['posNewName', 'posNewPrice'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('posSaveNewProductBtn').click();
+                }
+            });
+        });
 
         // ─── INIT ─────────────────────────────────────────────────────────────────
         setPayment(POS_SETTINGS.defaultPayment);
