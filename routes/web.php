@@ -85,12 +85,18 @@ Route::get('/site.webmanifest', function () {
     $appName = $branding?->app_name ?? config('app.name', 'POS System');
     $themeColor = $branding?->primary_color ?? '#1e293b';
 
+    // Use route() so URLs are absolute and work regardless of subpath install
+    $iconUrl = route('icons.svg');
+    $posUrl = route('pos');
+    $whUrl = route('warehouses');
+    $kitUrl = route('kitchen');
+
     $manifest = [
         'name' => $appName . ' — نظام نقطة البيع',
         'short_name' => $appName,
         'description' => 'Offline-capable Point of Sale with AI forecasting',
-        'start_url' => '/pos?pwa=1',
-        'scope' => '/',
+        'start_url' => $posUrl . '?pwa=1',
+        'scope' => url('/'),
         'display' => 'standalone',
         'display_override' => ['window-controls-overlay', 'standalone', 'browser'],
         'background_color' => $themeColor,
@@ -100,17 +106,17 @@ Route::get('/site.webmanifest', function () {
         'dir' => 'rtl',
         'categories' => ['business', 'productivity'],
         'shortcuts' => [
-            ['name' => 'نقطة البيع',  'short_name' => 'POS',     'url' => '/pos?pwa=1',        'icons' => [['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml']]],
-            ['name' => 'المخزون',     'short_name' => 'Stock',   'url' => '/warehouses?pwa=1', 'icons' => [['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml']]],
-            ['name' => 'شاشة المطبخ', 'short_name' => 'Kitchen', 'url' => '/kitchen?pwa=1',    'icons' => [['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml']]],
+            ['name' => 'نقطة البيع',  'short_name' => 'POS',     'url' => $posUrl . '?pwa=1', 'icons' => [['src' => $iconUrl, 'sizes' => 'any', 'type' => 'image/svg+xml']]],
+            ['name' => 'المخزون',     'short_name' => 'Stock',   'url' => $whUrl . '?pwa=1', 'icons' => [['src' => $iconUrl, 'sizes' => 'any', 'type' => 'image/svg+xml']]],
+            ['name' => 'شاشة المطبخ', 'short_name' => 'Kitchen', 'url' => $kitUrl . '?pwa=1', 'icons' => [['src' => $iconUrl, 'sizes' => 'any', 'type' => 'image/svg+xml']]],
         ],
         'icons' => [
-            ['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any'],
-            ['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'maskable'],
+            ['src' => $iconUrl, 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any'],
+            ['src' => $iconUrl, 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'maskable'],
         ],
         'related_applications' => [],
         'prefer_related_applications' => false,
-        'protocol_handlers' => [['protocol' => 'web+pos', 'url' => '/pos?barcode=%s']],
+        'protocol_handlers' => [['protocol' => 'web+pos', 'url' => $posUrl . '?barcode=%s']],
     ];
 
     return response()->json($manifest)
