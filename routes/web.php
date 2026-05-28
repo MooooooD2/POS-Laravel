@@ -61,6 +61,107 @@ Route::get('/', function () {
 
 Route::redirect('/home', '/');
 
+// ── PWA static-file fallbacks ──────────────────────────────────────────────
+// Apache/Nginx serve these directly from public/ when the file exists.
+// These routes are the fallback for servers that don't have the static files
+// (e.g. production before the first full deploy).
+
+Route::get('/site.webmanifest', function () {
+    $branding = null;
+
+    try {
+        $masterId = config('tenancy.master_tenant');
+        if ($masterId) {
+            $branding = Illuminate\Support\Facades\Cache::remember(
+                "wl_branding_landing:{$masterId}",
+                3600,
+                fn () => App\Models\WhiteLabel::on('mysql')->where('tenant_id', $masterId)->first(),
+            );
+        }
+    } catch (Throwable) {
+        // fall through
+    }
+
+    $appName = $branding?->app_name ?? config('app.name', 'POS System');
+    $themeColor = $branding?->primary_color ?? '#1e293b';
+
+    $manifest = [
+        'name' => $appName . ' — نظام نقطة البيع',
+        'short_name' => $appName,
+        'description' => 'Offline-capable Point of Sale with AI forecasting',
+        'start_url' => '/pos?pwa=1',
+        'scope' => '/',
+        'display' => 'standalone',
+        'display_override' => ['window-controls-overlay', 'standalone', 'browser'],
+        'background_color' => $themeColor,
+        'theme_color' => $themeColor,
+        'orientation' => 'landscape-primary',
+        'lang' => 'ar',
+        'dir' => 'rtl',
+        'categories' => ['business', 'productivity'],
+        'shortcuts' => [
+            ['name' => 'نقطة البيع',  'short_name' => 'POS',     'url' => '/pos?pwa=1',        'icons' => [['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml']]],
+            ['name' => 'المخزون',     'short_name' => 'Stock',   'url' => '/warehouses?pwa=1', 'icons' => [['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml']]],
+            ['name' => 'شاشة المطبخ', 'short_name' => 'Kitchen', 'url' => '/kitchen?pwa=1',    'icons' => [['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml']]],
+        ],
+        'icons' => [
+            ['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any'],
+            ['src' => '/icons/icon.svg', 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'maskable'],
+        ],
+        'related_applications' => [],
+        'prefer_related_applications' => false,
+        'protocol_handlers' => [['protocol' => 'web+pos', 'url' => '/pos?barcode=%s']],
+    ];
+
+    return response()->json($manifest)
+        ->header('Content-Type', 'application/manifest+json')
+        ->header('Cache-Control', 'public, max-age=86400');
+})->name('manifest');
+
+Route::get('/icons/icon.svg', function () {
+    $branding = null;
+
+    try {
+        $masterId = config('tenancy.master_tenant');
+        if ($masterId) {
+            $branding = Illuminate\Support\Facades\Cache::remember(
+                "wl_branding_landing:{$masterId}",
+                3600,
+                fn () => App\Models\WhiteLabel::on('mysql')->where('tenant_id', $masterId)->first(),
+            );
+        }
+    } catch (Throwable) {
+        // fall through
+    }
+
+    $bg = $branding?->primary_color ?? '#1e293b';
+    $accent = $branding?->secondary_color ?? '#38bdf8';
+    $label = $branding?->app_name ?? 'POS';
+    $label = mb_strtoupper(mb_substr($label, 0, 3));
+
+    $svg = <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="{$bg}"/>
+  <rect x="96" y="200" width="320" height="200" rx="16" fill="#334155"/>
+  <rect x="120" y="120" width="272" height="100" rx="12" fill="#0f172a"/>
+  <rect x="132" y="132" width="248" height="76" rx="8" fill="{$accent}" opacity=".15"/>
+  <text x="256" y="188" text-anchor="middle" font-family="Arial,sans-serif" font-size="48" font-weight="700" fill="{$accent}">{$label}</text>
+  <circle cx="176" cy="264" r="14" fill="#475569"/>
+  <circle cx="256" cy="264" r="14" fill="#475569"/>
+  <circle cx="336" cy="264" r="14" fill="#475569"/>
+  <circle cx="176" cy="320" r="14" fill="#475569"/>
+  <circle cx="256" cy="320" r="14" fill="{$accent}"/>
+  <circle cx="336" cy="320" r="14" fill="#475569"/>
+  <rect x="140" y="368" width="232" height="16" rx="8" fill="#475569"/>
+  <rect x="230" y="362" width="52" height="6" rx="3" fill="#94a3b8"/>
+</svg>
+SVG;
+
+    return response($svg)
+        ->header('Content-Type', 'image/svg+xml')
+        ->header('Cache-Control', 'public, max-age=86400');
+})->name('icons.svg');
+
 // ── Auth ──────────────────────────────────────────────────────────────────
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.post');
