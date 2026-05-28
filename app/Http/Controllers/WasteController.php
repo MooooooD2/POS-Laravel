@@ -27,6 +27,12 @@ class WasteController extends Controller
     {
         $data = $request->validated();
 
+        // Return 422 (not 500) for insufficient stock
+        $product = Product::findOrFail($data['product_id']);
+        if ($product->quantity < (float) $data['quantity']) {
+            return $this->error(__('pos.insufficient_stock', ['name' => $product->name]), 422);
+        }
+
         $record = DB::transaction(function () use ($data) {
             $product = Product::lockForUpdate()->findOrFail($data['product_id']);
             $unitCost = $product->avg_cost > 0 ? $product->avg_cost : $product->cost_price;
@@ -44,7 +50,7 @@ class WasteController extends Controller
                 'unit_cost' => $unitCost,
                 'total_value' => round($unitCost * $qty, 2),
                 'reason' => $data['reason'],
-                'notes' => $data['notes'],
+                'notes' => $data['notes'] ?? null,
                 'recorded_by' => auth()->id(),
             ]);
 

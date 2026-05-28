@@ -71,7 +71,8 @@ class HeldInvoiceService
 
     public function discard(HeldInvoice $held): void
     {
-        if ($held->cashier_id !== Auth::id()) {
+        $user = Auth::user();
+        if ($held->cashier_id !== Auth::id() && ! $user?->hasRole('admin')) {
             throw new \Exception(__('pos.held_invoice_not_yours'));
         }
 

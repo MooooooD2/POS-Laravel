@@ -7,6 +7,7 @@ namespace Tests\Unit\Services;
 use App\Models\Currency;
 use App\Services\CurrencyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -24,7 +25,7 @@ class CurrencyServiceTest extends TestCase
         $this->service = app(CurrencyService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_converts_same_currency_to_itself(): void
     {
         Currency::create([
@@ -41,7 +42,7 @@ class CurrencyServiceTest extends TestCase
         $this->assertEquals(100.0, $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_converts_between_currencies(): void
     {
         Currency::create(['code' => 'EGP', 'name' => 'EGP', 'symbol' => 'E', 'exchange_rate' => 1.0, 'is_base' => true, 'is_active' => true]);
@@ -53,7 +54,7 @@ class CurrencyServiceTest extends TestCase
         $this->assertEquals(2.0, $result);
     }
 
-    /** @test */
+    #[Test]
     public function it_formats_amounts_correctly(): void
     {
         Currency::create(['code' => 'USD', 'name' => 'USD', 'symbol' => '$', 'exchange_rate' => 50.0, 'is_base' => false, 'is_active' => true]);

@@ -54,12 +54,18 @@ class DeviceSessionService
     /**
      * Revoke a specific session.
      */
-    public function revoke(int $sessionId, int $userId): bool
+    /**
+     * Revoke a session. If $userId is null (admin bypass), ownership check is skipped.
+     */
+    public function revoke(int $sessionId, ?int $userId): bool
     {
-        $session = DeviceSession::where('id', $sessionId)
-            ->where('user_id', $userId)
-            ->whereNull('revoked_at')
-            ->first();
+        $query = DeviceSession::where('id', $sessionId)->whereNull('revoked_at');
+
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+
+        $session = $query->first();
 
         if (!$session) return false;
 

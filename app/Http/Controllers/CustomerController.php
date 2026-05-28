@@ -46,7 +46,8 @@ class CustomerController extends Controller
     {
         $q = $request->get('q', '');
 
-        $safe = Str::escapeLike($q);
+        // Str::escapeLike() is not available in all Laravel 11.x builds — escape manually
+        $safe = addcslashes($q, '%_\\');
         $customers = Customer::where('is_active', true)
             ->where(function ($query) use ($safe) {
                 $query->where('name', 'like', "%{$safe}%")

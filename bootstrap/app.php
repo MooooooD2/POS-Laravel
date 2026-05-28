@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AnomalyDetection;
+use App\Http\Middleware\CheckPlanFeature;
 use App\Http\Middleware\CheckUserIsActive;
 use App\Http\Middleware\EnforceTwoFactor;
 use App\Http\Middleware\InitializeTenancyBySession;
@@ -64,12 +65,13 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->alias([
-            'tenancy' => InitializeTenancyBySession::class,
-            '2fa' => EnforceTwoFactor::class,
-            'ip.whitelist' => IpWhitelist::class,
-            'permission' => PermissionMiddleware::class,
-            'role' => RoleMiddleware::class,
+            'tenancy'          => InitializeTenancyBySession::class,
+            '2fa'              => EnforceTwoFactor::class,
+            'ip.whitelist'     => IpWhitelist::class,
+            'permission'       => PermissionMiddleware::class,
+            'role'             => RoleMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'planFeature'      => CheckPlanFeature::class,
         ]);
 
         $middleware->priority([

@@ -36,7 +36,24 @@ Route::get('/', function () {
     }
     $plans = Plan::where('is_active', true)->orderBy('sort_order')->get();
 
-    return view('welcome', compact('plans'));
+    // Load master-tenant branding (if any) so the landing page respects white-label settings.
+    // This is safe to attempt from the public context — tenant may not be initialised here,
+    // so we do a direct DB lookup on the central connection.
+    $branding = null;
+    try {
+        $masterId = config('tenancy.master_tenant');
+        if ($masterId) {
+            $branding = \Illuminate\Support\Facades\Cache::remember(
+                "wl_branding_landing:{$masterId}",
+                3600,
+                fn () => \App\Models\WhiteLabel::on('mysql')->where('tenant_id', $masterId)->first()
+            );
+        }
+    } catch (\Throwable) {
+        // Not critical — fall through to default colours
+    }
+
+    return view('welcome', compact('plans', 'branding'));
 })->name('welcome');
 
 Route::redirect('/home', '/');
@@ -219,43 +236,61 @@ Route::middleware(['tenancy', 'throttle:30,1'])->group(function () {
 });
 
 // ── Phase 2: Shift Management ─────────────────────────────────────────────
-Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class])->group(function () {
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'planFeature:shift_management'])->group(function () {
     Route::get('/shifts', [\App\Http\Controllers\ShiftController::class, 'index'])
-         ->middleware('permission:view_reports')->name('shifts.index');
+         ->middleware('permission:view_shifts')->name('shifts.index');
     Route::get('/my-shift', [\App\Http\Controllers\ShiftController::class, 'myShift'])->name('shifts.my');
 });
 
 // ── Phase 4: White Label Settings ─────────────────────────────────────────
-Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:manage_settings'])->group(function () {
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'planFeature:white_label', 'permission:manage_white_label'])->group(function () {
     Route::get('/white-label', [\App\Http\Controllers\WhiteLabelController::class, 'index'])->name('white-label');
     Route::get('/white-label/css', [\App\Http\Controllers\WhiteLabelController::class, 'cssVars'])->name('white-label.css');
 });
 
 // ── Phase 10: HR Module ────────────────────────────────────────────────────
-Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:manage_settings'])->group(function () {
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'planFeature:hr_module'])->group(function () {
+    // Attendance & schedule: anyone with view_hr or manage_hr
     Route::get('/hr/attendance', function () {
+        /** @var \App\Models\User $u */
+        $u = auth()->user();
+        abort_unless($u->hasAnyPermission(['view_hr', 'manage_hr', 'manage_settings']), 403);
         $branches = \App\Models\Branch::orderBy('name')->get();
         return view('hr.attendance', compact('branches'));
     })->name('hr.attendance');
+
+    // Payroll: manage_hr or manage_settings only
     Route::get('/hr/payroll', function () {
+        /** @var \App\Models\User $u */
+        $u = auth()->user();
+        abort_unless($u->hasAnyPermission(['manage_hr', 'manage_settings']), 403);
         $branches = \App\Models\Branch::orderBy('name')->get();
         return view('hr.payroll', compact('branches'));
     })->name('hr.payroll');
-    Route::get('/hr/leaves', fn () => view('hr.leaves'))->name('hr.leaves');
+
+    Route::get('/hr/leaves', function () {
+        /** @var \App\Models\User $u */
+        $u = auth()->user();
+        abort_unless($u->hasAnyPermission(['view_hr', 'manage_hr', 'manage_settings']), 403);
+        return view('hr.leaves');
+    })->name('hr.leaves');
 
     // Employees — manage salaries and leave allocations
     Route::get('/hr/employees', function () {
+        /** @var \App\Models\User $u */
+        $u = auth()->user();
+        abort_unless($u->hasAnyPermission(['view_hr', 'manage_hr', 'manage_settings']), 403);
         $branches = \App\Models\Branch::orderBy('name')->get();
         return view('hr.employees', compact('branches'));
     })->name('hr.employees');
 });
 
 // ── Phase 10: Multi-Currency ───────────────────────────────────────────────
-Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:manage_settings'])->group(function () {
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'planFeature:currencies', 'permission:manage_currencies'])->group(function () {
     Route::get('/currencies', fn () => view('currencies.index'))->name('currencies.index');
 });
 
 // ── Phase 10: Franchise Royalties ──────────────────────────────────────────
-Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'permission:view_reports'])->group(function () {
+Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'planFeature:franchise', 'permission:view_franchise'])->group(function () {
     Route::get('/franchise/royalties', fn () => view('franchise.royalties'))->name('franchise.royalties');
 });

@@ -20,9 +20,11 @@ return new class extends Migration
             $table->string('leave_type', 20)->default('annual')->after('user_id');
         });
 
-        // 2. Rename date columns — raw SQL is safest on MariaDB 10.4
-        DB::statement("ALTER TABLE leave_requests CHANGE `start_date` `starts_at` DATE NOT NULL");
-        DB::statement("ALTER TABLE leave_requests CHANGE `end_date`   `ends_at`   DATE NOT NULL");
+        // 2. Rename date columns — use Schema builder (cross-DB: works on MySQL, MariaDB, SQLite)
+        Schema::table('leave_requests', function (Blueprint $table) {
+            $table->renameColumn('start_date', 'starts_at');
+            $table->renameColumn('end_date', 'ends_at');
+        });
 
         // 3. Drop FK, then drop the obsolete leave_type_id column
         Schema::table('leave_requests', function (Blueprint $table) {
@@ -42,7 +44,9 @@ return new class extends Migration
             $table->unsignedBigInteger('leave_type_id')->default(1)->after('user_id');
         });
 
-        DB::statement("ALTER TABLE leave_requests CHANGE `starts_at` `start_date` DATE NOT NULL");
-        DB::statement("ALTER TABLE leave_requests CHANGE `ends_at`   `end_date`   DATE NOT NULL");
+        Schema::table('leave_requests', function (Blueprint $table) {
+            $table->renameColumn('starts_at', 'start_date');
+            $table->renameColumn('ends_at', 'end_date');
+        });
     }
 };

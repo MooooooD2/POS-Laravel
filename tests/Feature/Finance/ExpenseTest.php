@@ -181,7 +181,8 @@ class ExpenseTest extends TestCase
         $this->actingAs($this->admin)->deleteJson("/api/expenses/{$id}")
             ->assertStatus(200);
 
-        $this->assertDatabaseMissing('expenses', ['id' => $id]);
+        // Expense uses SoftDeletes — row remains with deleted_at set
+        $this->assertSoftDeleted('expenses', ['id' => $id]);
     }
 
     // ── Summary ───────────────────────────────────────────────────────────────

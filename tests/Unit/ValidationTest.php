@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ValidationTest extends TestCase
@@ -17,7 +18,7 @@ class ValidationTest extends TestCase
         $this->seed(RolePermissionSeeder::class);
     }
 
-    /** @test */
+    #[Test]
     public function invoice_requires_at_least_one_item()
     {
         $cashier = User::factory()->create(['is_active' => true]);
@@ -29,7 +30,7 @@ class ValidationTest extends TestCase
             ->assertJsonValidationErrors(['items']);
     }
 
-    /** @test */
+    #[Test]
     public function invalid_payment_method_is_rejected()
     {
         $cashier = User::factory()->create(['is_active' => true]);
@@ -43,7 +44,7 @@ class ValidationTest extends TestCase
             ->assertJsonValidationErrors(['payment_method']);
     }
 
-    /** @test */
+    #[Test]
     public function product_search_query_has_max_length()
     {
         $cashier = User::factory()->create(['is_active' => true]);
@@ -55,7 +56,7 @@ class ValidationTest extends TestCase
             ->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function future_invoice_date_is_rejected()
     {
         $admin = User::factory()->create(['is_active' => true]);
@@ -72,7 +73,7 @@ class ValidationTest extends TestCase
             ->assertJsonValidationErrors(['entry_date']);
     }
 
-    /** @test */
+    #[Test]
     public function journal_entry_must_be_balanced()
     {
         $admin = User::factory()->create(['is_active' => true]);

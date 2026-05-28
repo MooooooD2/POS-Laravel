@@ -7,11 +7,16 @@ use App\Models\CashbackTransaction;
 use App\Models\Customer;
 use App\Models\Invoice;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Cashback System — Phase 8: Marketing & CRM
  *
  * Customers earn cashback % on purchases; can redeem on future purchases.
+ *
+ * Note: cashback_balance is NOT in Customer::$fillable.
+ * All balance mutations go through DB::table() to intentionally bypass the
+ * mass-assignment guard — only this service may change the field.
  */
 class CashbackService
 {
@@ -38,7 +43,8 @@ class CashbackService
             $customer = Customer::lockForUpdate()->findOrFail($invoice->customer_id);
             $newBalance = round($customer->cashback_balance + $amount, 2);
 
-            $customer->update(['cashback_balance' => $newBalance]);
+            // cashback_balance is NOT in $fillable — use DB::table to bypass the guard
+            DB::table('customers')->where('id', $customer->id)->update(['cashback_balance' => $newBalance]);
             $invoice->update(['cashback_earned' => $amount]);
 
             return CashbackTransaction::create([
@@ -55,22 +61,33 @@ class CashbackService
     /**
      * Redeem cashback during checkout.
      *
-     * @param float $amount Amount to redeem (max = customer balance)
+     * Throws a ValidationException if amount exceeds the customer's balance.
+     *
      * @return float Actual amount redeemed
+     * @throws ValidationException
      */
     public function redeem(int $customerId, float $amount, ?int $invoiceId = null): float
     {
         return DB::transaction(function () use ($customerId, $amount, $invoiceId) {
             $customer = Customer::lockForUpdate()->findOrFail($customerId);
 
-            $amount = min(round($amount, 2), round($customer->cashback_balance, 2));
+            $available = round((float) $customer->cashback_balance, 2);
+            $amount    = round($amount, 2);
+
+            if ($amount > $available) {
+                throw ValidationException::withMessages([
+                    'amount' => [__('pos.insufficient_cashback_balance')],
+                ]);
+            }
 
             if ($amount <= 0) {
                 return 0;
             }
 
-            $newBalance = round($customer->cashback_balance - $amount, 2);
-            $customer->update(['cashback_balance' => $newBalance]);
+            $newBalance = round($available - $amount, 2);
+
+            // cashback_balance is NOT in $fillable — use DB::table to bypass the guard
+            DB::table('customers')->where('id', $customer->id)->update(['cashback_balance' => $newBalance]);
 
             if ($invoiceId) {
                 Invoice::where('id', $invoiceId)->increment('cashback_redeemed', $amount);
@@ -124,7 +141,9 @@ class CashbackService
             if ($amount <= 0) return;
 
             $newBalance = round($customer->cashback_balance - $amount, 2);
-            $customer->update(['cashback_balance' => $newBalance]);
+
+            // cashback_balance is NOT in $fillable — use DB::table to bypass the guard
+            DB::table('customers')->where('id', $customer->id)->update(['cashback_balance' => $newBalance]);
 
             CashbackTransaction::create([
                 'customer_id'   => $customer->id,

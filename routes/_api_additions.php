@@ -16,7 +16,7 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('shifts')->name('api.shifts
 // ═══════════════════════════════════════════════════════════════════════════
 // Phase 4 — White Label API
 // ═══════════════════════════════════════════════════════════════════════════
-Route::middleware(['auth', 'permission:manage_settings', 'throttle:30,1'])->prefix('white-label')->name('api.wl.')->group(function () {
+Route::middleware(['auth', 'permission:manage_white_label', 'throttle:30,1'])->prefix('white-label')->name('api.wl.')->group(function () {
     Route::post('/',               [\App\Http\Controllers\WhiteLabelController::class, 'update'])->name('update');
     Route::put('/',                [\App\Http\Controllers\WhiteLabelController::class, 'update'])->name('update.put');
     Route::post('/domain',         [\App\Http\Controllers\WhiteLabelController::class, 'setCustomDomain'])->name('domain');
@@ -204,22 +204,177 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('hr')->name('api.hr.')->gro
             ->leftJoin('users', 'users.id', '=', 'attendance_records.user_id')
             ->leftJoin('branches', 'branches.id', '=', 'attendance_records.branch_id')
             ->select('attendance_records.*',
-                     'users.full_name as user_name', 'users.email as user_email',
+                     'users.full_name as user_name', 'users.username as user_username',
                      'branches.name as branch_name');
         if ($req->date)      $q->whereDate('attendance_records.work_date', $req->date);
         if ($req->branch_id) $q->where('attendance_records.branch_id', $req->branch_id);
-        if ($req->status)    $q->where('attendance_records.status', $req->status);
+        if ($req->status === 'checked_out') {
+            // Virtual status: present/late/half_day with check_out filled
+            $q->whereNotNull('attendance_records.check_out')
+              ->whereIn('attendance_records.status', ['present', 'late', 'half_day', 'remote']);
+        } elseif ($req->status === 'working_now') {
+            // Virtual status: clocked in but not yet out
+            $q->whereNotNull('attendance_records.check_in')
+              ->whereNull('attendance_records.check_out')
+              ->whereIn('attendance_records.status', ['present', 'late', 'remote']);
+        } elseif ($req->status) {
+            $q->where('attendance_records.status', $req->status);
+        }
         $records = $q->orderByDesc('attendance_records.work_date')->take(200)->get()
             ->map(fn($r) => array_merge((array)$r, [
-                'user'   => ['name' => $r->user_name,   'email' => $r->user_email],
-                'branch' => ['name' => $r->branch_name],
+                'user'          => ['name' => $r->user_name, 'username' => $r->user_username],
+                'branch'        => ['name' => $r->branch_name],
+                'has_checked_out' => !is_null($r->check_out),
+                'is_working_now'  => !is_null($r->check_in) && is_null($r->check_out),
             ]));
         return response()->json(['records' => $records]);
     })->name('attendance');
 
+    // Manual check-in / check-out from HR admin panel
+    Route::post('/attendance/checkin', function (\Illuminate\Http\Request $req) {
+        $req->validate([
+            'user_id'   => 'required|integer|exists:tenant.users,id',
+            'work_date' => 'required|date',
+            'check_in'  => 'required|date_format:H:i',
+            'branch_id' => 'nullable|integer|exists:tenant.branches,id',
+            'notes'     => 'nullable|string|max:500',
+        ]);
+        \DB::table('attendance_records')->updateOrInsert(
+            ['user_id' => $req->user_id, 'work_date' => $req->work_date],
+            [
+                'branch_id'       => $req->branch_id,
+                'check_in'        => $req->work_date . ' ' . $req->check_in . ':00',
+                'check_out'       => null,
+                'status'          => 'present',
+                'notes'           => $req->notes,
+                'check_in_method' => 'manual',
+                'updated_at'      => now(),
+                'created_at'      => now(),
+            ]
+        );
+        return response()->json(['success' => true]);
+    })->middleware('permission:manage_hr')->name('attendance.checkin');
+
+    // Manual check-out from HR admin panel
+    Route::post('/attendance/checkout', function (\Illuminate\Http\Request $req) {
+        $req->validate([
+            'user_id'    => 'required|integer|exists:tenant.users,id',
+            'work_date'  => 'required|date',
+            'check_out'  => 'required|date_format:H:i',
+            'notes'      => 'nullable|string|max:500',
+        ]);
+        $record = \DB::table('attendance_records')
+            ->where('user_id', $req->user_id)
+            ->whereDate('work_date', $req->work_date)
+            ->first();
+        if (! $record) {
+            return response()->json(['success' => false, 'message' => 'No check-in record found for this date.'], 422);
+        }
+        $checkIn  = \Carbon\Carbon::parse($record->check_in);
+        $checkOut = \Carbon\Carbon::parse($req->work_date . ' ' . $req->check_out . ':00');
+        $hours    = round($checkIn->diffInMinutes($checkOut) / 60, 2);
+        $status   = $hours >= 4 ? ($record->status === 'late' ? 'late' : 'present') : 'half_day';
+        \DB::table('attendance_records')
+            ->where('user_id', $req->user_id)
+            ->whereDate('work_date', $req->work_date)
+            ->update([
+                'check_out'    => $req->work_date . ' ' . $req->check_out . ':00',
+                'hours_worked' => $hours,
+                'status'       => $status,
+                'notes'        => $req->notes ?? $record->notes,
+                'updated_at'   => now(),
+            ]);
+        return response()->json(['success' => true, 'hours_worked' => $hours, 'status' => $status]);
+    })->middleware('permission:manage_hr')->name('attendance.checkout');
+
     Route::get('/attendance/export', function (\Illuminate\Http\Request $req) {
         return response()->json(['url' => null, 'message' => 'Export feature coming soon']);
     })->name('attendance.export');
+
+    // ── Shift Schedule ────────────────────────────────────────────────────
+    Route::get('/shifts/schedule', function (\Illuminate\Http\Request $req) {
+        $weekStart = $req->week_start
+            ? \Carbon\Carbon::parse($req->week_start)->startOfDay()
+            : \Carbon\Carbon::now()->startOfWeek(\Carbon\Carbon::SATURDAY);
+
+        $weekEnd = $weekStart->copy()->addDays(6)->endOfDay();
+
+        $shifts = \DB::table('employee_shifts')
+            ->leftJoin('users', 'users.id', '=', 'employee_shifts.user_id')
+            ->leftJoin('branches', 'branches.id', '=', 'employee_shifts.branch_id')
+            ->leftJoin('shift_templates', 'shift_templates.id', '=', 'employee_shifts.shift_template_id')
+            ->select(
+                'employee_shifts.*',
+                'users.full_name as user_name',
+                'branches.name as branch_name',
+                'shift_templates.name as template_name',
+                'shift_templates.start_time',
+                'shift_templates.end_time'
+            )
+            ->whereBetween('employee_shifts.shift_date', [$weekStart->toDateString(), $weekEnd->toDateString()]);
+
+        if ($req->branch_id) $shifts->where('employee_shifts.branch_id', $req->branch_id);
+
+        $rows = $shifts->orderBy('employee_shifts.shift_date')->orderBy('users.full_name')->get()
+            ->map(fn($s) => array_merge((array)$s, [
+                'user'     => ['name' => $s->user_name],
+                'branch'   => ['name' => $s->branch_name],
+                'template' => ['name' => $s->template_name, 'start_time' => $s->start_time, 'end_time' => $s->end_time],
+            ]));
+
+        // Build week days array
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $days[] = $weekStart->copy()->addDays($i)->toDateString();
+        }
+
+        return response()->json([
+            'week_start' => $weekStart->toDateString(),
+            'week_end'   => $weekEnd->toDateString(),
+            'days'       => $days,
+            'shifts'     => $rows,
+        ]);
+    })->name('shifts.schedule');
+
+    // Assign a shift (schedule an employee)
+    Route::post('/shifts/schedule', function (\Illuminate\Http\Request $req) {
+        $req->validate([
+            'user_id'           => 'required|integer|exists:tenant.users,id',
+            'shift_date'        => 'required|date',
+            'shift_template_id' => 'nullable|integer|exists:tenant.shift_templates,id',
+            'branch_id'         => 'nullable|integer|exists:tenant.branches,id',
+            'notes'             => 'nullable|string|max:500',
+        ]);
+
+        // Check for existing shift on this date
+        $exists = \DB::table('employee_shifts')
+            ->where('user_id', $req->user_id)
+            ->whereDate('shift_date', $req->shift_date)
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['success' => false, 'message' => 'Employee already has a shift on this date.'], 422);
+        }
+
+        $id = \DB::table('employee_shifts')->insertGetId([
+            'user_id'           => $req->user_id,
+            'branch_id'         => $req->branch_id,
+            'shift_template_id' => $req->shift_template_id,
+            'shift_date'        => $req->shift_date,
+            'status'            => 'scheduled',
+            'notes'             => $req->notes,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        return response()->json(['success' => true, 'id' => $id]);
+    })->middleware('permission:manage_hr')->name('shifts.schedule.store');
+
+    // Shift templates list
+    Route::get('/shifts/templates', function () {
+        $templates = \DB::table('shift_templates')->where('is_active', true)->orderBy('name')->get();
+        return response()->json(['templates' => $templates]);
+    })->name('shifts.templates');
 
     // ── Payroll ───────────────────────────────────────────────────────────
     Route::middleware('permission:manage_settings')->group(function () {

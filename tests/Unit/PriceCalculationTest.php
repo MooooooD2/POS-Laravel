@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\InvoiceService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class PriceCalculationTest extends TestCase
@@ -28,7 +29,7 @@ class PriceCalculationTest extends TestCase
         $this->service = app(InvoiceService::class);
     }
 
-    /** @test */
+    #[Test]
     public function price_comes_from_database_not_user_input()
     {
         $product = Product::factory()->create(['price' => 100.00, 'quantity' => 5]);
@@ -42,7 +43,7 @@ class PriceCalculationTest extends TestCase
         $this->assertEquals(200.00, $invoice->total);
     }
 
-    /** @test */
+    #[Test]
     public function discount_cannot_exceed_total()
     {
         $product = Product::factory()->create(['price' => 100.00, 'quantity' => 5]);
@@ -57,7 +58,7 @@ class PriceCalculationTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function tax_is_calculated_from_settings_not_user()
     {
         Setting::set('tax_enabled', true);
@@ -76,7 +77,7 @@ class PriceCalculationTest extends TestCase
         $this->assertEquals(115.00, round($invoice->final_total, 2));
     }
 
-    /** @test */
+    #[Test]
     public function invoice_total_matches_sum_of_items()
     {
         $p1 = Product::factory()->create(['price' => 50.00, 'quantity' => 5]);

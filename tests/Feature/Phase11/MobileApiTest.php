@@ -7,6 +7,7 @@ namespace Tests\Feature\Phase11;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -16,7 +17,7 @@ class MobileApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function it_requires_credentials_to_login(): void
     {
         $this->postJson('/api/v1/auth/login', [])
@@ -24,7 +25,7 @@ class MobileApiTest extends TestCase
             ->assertJsonValidationErrors(['email', 'password', 'device_name']);
     }
 
-    /** @test */
+    #[Test]
     public function it_rejects_invalid_credentials(): void
     {
         $this->postJson('/api/v1/auth/login', [
@@ -34,7 +35,7 @@ class MobileApiTest extends TestCase
         ])->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function it_issues_a_token_on_valid_login(): void
     {
         $user = User::factory()->create(['password' => bcrypt('secret123')]);
@@ -49,7 +50,7 @@ class MobileApiTest extends TestCase
             ->assertJsonStructure(['token', 'token_type', 'user']);
     }
 
-    /** @test */
+    #[Test]
     public function authenticated_user_can_get_me(): void
     {
         $user = User::factory()->create();
@@ -60,13 +61,13 @@ class MobileApiTest extends TestCase
             ->assertJsonPath('user.email', $user->email);
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_request_returns_401(): void
     {
         $this->getJson('/api/v1/auth/me')->assertStatus(401);
     }
 
-    /** @test */
+    #[Test]
     public function staff_can_get_dashboard_when_authenticated(): void
     {
         $user = User::factory()->create();

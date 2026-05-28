@@ -60,6 +60,14 @@ class Product extends Model
         return $this->quantity <= $this->min_stock;
     }
 
+    /**
+     * Scope: products whose current quantity is at or below their minimum stock threshold.
+     */
+    public function scopeLowStock(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->whereColumn('quantity', '<=', 'min_stock');
+    }
+
     public function unit()
     {
         return $this->belongsTo(Unit::class);

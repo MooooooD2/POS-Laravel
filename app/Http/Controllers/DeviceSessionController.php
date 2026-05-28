@@ -39,7 +39,11 @@ class DeviceSessionController extends Controller
 
     public function revoke(Request $request, int $id): JsonResponse
     {
-        $revoked = $this->service->revoke($id, $request->user()->id);
+        // Admin can revoke any session; other users are restricted to their own.
+        $user   = $request->user();
+        $userId = $user->hasRole('admin') ? null : $user->id;
+
+        $revoked = $this->service->revoke($id, $userId);
 
         if (!$revoked) {
             return response()->json(['message' => 'Session not found or already revoked'], 404);

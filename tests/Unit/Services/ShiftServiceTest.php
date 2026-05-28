@@ -8,6 +8,7 @@ use App\Models\EmployeeShift;
 use App\Models\User;
 use App\Services\ShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -25,7 +26,7 @@ class ShiftServiceTest extends TestCase
         $this->service = app(ShiftService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_can_clock_in_a_user(): void
     {
         $user = User::factory()->create();
@@ -37,7 +38,7 @@ class ShiftServiceTest extends TestCase
         $this->assertNotNull($shift->clock_in_at);
     }
 
-    /** @test */
+    #[Test]
     public function it_prevents_double_clock_in(): void
     {
         $user = User::factory()->create();
@@ -47,7 +48,7 @@ class ShiftServiceTest extends TestCase
         $this->service->clockIn($user);
     }
 
-    /** @test */
+    #[Test]
     public function it_can_clock_out_an_active_shift(): void
     {
         $user = User::factory()->create();
@@ -60,7 +61,7 @@ class ShiftServiceTest extends TestCase
         $this->assertNotNull($shift->hours_worked);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_null_for_user_with_no_active_shift(): void
     {
         $user = User::factory()->create();

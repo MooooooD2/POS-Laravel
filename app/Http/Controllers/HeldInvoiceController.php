@@ -42,7 +42,7 @@ class HeldInvoiceController extends Controller
 
     public function discard(HeldInvoice $heldInvoice)
     {
-        $this->authorize('delete', $heldInvoice);
+        $this->authorize('discard', $heldInvoice);
 
         try {
             $this->heldService->discard($heldInvoice);

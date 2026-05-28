@@ -20,28 +20,11 @@ use Tests\TestCase;
  *  Layer 1: Middleware behaviour (SQLite-safe)
  *  Layer 2: Permission-based isolation (SQLite-safe)
  *  Layer 3: group:integration — actual cross-tenant DB isolation (requires MySQL)
- *           Run: php artisan test --group=integration
+ *           Run: RUN_INTEGRATION_TESTS=true php artisan test --group=integration
  */
 class TenantIsolationTest extends TestCase
 {
     use RefreshDatabase;
-
-    /**
-     * Redirect the 'tenant' DB connection to the same SQLite instance as 'sqlite'.
-     *
-     * The User model hardcodes $connection = 'tenant'. In a normal test run the
-     * 'tenant' config points to MySQL (with DB_DATABASE=:memory:), which MySQL
-     * rejects. By extending the DB manager we return the already-configured
-     * sqlite connection, so RefreshDatabase's transaction wraps both at once.
-     */
-    public function createApplication()
-    {
-        $app = parent::createApplication();
-
-        $app['db']->extend('tenant', fn () => $app['db']->connection('sqlite'));
-
-        return $app;
-    }
 
     protected function setUp(): void
     {
@@ -138,8 +121,10 @@ class TenantIsolationTest extends TestCase
             ->postJson('/api/roles', ['name' => 'hacker_role'])
             ->assertStatus(403);
 
+        // Use the actual role ID (not hardcoded 1 — auto-increment skips in the test suite)
+        $roleId = $cashier->roles->first()->id;
         $this->actingAs($cashier)
-            ->postJson('/api/roles/1/permissions', ['permissions' => ['manage_roles']])
+            ->postJson("/api/roles/{$roleId}/permissions", ['permissions' => ['manage_roles']])
             ->assertStatus(403);
     }
 
@@ -253,8 +238,8 @@ class TenantIsolationTest extends TestCase
         // so a real entry must exist to get 403 rather than 404.
         $entry = JournalEntry::create([
             'entry_number' => 'JE-PERM-TEST-001',
-            'entry_date' => '2026-01-01',
-            'description' => 'Permission test entry',
+            'entry_date'   => '2026-01-01',
+            'description'  => 'Permission test entry',
         ]);
 
         $this->actingAs($cashier)->postJson("/api/journal-entries/{$entry->id}/post")->assertStatus(403);
@@ -273,16 +258,18 @@ class TenantIsolationTest extends TestCase
         $this->actingAs($cashier)->getJson('/api/reports/inventory-valuation')->assertStatus(403);
     }
 
-    // ── Layer 3: Integration tests (require MySQL) ───────────────────────────
-    // Run: php artisan test --group=integration
+    // ── Layer 3: Integration tests (require dedicated MySQL tenants) ──────────
     // These verify actual DB-level data isolation between two separate tenant databases.
+    // Run: RUN_INTEGRATION_TESTS=true php artisan test --group=integration
 
     #[Test]
     #[Group('integration')]
     public function tenant_a_products_are_not_visible_in_tenant_b_context(): void
     {
-        if (config('database.default') === 'sqlite') {
-            $this->markTestSkipped('Cross-tenant DB isolation requires MySQL. Run with --group=integration against a MySQL server.');
+        // Requires separate per-tenant MySQL databases configured via stancl/tenancy.
+        // Skip in the standard test suite which uses a single shared database.
+        if (! env('RUN_INTEGRATION_TESTS')) {
+            $this->markTestSkipped('Cross-tenant DB isolation requires dedicated MySQL tenant setup. Set RUN_INTEGRATION_TESTS=true to enable.');
         }
 
         $tenantA = Tenant::create(['name' => 'Tenant A', 'code' => 'testa', 'is_active' => true]);
@@ -305,8 +292,9 @@ class TenantIsolationTest extends TestCase
     #[Group('integration')]
     public function users_from_different_tenants_share_no_data(): void
     {
-        if (config('database.default') === 'sqlite') {
-            $this->markTestSkipped('Cross-tenant DB isolation requires MySQL. Run with --group=integration against a MySQL server.');
+        // Requires separate per-tenant MySQL databases configured via stancl/tenancy.
+        if (! env('RUN_INTEGRATION_TESTS')) {
+            $this->markTestSkipped('Cross-tenant DB isolation requires dedicated MySQL tenant setup. Set RUN_INTEGRATION_TESTS=true to enable.');
         }
 
         $tenantA = Tenant::create(['name' => 'Store A', 'code' => 'storea', 'is_active' => true]);

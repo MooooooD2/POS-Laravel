@@ -92,7 +92,8 @@ class SecurityTest extends TestCase
         $response = $this->get('/login');
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
         $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
-        $response->assertHeader('X-XSS-Protection', '1; mode=block');
+        // Modern recommendation: 0 disables the XSS auditor (CSP replaces it)
+        $response->assertHeader('X-XSS-Protection', '0');
     }
 
     /** @test */

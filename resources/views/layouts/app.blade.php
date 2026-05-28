@@ -168,28 +168,42 @@
         </a>
         @endpermission
 
-        @permission('view_pos')
+        @permission('view_kitchen')
+        @planFeature('kitchen_display')
         <a href="{{ route('kitchen') }}" class="{{ request()->routeIs('kitchen*') ? 'active' : '' }}">
             <i class="fas fa-utensils"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'شاشة المطبخ' : 'Kitchen Display' }}</span>
         </a>
+        @endplanFeature
+        @endpermission
+
+        @permission('view_qr_orders')
+        @planFeature('qr_ordering')
         <a href="{{ route('qr-tables') }}" class="{{ request()->routeIs('qr-tables*') ? 'active' : '' }}">
             <i class="fas fa-qrcode"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'طلبات QR' : 'QR Ordering' }}</span>
         </a>
+        @endplanFeature
+        @endpermission
+
         {{-- Phase 11: Kiosk --}}
+        @permission('view_kiosk')
+        @planFeature('kiosk')
         <a href="{{ route('kiosk') }}" class="{{ request()->routeIs('kiosk*') ? 'active' : '' }}" target="_blank">
             <i class="fas fa-tablet-screen-button"></i><span class="nav-label"> {{ __('pos.kiosk_mode') }}</span>
         </a>
+        @endplanFeature
         @endpermission
 
         {{-- Phase 2: Shift Management --}}
+        @planFeature('shift_management')
         <a href="{{ route('shifts.my') }}" class="{{ request()->routeIs('shifts.my') ? 'active' : '' }}">
             <i class="fas fa-clock"></i><span class="nav-label"> {{ __('pos.my_shift') }}</span>
         </a>
-        @permission('view_reports')
+        @permission('view_shifts')
         <a href="{{ route('shifts.index') }}" class="{{ request()->routeIs('shifts.index') ? 'active' : '' }}">
             <i class="fas fa-user-clock"></i><span class="nav-label"> {{ __('pos.shift_management') }}</span>
         </a>
         @endpermission
+        @endplanFeature
 
         {{-- ──────────── INVENTORY & SUPPLY ──────────── --}}
         @permission('view_warehouse')
@@ -198,12 +212,16 @@
         <a href="{{ route('warehouse') }}" class="{{ request()->routeIs('warehouse') ? 'active' : '' }}">
             <i class="fas fa-boxes-stacked"></i><span class="nav-label"> {{ __('pos.warehouse') }}</span>
         </a>
+        @planFeature('multi_warehouse')
         <a href="{{ route('warehouses') }}" class="{{ request()->routeIs('warehouses') ? 'active' : '' }}">
             <i class="fas fa-warehouse"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'المستودعات' : 'Warehouses' }}</span>
         </a>
+        @endplanFeature
+        @planFeature('waste_tracking')
         <a href="{{ route('waste') }}" class="{{ request()->routeIs('waste') ? 'active' : '' }}">
             <i class="fas fa-trash-alt"></i><span class="nav-label"> {{ __('pos.waste_recording') }}</span>
         </a>
+        @endplanFeature
         @endpermission
 
         @permission('view_suppliers')
@@ -237,18 +255,28 @@
         <a href="{{ route('customers') }}" class="{{ request()->routeIs('customers') ? 'active' : '' }}">
             <i class="fas fa-users"></i><span class="nav-label"> {{ __('pos.customers') }}</span>
         </a>
+        @planFeature('customer_groups')
         <a href="{{ route('customer-groups') }}" class="{{ request()->routeIs('customer-groups') ? 'active' : '' }}">
             <i class="fas fa-people-group"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'مجموعات العملاء' : 'Customer Groups' }}</span>
         </a>
+        @endplanFeature
+        @planFeature('promotions')
         <a href="{{ route('promotions') }}" class="{{ request()->routeIs('promotions') ? 'active' : '' }}">
             <i class="fas fa-percent"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'العروض الترويجية' : 'Promotions' }}</span>
         </a>
+        @endplanFeature
+        @planFeature('cashback')
         <a href="{{ route('cashback') }}" class="{{ request()->routeIs('cashback*') ? 'active' : '' }}">
             <i class="fas fa-coins"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الكاش باك' : 'Cashback' }}</span>
         </a>
+        @endplanFeature
+        @planFeature('crm')
+        @permission('view_crm')
         <a href="{{ route('crm') }}" class="{{ request()->routeIs('crm*') ? 'active' : '' }}">
             <i class="fas fa-users-gear"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'إدارة العملاء CRM' : 'CRM' }}</span>
         </a>
+        @endpermission
+        @endplanFeature
         @endpermission
 
         {{-- ──────────── FINANCE ──────────── --}}
@@ -285,20 +313,27 @@
         <a href="{{ route('profit-reports') }}" class="{{ request()->routeIs('profit-reports') ? 'active' : '' }}">
             <i class="fas fa-chart-line"></i><span class="nav-label"> {{ __('pos.profit_reports') }}</span>
         </a>
+        @planFeature('budget_vs_actual')
         <a href="{{ route('reports.budget') }}" class="{{ request()->routeIs('reports.budget') ? 'active' : '' }}">
             <i class="fas fa-scale-unbalanced"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الميزانية مقابل الفعلي' : 'Budget vs Actual' }}</span>
         </a>
+        @endplanFeature
+        @planFeature('ai_forecasting')
         <a href="{{ route('forecasting') }}" class="{{ request()->routeIs('forecasting*') ? 'active' : '' }}">
             <i class="fas fa-robot"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'التنبؤ بالذكاء الاصطناعي' : 'AI Forecasting' }}</span>
         </a>
-        {{-- Phase 10: Franchise Royalties --}}
+        @endplanFeature
+        {{-- Franchise Royalties --}}
+        @planFeature('franchise')
         <a href="{{ route('franchise.royalties') }}" class="{{ request()->routeIs('franchise*') ? 'active' : '' }}">
             <i class="fas fa-handshake"></i><span class="nav-label"> {{ __('pos.franchise_royalties') }}</span>
         </a>
+        @endplanFeature
         @endpermission
 
         {{-- ──────────── HR MODULE ──────────── --}}
-        @permission('manage_settings')
+        @planFeature('hr_module')
+        @permission('view_hr')
         <hr class="sidebar-divider">
         <div class="sidebar-section-label">{{ __('pos.hr_module') }}</div>
         <a href="{{ route('hr.employees') }}" class="{{ request()->routeIs('hr.employees') ? 'active' : '' }}">
@@ -307,41 +342,66 @@
         <a href="{{ route('hr.attendance') }}" class="{{ request()->routeIs('hr.attendance') ? 'active' : '' }}">
             <i class="fas fa-fingerprint"></i><span class="nav-label"> {{ __('pos.attendance') }}</span>
         </a>
+        @planFeature('payroll')
         <a href="{{ route('hr.payroll') }}" class="{{ request()->routeIs('hr.payroll') ? 'active' : '' }}">
             <i class="fas fa-money-check-dollar"></i><span class="nav-label"> {{ __('pos.payroll') }}</span>
         </a>
+        @endplanFeature
         <a href="{{ route('hr.leaves') }}" class="{{ request()->routeIs('hr.leaves') ? 'active' : '' }}">
             <i class="fas fa-umbrella-beach"></i><span class="nav-label"> {{ __('pos.leaves') }}</span>
         </a>
         @endpermission
+        @endplanFeature
 
         {{-- ──────────── CONFIGURATION ──────────── --}}
-        @permission('view_pos')
+        @permission('manage_pricing_rules')
         <hr class="sidebar-divider">
         <div class="sidebar-section-label">{{ app()->getLocale()==='ar' ? 'الإعدادات والتكوين' : 'Configuration' }}</div>
+        @planFeature('pricing_rules')
         <a href="{{ route('pricing-rules') }}" class="{{ request()->routeIs('pricing-rules*') ? 'active' : '' }}">
             <i class="fas fa-tags"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'قواعد التسعير' : 'Pricing Rules' }}</span>
         </a>
+        @endplanFeature
         @endpermission
 
         @permission('manage_roles')
+        <a href="{{ route('roles') }}" class="{{ request()->routeIs('roles') ? 'active' : '' }}">
+            <i class="fas fa-shield-halved"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'الأدوار والصلاحيات' : 'Roles & Permissions' }}</span>
+        </a>
+        @planFeature('multi_branch')
         <a href="{{ route('branches') }}" class="{{ request()->routeIs('branches') ? 'active' : '' }}">
             <i class="fas fa-sitemap"></i><span class="nav-label"> {{ __('pos.branches') }}</span>
         </a>
+        @endplanFeature
+        @planFeature('whatsapp')
         <a href="{{ route('whatsapp') }}" class="{{ request()->routeIs('whatsapp') ? 'active' : '' }}">
             <i class="fab fa-whatsapp"></i><span class="nav-label"> {{ __('pos.whatsapp') }}</span>
         </a>
+        @endplanFeature
         @endpermission
 
-        {{-- Phase 4: White Label & Phase 10: Multi-Currency --}}
-        @permission('manage_settings')
+        {{-- White Label & Multi-Currency --}}
+        @planFeature('white_label')
+        @permission('manage_white_label')
         <a href="{{ route('white-label') }}" class="{{ request()->routeIs('white-label*') ? 'active' : '' }}">
             <i class="fas fa-palette"></i><span class="nav-label"> {{ __('pos.white_label') }}</span>
         </a>
+        @endpermission
+        @endplanFeature
+
+        @planFeature('currencies')
+        @permission('manage_currencies')
         <a href="{{ route('currencies.index') }}" class="{{ request()->routeIs('currencies*') ? 'active' : '' }}">
             <i class="fas fa-coins"></i><span class="nav-label"> {{ __('pos.currencies') }}</span>
         </a>
         @endpermission
+        @endplanFeature
+
+        @planFeature('device_sessions')
+        <a href="{{ route('device-sessions') }}" class="{{ request()->routeIs('device-sessions*') ? 'active' : '' }}">
+            <i class="fas fa-laptop-mobile"></i><span class="nav-label"> {{ app()->getLocale()==='ar' ? 'جلسات الأجهزة' : 'Device Sessions' }}</span>
+        </a>
+        @endplanFeature
 
         @permission('view_settings')
         <a href="{{ route('settings') }}" class="{{ request()->routeIs('settings') ? 'active' : '' }}">

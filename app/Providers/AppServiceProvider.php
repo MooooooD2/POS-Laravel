@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Models\WhiteLabel;
+use App\Services\PlanFeatureService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
@@ -63,29 +64,21 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
-        RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
-        });
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
 
         // Outputs nonce="..." for inline <script> tags to satisfy CSP
-        Blade::directive('nonce', function () {
-            return "<?php echo 'nonce=\"' . (app()->has('csp-nonce') ? app('csp-nonce') : '') . '\"'; ?>";
-        });
+        Blade::directive('nonce', fn () => "<?php echo 'nonce=\"' . (app()->has('csp-nonce') ? app('csp-nonce') : '') . '\"'; ?>");
 
-        // Custom Blade directives for permissions
+        // ── Blade directives: permissions ─────────────────────────────────────────
         // Cast to App\Models\User so the IDE resolves Spatie HasRoles methods correctly.
         Blade::if('permission', function ($permission) {
             /** @var User|null $user */
-            $user = auth()->user();
-
-            return $user && $user->can($permission);
+            return auth()->user()?->can($permission) ?? false;
         });
 
         Blade::if('role', function ($role) {
             /** @var User|null $user */
-            $user = auth()->user();
-
-            return $user && $user->hasRole($role);
+            return auth()->user()?->hasRole($role) ?? false;
         });
 
         Blade::if('anyrole', function ($roles) {
@@ -108,6 +101,29 @@ class AppServiceProvider extends ServiceProvider
             $roles = \is_array($roles) ? $roles : \func_get_args();
 
             return $user->hasAllRoles($roles);
+        });
+
+        // ── Blade directive: plan feature gates ───────────────────────────────────
+        // @planFeature('hr_module') … @endplanFeature
+        // Renders its content only when the current tenant's plan includes the key.
+        Blade::if('planFeature', function (string $feature): bool {
+            try {
+                return PlanFeatureService::has($feature);
+            } catch (\Throwable) {
+                return true; // fail-open outside tenancy context (admin, tests)
+            }
+        });
+
+        // Share the current plan's feature list to every view (lightweight cache hit)
+        View::composer('*', function ($view) {
+            if (! auth()->check()) {
+                return;
+            }
+            try {
+                $view->with('_planFeatures', PlanFeatureService::features());
+            } catch (\Throwable) {
+                $view->with('_planFeatures', []);
+            }
         });
     }
 }

@@ -6,13 +6,14 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class InvoiceServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function discount_cannot_exceed_total()
     {
         $product = Product::factory()->create(['price' => 100.00, 'quantity' => 5]);

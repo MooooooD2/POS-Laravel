@@ -1,34 +1,84 @@
-@php $isAr = session('locale', config('app.locale', 'ar')) === 'ar'; @endphp
+@php
+    $isAr = session('locale', config('app.locale', 'ar')) === 'ar';
+
+    // ── Dynamic theme from white-label branding (passed from route) ────────
+    // Falls back to hard-coded brand colours when branding is null.
+    $_brand        = $branding?->primary_color   ?? '#12244E';
+    $_brandDark    = $branding?->secondary_color ?? '#0D1B3A';
+    $_accent       = $branding?->accent_color    ?? '#00B04E';
+    $_textColor    = $branding?->text_color      ?? null;
+    $_bgColor      = $branding?->bg_color        ?? null;
+    $_appName      = $branding?->app_name        ?? 'NuqtahPOS';
+    $_hidePowered  = (bool)($branding?->hide_powered_by ?? false);
+    $_footerText   = $branding?->footer_text     ?? null;
+    $_supportEmail = $branding?->support_email   ?? null;
+    $_website      = $branding?->website_url     ?? null;
+
+    // Choose font: brand font > locale default
+    $_wlFont   = $branding?->font_family ?? ($isAr ? 'Cairo' : 'Inter');
+    $_fontMap  = [
+        'Cairo'                => 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap',
+        'Inter'                => 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&display=swap',
+        'Tajawal'              => 'https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap',
+        'IBM Plex Sans Arabic' => 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap',
+        'Roboto'               => 'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
+        'Poppins'              => 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap',
+    ];
+
+    // Derive a lighter version of the accent for backgrounds (pure CSS fallback)
+    $_accentLight = $branding?->accent_color  ? $_accent . '22' : '#E0F7EC';
+    $_brandLight  = $branding?->primary_color ? $_brand  . '18' : '#E8F0FC';
+@endphp
 <!DOCTYPE html>
 <html lang="{{ $isAr ? 'ar' : 'en' }}" dir="{{ $isAr ? 'rtl' : 'ltr' }}">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>NuqtahPOS — {{ $isAr ? 'نظام نقطة البيع السحابي' : 'Cloud POS System' }}</title>
+    <title>{{ $_appName }}{{ $branding ? '' : ' — ' . ($isAr ? 'نظام نقطة البيع السحابي' : 'Cloud POS System') }}</title>
     <meta name="description" content="{{ $isAr
         ? 'نظام نقطة بيع سحابي متكامل للشركات الصغيرة والمتوسطة. إدارة المبيعات، المخزون، والحسابات في مكان واحد.'
         : 'Full-featured cloud POS system for small and medium businesses. Manage sales, inventory, and accounting in one place.' }}">
+
+    {{-- Favicon --}}
+    @if($branding?->favicon_path)
+        <link rel="icon" href="{{ Storage::url($branding->favicon_path) }}">
+    @else
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' text-anchor='middle' dominant-baseline='middle' font-size='80'>🏪</text></svg>">
+    @endif
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+    {{-- Load brand font (or both defaults when no branding) --}}
+    @if(isset($_fontMap[$_wlFont]))
+        <link href="{{ $_fontMap[$_wlFont] }}" rel="stylesheet">
+    @else
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    @endif
+
+    @if($isAr)
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.rtl.min.css">
+    @else
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+    @endif
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
     <style nonce="{{ app('csp-nonce') }}">
         :root {
-            --brand: #12244E;
-            --brand-dark: #0D1B3A;
-            --brand-light: #E8F0FC;
-            --accent: #00B04E;
-            --accent-light: #E0F7EC;
-            --success: #059669;
-            --dark: #0f172a;
-            --gray: #64748b;
+            --brand:        {{ $_brand }};
+            --brand-dark:   {{ $_brandDark }};
+            --brand-light:  {{ $_brandLight }};
+            --accent:       {{ $_accent }};
+            --accent-light: {{ $_accentLight }};
+            --success:      #059669;
+            --dark:         #0f172a;
+            --gray:         #64748b;
+            @if($_textColor) --color-text: {{ $_textColor }}; @endif
+            @if($_bgColor)   --color-bg:   {{ $_bgColor }};   @endif
         }
 
         * {
-            font-family: {{ $isAr ? 'Cairo' : 'Inter'}}, sans-serif;
+            font-family: '{{ $_wlFont }}', {{ $isAr ? 'Cairo,' : '' }} sans-serif;
             box-sizing: border-box;
         }
 
@@ -80,7 +130,7 @@
 
         /* ── Hero ── */
         .hero {
-            background: linear-gradient(145deg, #081324 0%, #12244E 45%, #0A2318 75%, #081324 100%);
+            background: linear-gradient(145deg, var(--brand-dark) 0%, var(--brand) 45%, color-mix(in srgb, var(--accent) 20%, var(--brand-dark)) 75%, var(--brand-dark) 100%);
             min-height: 100vh; display: flex; align-items: center;
             position: relative; overflow: hidden; padding: 7rem 0 5rem;
         }
@@ -92,12 +142,12 @@
         }
         .hero-glow-1 {
             position: absolute; width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(0,176,78,.22) 0%, transparent 70%);
+            background: radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 70%);
             top: -100px; right: -100px; pointer-events: none;
         }
         .hero-glow-2 {
             position: absolute; width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(18,36,78,.55) 0%, transparent 70%);
+            background: radial-gradient(circle, color-mix(in srgb, var(--brand) 55%, transparent) 0%, transparent 70%);
             bottom: -100px; left: -100px; pointer-events: none;
         }
         .hero-badge {
@@ -116,7 +166,7 @@
         }
         .hero-title { font-size: clamp(2.6rem,5.5vw,4.2rem); font-weight: 900; line-height: 1.15; letter-spacing: -.02em; }
         .gradient-text {
-            background: linear-gradient(135deg, #4ade80, #00B04E, #22d3ee);
+            background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent), #22d3ee);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
         .hero-sub { font-size: 1.15rem; color: rgba(255,255,255,.72); line-height: 1.7; max-width: 500px; }
@@ -143,7 +193,7 @@
         .hero-stat { text-align: center; }
         .hero-stat-num {
             font-size: 1.9rem; font-weight: 900;
-            background: linear-gradient(135deg, #4ade80, #00B04E);
+            background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent));
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
             line-height: 1.1;
         }
@@ -264,7 +314,7 @@
         /* ── Pricing ── */
         .price-card { border: 2px solid #e5e7eb; border-radius: 1.5rem; padding: 2.5rem; height: 100%; position: relative; transition: all .3s; background: #fff; }
         .price-card:hover { transform: translateY(-6px); box-shadow: 0 24px 60px rgba(0,0,0,.1); }
-        .price-card.best { border-color: var(--brand); background: linear-gradient(160deg, #E8F0FC, #fff); box-shadow: 0 20px 60px rgba(18,36,78,.15); }
+        .price-card.best { border-color: var(--brand); background: linear-gradient(160deg, var(--brand-light), #fff); box-shadow: 0 20px 60px color-mix(in srgb, var(--brand) 15%, transparent); }
         .price-best-tag {
             position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
             background: linear-gradient(135deg, var(--brand), var(--accent));
@@ -297,7 +347,7 @@
         .faq-item.open .faq-icon { transform: rotate(45deg); }
 
         /* ── CTA ── */
-        .cta-section { background: linear-gradient(145deg, #081324, #12244E 50%, #0A2318); position: relative; overflow: hidden; }
+        .cta-section { background: linear-gradient(145deg, var(--brand-dark) 0%, var(--brand) 50%, color-mix(in srgb, var(--accent) 15%, var(--brand-dark))); position: relative; overflow: hidden; }
         .cta-section::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px); background-size: 40px 40px; }
 
         /* ── Footer ── */
@@ -650,9 +700,9 @@
         </div>
         <div class="row g-4">
             @foreach ([
-                ['fa-cash-register',       '#E8F0FC', '#12244E', 'نقطة بيع سريعة',      'Fast POS',               'واجهة بيع سلسة مع دعم الباركود والخصومات التلقائية وإدارة الكاشير.',                              'Smooth POS interface with barcode support, automatic discounts, and cashier management.'],
-                ['fa-boxes-stacked',       '#f0fdf4', '#059669', 'إدارة المخزون',        'Inventory Management',   'تتبع المخزون لحظياً مع تنبيهات نفاد المخزون وإدارة المستودعات المتعددة.',                           'Real-time inventory tracking with low-stock alerts and multi-warehouse management.'],
-                ['fa-file-invoice-dollar', '#E0F7EC', '#00B04E', 'محاسبة متكاملة',       'Integrated Accounting',  'قيود يومية، ميزانية عمومية، قائمة دخل، وتقارير مالية احترافية.',                                    'Daily entries, balance sheet, income statement, and professional financial reports.'],
+                ['fa-cash-register',       '$_brandLight', '$_brand',  'نقطة بيع سريعة',      'Fast POS',               'واجهة بيع سلسة مع دعم الباركود والخصومات التلقائية وإدارة الكاشير.',                              'Smooth POS interface with barcode support, automatic discounts, and cashier management.'],
+                ['fa-boxes-stacked',       '#f0fdf4',     '#059669',  'إدارة المخزون',        'Inventory Management',   'تتبع المخزون لحظياً مع تنبيهات نفاد المخزون وإدارة المستودعات المتعددة.',                           'Real-time inventory tracking with low-stock alerts and multi-warehouse management.'],
+                ['fa-file-invoice-dollar', '$_accentLight','$_accent','محاسبة متكاملة',       'Integrated Accounting',  'قيود يومية، ميزانية عمومية، قائمة دخل، وتقارير مالية احترافية.',                                    'Daily entries, balance sheet, income statement, and professional financial reports.'],
                 ['fa-chart-column',        '#fff7ed', '#ea580c', 'تقارير ذكية',          'Smart Reports',          'تقارير مبيعات، أرباح، مرتجعات وتدفق نقدي مع تصدير Excel وPDF.',                                    'Sales, profit, returns, and cash-flow reports with Excel & PDF export.'],
                 ['fa-people-group',        '#f0f9ff', '#0284c7', 'إدارة العملاء',        'Customer Management',    'مجموعات العملاء، مستويات الأسعار، وسجل الشراء الكامل.',                                             'Customer groups, pricing tiers, and complete purchase history.'],
                 ['fa-truck-fast',          '#fefce8', '#ca8a04', 'أوامر الشراء',         'Purchase Orders',        'إدارة الموردين، أوامر الشراء، واستلام البضاعة آلياً.',                                              'Supplier management, purchase orders, and automatic stock reception.'],
@@ -661,7 +711,11 @@
             ] as $i => $f)
                 <div class="col-6 col-md-6 col-lg-3" data-aos="fade-up" data-aos-delay="{{ ($i % 4) * 80 }}">
                     <div class="feat-card">
-                        <div class="feat-icon" style="background:{{ $f[1] }};color:{{ $f[2] }}">
+                        @php
+                            $featureBg  = str_starts_with($f[1], '$') ? ${ltrim($f[1], '$')} : $f[1];
+                            $featureClr = str_starts_with($f[2], '$') ? ${ltrim($f[2], '$')} : $f[2];
+                        @endphp
+                        <div class="feat-icon" style="background:{{ $featureBg }};color:{{ $featureClr }}">
                             <i class="fas {{ $f[0] }}"></i>
                         </div>
                         <h5>{{ $isAr ? $f[3] : $f[4] }}</h5>
@@ -686,15 +740,16 @@
         <div class="row g-5 align-items-center">
             <div class="col-lg-4">
                 @foreach ([
-                    ['1','fa-user-plus', '#12244E', $isAr ? 'سجّل متجرك'      : 'Register Your Store',    $isAr ? 'أنشئ حسابك مجاناً في أقل من دقيقة. لا تحتاج لبطاقة ائتمانية.'                       : 'Create your free account in under a minute. No credit card needed.'],
-                    ['2','fa-sliders',   '#00B04E', $isAr ? 'خصّص النظام'      : 'Customize the System',   $isAr ? 'أضف منتجاتك، مستخدميك، وفروعك بضغطات بسيطة.'                                         : 'Add your products, users, and branches with a few simple clicks.'],
+                    ['1','fa-user-plus', '$_brand',  $isAr ? 'سجّل متجرك'      : 'Register Your Store',    $isAr ? 'أنشئ حسابك مجاناً في أقل من دقيقة. لا تحتاج لبطاقة ائتمانية.'                       : 'Create your free account in under a minute. No credit card needed.'],
+                    ['2','fa-sliders',   '$_accent', $isAr ? 'خصّص النظام'      : 'Customize the System',   $isAr ? 'أضف منتجاتك، مستخدميك، وفروعك بضغطات بسيطة.'                                         : 'Add your products, users, and branches with a few simple clicks.'],
                     ['3','fa-rocket',    '#ea580c', $isAr ? 'ابدأ البيع فوراً' : 'Start Selling Now',       $isAr ? 'النظام جاهز للعمل على الحاسب، الجوال، أو الجهاز اللوحي.'                             : 'Works on desktop, mobile, or tablet — right out of the box.'],
                 ] as $j => $step)
                     <div class="d-flex gap-3 align-items-start mb-4" data-aos="fade-up" data-aos-delay="{{ $j * 150 }}">
                         <div class="step-num flex-shrink-0">{{ $step[0] }}</div>
                         <div class="pt-1">
                             <div style="font-weight:800;color:var(--dark);margin-bottom:.25rem">
-                                <i class="fas {{ $step[1] }} me-2" style="color:{{ $step[2] }}"></i>{{ $step[3] }}
+                                @php $stepClr = str_starts_with($step[2], '$') ? ${ltrim($step[2], '$')} : $step[2]; @endphp
+                                <i class="fas {{ $step[1] }} me-2" style="color:{{ $stepClr }}"></i>{{ $step[3] }}
                             </div>
                             <p class="text-muted small mb-0" style="line-height:1.65">{{ $step[4] }}</p>
                         </div>
@@ -705,7 +760,7 @@
                 @endforeach
             </div>
             <div class="col-lg-8" data-aos="fade-up" data-aos-delay="100">
-                <div style="background:linear-gradient(135deg,#081324,#12244E);border-radius:1.5rem;padding:2.5rem;box-shadow:0 30px 80px rgba(0,0,0,.2)">
+                <div style="background:linear-gradient(135deg,{{ $_brandDark }},{{ $_brand }});border-radius:1.5rem;padding:2.5rem;box-shadow:0 30px 80px rgba(0,0,0,.2)">
                     <div class="row g-3">
                         @foreach ([
                             ['fa-gauge-high',    '#60a5fa', $isAr?'لوحة التحكم':'Dashboard',  $isAr?'إجمالي اليوم':"Today's Total",  $isAr?'12,450 ر.س':'12,450 SAR', $isAr?'↑ 18%':'↑ 18%', '#4ade80'],
@@ -745,8 +800,8 @@
             @php
                 $planColors = [
                     'basic'      => '#6b7280',
-                    'pro'        => '#12244E',
-                    'enterprise' => '#00B04E',
+                    'pro'        => $_brand,
+                    'enterprise' => $_accent,
                 ];
                 $bestPlan = 'pro';
             @endphp
@@ -756,7 +811,7 @@
                     $isBest   = $plan->id === $bestPlan;
                     $clr      = $planColors[$plan->id] ?? '#374151';
                     $btnStyle = $isBest
-                        ? 'background:linear-gradient(135deg,#12244E,#00B04E);color:#fff;border:none;'
+                        ? "background:linear-gradient(135deg,{$_brand},{$_accent});color:#fff;border:none;"
                         : 'border:2px solid #e5e7eb;background:#fff;color:var(--dark);';
                 @endphp
                 <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
@@ -839,12 +894,12 @@
         </div>
         <div class="row g-4">
             @foreach ($isAr ? [
-                ['أحمد الشمري',  'صاحب سلسلة مطاعم (5 فروع)',      '#12244E', 'منذ تحولنا إلى نقطة POS انخفض وقت الدفع بنسبة 40٪، وأصبح بإمكاني متابعة جميع الفروع ومقارنة مبيعاتها من لوحة تحكم واحدة في أي وقت ومن أي مكان.', 5],
-                ['سارة العتيبي', 'مديرة سلسلة متاجر ملابس',         '#00B04E', 'التقارير المالية أصبحت جاهزة في ثوانٍ بدلاً من ساعات. وفّر النظام على فريقي أكثر من 20 ساعة أسبوعياً كانت تُهدر في الجداول الإلكترونية.', 5],
+                ['أحمد الشمري',  'صاحب سلسلة مطاعم (5 فروع)',      '$_brand',  'منذ تحولنا إلى نقطة POS انخفض وقت الدفع بنسبة 40٪، وأصبح بإمكاني متابعة جميع الفروع ومقارنة مبيعاتها من لوحة تحكم واحدة في أي وقت ومن أي مكان.', 5],
+                ['سارة العتيبي', 'مديرة سلسلة متاجر ملابس',         '$_accent', 'التقارير المالية أصبحت جاهزة في ثوانٍ بدلاً من ساعات. وفّر النظام على فريقي أكثر من 20 ساعة أسبوعياً كانت تُهدر في الجداول الإلكترونية.', 5],
                 ['محمد الغامدي', 'صاحب سلسلة صيدليات',             '#059669', 'إدارة انتهاء الصلاحية والمخزون أصبحت تلقائية تماماً. فريق الدعم الفني ممتاز ومتجاوب على مدار الساعة. أنصح به بشدة لكل صيدلي.', 5],
             ] : [
-                ['Ahmed Al-Shammari',  'Owner of 5-Branch Restaurant Chain', '#12244E', 'Since switching to NuqtahPOS, checkout time dropped by 40%. I can now monitor all my branches and compare sales from a single dashboard — anytime, anywhere.', 5],
-                ['Sarah Al-Otaibi',    'Fashion Retail Chain Manager',        '#00B04E', 'Financial reports are ready in seconds instead of hours. The system saved my team over 20 hours a week that were wasted on spreadsheets.', 5],
+                ['Ahmed Al-Shammari',  'Owner of 5-Branch Restaurant Chain', '$_brand',  'Since switching to NuqtahPOS, checkout time dropped by 40%. I can now monitor all my branches and compare sales from a single dashboard — anytime, anywhere.', 5],
+                ['Sarah Al-Otaibi',    'Fashion Retail Chain Manager',        '$_accent', 'Financial reports are ready in seconds instead of hours. The system saved my team over 20 hours a week that were wasted on spreadsheets.', 5],
                 ['Mohammed Al-Ghamdi', 'Pharmacy Chain Owner',                '#059669', 'Expiry date and inventory management became completely automatic. The support team is excellent and available around the clock. Highly recommended.', 5],
             ] as $i => $t)
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="{{ $i * 100 }}">
@@ -857,7 +912,8 @@
                         </div>
                         <p class="testi-text mb-4">{{ $t[3] }}</p>
                         <div class="d-flex align-items-center gap-3 mt-auto">
-                            <div class="testi-avatar" style="background:{{ $t[2] }}">{{ mb_substr($t[0], 0, 1) }}</div>
+                            @php $testiClr = str_starts_with($t[2], '$') ? ${ltrim($t[2], '$')} : $t[2]; @endphp
+                            <div class="testi-avatar" style="background:{{ $testiClr }}">{{ mb_substr($t[0], 0, 1) }}</div>
                             <div>
                                 <div class="fw-bold small">{{ $t[0] }}</div>
                                 <div class="text-muted" style="font-size:.78rem">{{ $t[1] }}</div>
@@ -945,10 +1001,15 @@
         <div class="row g-4 mb-4">
             <div class="col-md-4">
                 <div class="footer-brand mb-2 d-flex align-items-center gap-2">
-                    <span style="width:30px;height:30px;background:linear-gradient(135deg,var(--brand),var(--accent));border-radius:.45rem;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;flex-shrink:0">
-                        <i class="fas fa-crosshairs"></i>
-                    </span>
-                    {{ $isAr ? 'نقطة' : 'Nuqtah' }}<span style="color:var(--accent)">.</span>
+                    @if($branding?->logo_path)
+                        <img src="{{ Storage::url($branding->logo_path) }}" alt="{{ $_appName }}"
+                             style="max-height:30px;max-width:100px;object-fit:contain;filter:brightness(0) invert(1)">
+                    @else
+                        <span style="width:30px;height:30px;background:linear-gradient(135deg,var(--brand),var(--accent));border-radius:.45rem;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;flex-shrink:0">
+                            <i class="fas fa-crosshairs"></i>
+                        </span>
+                        {{ $_appName }}<span style="color:var(--accent)"></span>
+                    @endif
                 </div>
                 <p class="small mb-3" style="line-height:1.7">{{ $isAr
                     ? 'نظام نقطة بيع سحابي متكامل للشركات العربية الصغيرة والمتوسطة. إدارة أذكى، مبيعات أكثر.'
@@ -994,11 +1055,26 @@
         </div>
         <hr style="border-color:#1e293b;margin:1.5rem 0">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small">
-            <span>© {{ date('Y') }} NuqtahPOS. {{ $isAr ? 'جميع الحقوق محفوظة.' : 'All rights reserved.' }}</span>
+            <span>
+                @if($_footerText)
+                    {!! e($_footerText) !!}
+                @else
+                    © {{ date('Y') }} {{ $_appName }}. {{ $isAr ? 'جميع الحقوق محفوظة.' : 'All rights reserved.' }}
+                @endif
+                @if(!$_hidePowered)
+                    &nbsp;<span style="opacity:.5">· Powered by NuqtahPOS</span>
+                @endif
+            </span>
             <div class="d-flex gap-3">
                 <a href="#">{{ $isAr ? 'سياسة الخصوصية' : 'Privacy Policy' }}</a>
                 <a href="#">{{ $isAr ? 'الشروط والأحكام' : 'Terms & Conditions' }}</a>
-                <a href="#">{{ $isAr ? 'الدعم الفني' : 'Support' }}</a>
+                @if($_supportEmail)
+                    <a href="mailto:{{ $_supportEmail }}">{{ $isAr ? 'الدعم الفني' : 'Support' }}</a>
+                @elseif($_website)
+                    <a href="{{ $_website }}" target="_blank" rel="noopener">{{ $isAr ? 'الدعم الفني' : 'Support' }}</a>
+                @else
+                    <a href="#">{{ $isAr ? 'الدعم الفني' : 'Support' }}</a>
+                @endif
             </div>
         </div>
     </div>

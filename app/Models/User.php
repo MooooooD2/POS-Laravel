@@ -6,15 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, HasRoles, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     // #7 is_active و role في fillable لكن id و remember_token ليسا
     protected $fillable = [
-        'username', 'password', 'full_name', 'role', 'is_active', 'language',
+        'username', 'email', 'password', 'full_name', 'role', 'is_active', 'language',
         'branch_id',
         'google2fa_secret', 'google2fa_enabled', 'google2fa_recovery_codes',
     ];

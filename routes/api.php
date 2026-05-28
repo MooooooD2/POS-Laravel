@@ -289,11 +289,12 @@ Route::middleware(['auth', 'throttle:60,1', CheckSubscriptionActive::class])->gr
         Route::post('/journal-entries/{entry}/post', [AccountingController::class, 'postJournalEntry'])->name('journal-entries.post');
         Route::post('/journal-entries/{entry}/reverse', [AccountingController::class, 'reverseJournalEntry'])->name('journal-entries.reverse');
         Route::get('/audit-logs', [AccountingController::class, 'auditLogs'])->name('audit-logs.index');
-
-        Route::get('/settings', [SettingController::class, 'all'])->name('settings.all');
-        Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
-        Route::get('/settings/group/{group}', [SettingController::class, 'group'])->name('settings.group');
     });
+
+    // Settings — read is available to any authenticated user; update requires manage_roles
+    Route::get('/settings', [SettingController::class, 'all'])->name('settings.all');
+    Route::get('/settings/group/{group}', [SettingController::class, 'group'])->name('settings.group');
+    Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
 
     // Reports
     Route::middleware('permission:view_reports')->group(function () {
@@ -488,8 +489,9 @@ Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->prefix('pri
 
 // ── Device Sessions API ───────────────────────────────────────────────────
 Route::middleware(['auth', 'throttle:30,1'])->group(function () {
-    Route::get('/device-sessions',        [DeviceSessionController::class, 'list'])->name('api.device-sessions.list');
-    Route::delete('/device-sessions/{id}',[DeviceSessionController::class, 'revoke'])->name('api.device-sessions.revoke');
+    Route::get('/device-sessions',              [DeviceSessionController::class, 'list'])->name('api.device-sessions.list');
+    Route::delete('/device-sessions/revoke-all',[DeviceSessionController::class, 'revokeAll'])->name('api.device-sessions.revoke-all');
+    Route::delete('/device-sessions/{id}',      [DeviceSessionController::class, 'revoke'])->name('api.device-sessions.revoke');
 });
 
 // ── Cashback API ──────────────────────────────────────────────────────────
