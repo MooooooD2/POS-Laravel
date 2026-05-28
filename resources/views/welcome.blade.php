@@ -851,16 +851,49 @@
                                 @endif
                             </div>
                         </div>
-                        <ul class="price-feature-list mb-4">
-                            @forelse ($plan->features ?? [] as $feat)
+                        {{-- Marketing highlights (freeform text bullets) --}}
+                        @if (!empty($plan->features))
+                        <ul class="price-feature-list mb-3">
+                            @foreach ($plan->features as $feat)
                                 <li>
                                     <i class="fas fa-circle-check pfl-check fa-sm mt-1"></i>
                                     <span>{{ is_array($feat) ? ($isAr ? ($feat['ar'] ?? $feat['en'] ?? '') : ($feat['en'] ?? $feat['ar'] ?? '')) : $feat }}</span>
                                 </li>
-                            @empty
-                                <li class="text-muted small">{{ $isAr ? 'راجع التفاصيل عند التسجيل' : 'See details on sign-up' }}</li>
-                            @endforelse
+                            @endforeach
                         </ul>
+                        @endif
+
+                        {{-- Module chips from feature_flags --}}
+                        @php
+                            $flags = $plan->feature_flags ?? [];
+                            $maxVisible = 8;
+                            $visibleFlags = array_slice($flags, 0, $maxVisible);
+                            $hiddenCount  = max(0, count($flags) - $maxVisible);
+                        @endphp
+                        @if (!empty($flags))
+                        <div class="mb-4">
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach ($visibleFlags as $flagKey)
+                                    @php $mod = $allModules[$flagKey] ?? null; @endphp
+                                    @if ($mod)
+                                    <span class="badge rounded-pill px-2 py-1"
+                                          style="background:{{ $clr }}18;color:{{ $clr }};border:1px solid {{ $clr }}38;font-size:.7rem;font-weight:500;"
+                                          title="{{ $isAr ? ($mod['ar'] ?? '') : ($mod['en'] ?? '') }}">
+                                        <i class="fas {{ $mod['icon'] }} me-1" style="font-size:.65rem"></i>{{ $isAr ? ($mod['ar'] ?? $mod['en']) : ($mod['en'] ?? $mod['ar']) }}
+                                    </span>
+                                    @endif
+                                @endforeach
+                                @if ($hiddenCount > 0)
+                                <span class="badge rounded-pill px-2 py-1"
+                                      style="background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;font-size:.7rem;font-weight:500;">
+                                    +{{ $hiddenCount }} {{ $isAr ? 'أكثر' : 'more' }}
+                                </span>
+                                @endif
+                            </div>
+                        </div>
+                        @elseif (empty($plan->features))
+                        <p class="text-muted small mb-4">{{ $isAr ? 'راجع التفاصيل عند التسجيل' : 'See details on sign-up' }}</p>
+                        @endif
                         <a href="{{ route('register') }}" class="btn w-100 fw-bold py-2" style="{{ $btnStyle }}border-radius:.75rem;font-size:.95rem;">
                             {{ $isAr ? "ابدأ تجربة مجانية {$plan->trial_days} يوم" : "Start {$plan->trial_days}-Day Free Trial" }}
                         </a>

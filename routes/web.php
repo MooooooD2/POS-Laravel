@@ -53,7 +53,9 @@ Route::get('/', function () {
         // Not critical — fall through to default colours
     }
 
-    return view('welcome', compact('plans', 'branding'));
+    $allModules = \App\Services\PlanFeatureService::allModules();
+
+    return view('welcome', compact('plans', 'branding', 'allModules'));
 })->name('welcome');
 
 Route::redirect('/home', '/');
