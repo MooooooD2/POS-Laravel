@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 use Stancl\Tenancy\Contracts\TenantDatabaseManager;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 
@@ -61,7 +62,7 @@ class CpanelTenantDatabaseManager implements TenantDatabaseManager
 
         shell_exec("uapi Mysql set_privileges_on_database user={$usr} database={$db} privileges='ALL PRIVILEGES' 2>&1");
 
-        return $this->databaseExists(str_replace(config('tenancy.cpanel.username').'_', '', $dbName));
+        return $this->databaseExists(str_replace(config('tenancy.cpanel.username') . '_', '', $dbName));
     }
 
     /** Strategy 2 & 3: HTTP cPanel UAPI with token or password. */
@@ -104,7 +105,7 @@ class CpanelTenantDatabaseManager implements TenantDatabaseManager
     public function createDatabase(TenantWithDatabase $tenant): bool
     {
         $dbName = $this->resolveDbName($tenant->database()->getName());
-        $appUser = config('database.connections.'.($this->connection ?? 'mysql').'.username');
+        $appUser = config('database.connections.' . ($this->connection ?? 'mysql') . '.username');
 
         if ($this->createViaShell($dbName, $appUser)) {
             return true;
@@ -114,10 +115,10 @@ class CpanelTenantDatabaseManager implements TenantDatabaseManager
             return true;
         }
 
-        throw new \RuntimeException(
-            "Cannot create database [{$dbName}] automatically. ".
-            'Add CPANEL_TOKEN or CPANEL_PASSWORD to .env, '.
-            "or create the database manually in cPanel and grant ALL PRIVILEGES to [{$appUser}]."
+        throw new RuntimeException(
+            "Cannot create database [{$dbName}] automatically. " .
+            'Add CPANEL_TOKEN or CPANEL_PASSWORD to .env, ' .
+            "or create the database manually in cPanel and grant ALL PRIVILEGES to [{$appUser}].",
         );
     }
 
@@ -126,7 +127,7 @@ class CpanelTenantDatabaseManager implements TenantDatabaseManager
         $dbName = $this->resolveDbName($tenant->database()->getName());
 
         if (\function_exists('shell_exec')) {
-            shell_exec('uapi Mysql delete_database name='.escapeshellarg($dbName).' 2>&1');
+            shell_exec('uapi Mysql delete_database name=' . escapeshellarg($dbName) . ' 2>&1');
 
             return true;
         }
@@ -142,7 +143,7 @@ class CpanelTenantDatabaseManager implements TenantDatabaseManager
         $rows = DB::connection($this->connection ?? 'mysql')
             ->select(
                 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
-                [$dbName]
+                [$dbName],
             );
 
         return \count($rows) > 0;

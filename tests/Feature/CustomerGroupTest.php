@@ -45,7 +45,7 @@ class CustomerGroupTest extends TestCase
     private function makeGroup(string $name = 'Test Group', array $extra = []): CustomerGroup
     {
         return CustomerGroup::create(array_merge([
-            'name'      => $name,
+            'name' => $name,
             'is_active' => true,
         ], $extra));
     }
@@ -79,9 +79,9 @@ class CustomerGroupTest extends TestCase
     {
         $res = $this->actingAs($this->admin)
             ->postJson('/api/customer-groups', [
-                'name'             => 'VIP Customers',
+                'name' => 'VIP Customers',
                 'discount_percent' => 15,
-                'price_level'      => 'vip',
+                'price_level' => 'vip',
             ]);
 
         $res->assertStatus(201)
@@ -107,7 +107,7 @@ class CustomerGroupTest extends TestCase
     {
         $this->actingAs($this->admin)
             ->postJson('/api/customer-groups', [
-                'name'             => 'Silly Group',
+                'name' => 'Silly Group',
                 'discount_percent' => 150,
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['discount_percent']);
@@ -118,7 +118,7 @@ class CustomerGroupTest extends TestCase
     {
         $this->actingAs($this->admin)
             ->postJson('/api/customer-groups', [
-                'name'        => 'Bad Level',
+                'name' => 'Bad Level',
                 'price_level' => 'platinum',
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['price_level']);
@@ -171,8 +171,8 @@ class CustomerGroupTest extends TestCase
         $group = $this->makeGroup('Busy Group');
 
         Customer::create([
-            'name'              => 'Test Customer',
-            'code'              => 'CUST001',
+            'name' => 'Test Customer',
+            'code' => 'CUST001',
             'customer_group_id' => $group->id,
         ]);
 

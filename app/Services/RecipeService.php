@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\ProductRecipe;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -38,7 +39,7 @@ class RecipeService
             $fresh = Product::lockForUpdate()->findOrFail($ingredient->id);
 
             if ($fresh->quantity < $needed) {
-                throw new \Exception(__('pos.recipe_ingredient_shortfall', [
+                throw new Exception(__('pos.recipe_ingredient_shortfall', [
                     'name' => $fresh->name,
                     'needed' => $needed,
                     'available' => $fresh->quantity,
@@ -52,7 +53,7 @@ class RecipeService
                 __('pos.recipe_deduction_note', ['invoice' => $invoiceId]),
                 $invoiceId,
                 'invoice',
-                $warehouseId
+                $warehouseId,
             );
         }
     }

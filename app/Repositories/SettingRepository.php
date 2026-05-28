@@ -30,6 +30,6 @@ class SettingRepository implements SettingRepositoryInterface
 
     public function forget(string $key): void
     {
-        Cache::forget('setting_'.$key);
+        Cache::forget('setting_' . $key);
     }
 }

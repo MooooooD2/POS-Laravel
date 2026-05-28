@@ -71,7 +71,7 @@ class AccountRepository extends BaseRepository implements AccountRepositoryInter
             ->withSum([
                 'lines as total' => fn ($q) => $q->whereHas(
                     'entry',
-                    fn ($q2) => $q2->whereBetween('entry_date', [$start, $end])
+                    fn ($q2) => $q2->whereBetween('entry_date', [$start, $end]),
                 ),
             ], $col)
             ->get()

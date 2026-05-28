@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Throwable;
 
 class PaymobController extends Controller
 {
@@ -25,7 +27,7 @@ class PaymobController extends Controller
             'api_key' => config('services.paymob.api_key'),
         ]);
         if (! $res->successful() || ! $res->json('token')) {
-            throw new \RuntimeException('Paymob auth failed: '.$res->body());
+            throw new RuntimeException('Paymob auth failed: ' . $res->body());
         }
 
         return $res->json('token');
@@ -42,7 +44,7 @@ class PaymobController extends Controller
             'items' => [],
         ]);
         if (! $res->successful() || ! $res->json('id')) {
-            throw new \RuntimeException('Paymob order failed: '.$res->body());
+            throw new RuntimeException('Paymob order failed: ' . $res->body());
         }
 
         return (int) $res->json('id');
@@ -61,7 +63,7 @@ class PaymobController extends Controller
             'lock_order_when_paid' => true,
         ]);
         if (! $res->successful() || ! $res->json('token')) {
-            throw new \RuntimeException('Paymob payment key failed: '.$res->body());
+            throw new RuntimeException('Paymob payment key failed: ' . $res->body());
         }
 
         return $res->json('token');
@@ -76,7 +78,7 @@ class PaymobController extends Controller
             'first_name' => $tenant->name,
             'street' => 'NA',
             'building' => 'NA',
-            'phone_number' => $phone ? ('+2'.ltrim($phone, '0')) : '+201000000000',
+            'phone_number' => $phone ? ('+2' . ltrim($phone, '0')) : '+201000000000',
             'shipping_method' => 'NA',
             'postal_code' => 'NA',
             'city' => 'Cairo',
@@ -112,7 +114,7 @@ class PaymobController extends Controller
 
         // InstaPay — manual transfer, no Paymob API call needed
         if ($method === 'instapay') {
-            $ref = strtoupper(substr($tenant->id, 0, 8)).'-'.strtoupper($plan->id).'-'.$months.'M';
+            $ref = strtoupper(substr($tenant->id, 0, 8)) . '-' . strtoupper($plan->id) . '-' . $months . 'M';
 
             return $this->success([
                 'type' => 'instapay',
@@ -191,7 +193,7 @@ class PaymobController extends Controller
                 'url' => $payRes->json('redirect_url'),
             ]);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('Paymob checkout exception', ['msg' => $e->getMessage(), 'method' => $method]);
 
             return $this->error(__('pos.payment_error'), 500);
@@ -314,7 +316,7 @@ class PaymobController extends Controller
     {
         // Idempotency guard: callback and webhook can both fire for the same payment
         if ($ref) {
-            $idempotencyKey = 'sub_activated_'.md5($ref);
+            $idempotencyKey = 'sub_activated_' . md5($ref);
             if (Cache::has($idempotencyKey)) {
                 Log::info('Paymob subscription activation skipped (duplicate)', compact('ref'));
 

@@ -7,6 +7,7 @@ use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\StockService;
 use Database\Seeders\RolePermissionSeeder;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -49,7 +50,7 @@ class StockServiceTest extends TestCase
     public function deduct_stock_throws_when_insufficient()
     {
         $product = Product::factory()->create(['quantity' => 2]);
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
         $this->service->deductStock($product, 5, 'sale', 'test');
     }
 

@@ -9,12 +9,14 @@ use App\Models\PurchaseOrder;
 use App\Services\PurchaseOrderService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PurchaseOrderController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(
         private PurchaseOrderService $poService,
@@ -34,19 +36,20 @@ class PurchaseOrderController extends Controller
         ]);
 
         return $this->success(['purchase_orders' => $this->poRepo->paginate(
-            $request->only(['supplier_id', 'status'])
+            $request->only(['supplier_id', 'status']),
         )]);
     }
 
     public function store(StorePurchaseOrderRequest $request)
     {
         $this->authorize('create', PurchaseOrder::class);
+
         try {
             $po = $this->poService->createPurchaseOrder($request->validated());
             $this->audit('po.created', PurchaseOrder::class, (int) $po->id, ['po_number' => $po->po_number]);
 
             return $this->success(['purchase_order' => $po], '', 201);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage());
         }
     }
@@ -133,7 +136,7 @@ class PurchaseOrderController extends Controller
             $this->audit('po.received', PurchaseOrder::class, (int) $po->id);
 
             return $this->success(['purchase_order' => $po]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage());
         }
     }

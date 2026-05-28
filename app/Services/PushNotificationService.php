@@ -9,6 +9,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Phase 9 + Phase 11 — Push Notification Service (FCM)
@@ -24,7 +25,7 @@ class PushNotificationService
 
     public function __construct()
     {
-        $projectId    = config('services.fcm.project_id', '');
+        $projectId = config('services.fcm.project_id', '');
         $this->fcmUrl = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
     }
 
@@ -35,12 +36,12 @@ class PushNotificationService
         DB::table('push_subscriptions')->updateOrInsert(
             ['user_id' => $user->id, 'fcm_token' => $token],
             [
-                'device_type'  => $deviceType,
-                'device_id'    => $deviceId,
+                'device_type' => $deviceType,
+                'device_id' => $deviceId,
                 'last_used_at' => now(),
-                'updated_at'   => now(),
-                'created_at'   => now(),
-            ]
+                'updated_at' => now(),
+                'created_at' => now(),
+            ],
         );
     }
 
@@ -115,17 +116,17 @@ class PushNotificationService
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'key=' . $serverKey,
-                'Content-Type'  => 'application/json',
+                'Content-Type' => 'application/json',
             ])->post('https://fcm.googleapis.com/fcm/send', [
-                'to'           => $token,
+                'to' => $token,
                 'notification' => [
                     'title' => $title,
-                    'body'  => $body,
+                    'body' => $body,
                     'sound' => 'default',
                     'badge' => '1',
                 ],
-                'data'         => $data,
-                'priority'     => 'high',
+                'data' => $data,
+                'priority' => 'high',
                 'content_available' => true,
             ]);
 
@@ -148,7 +149,7 @@ class PushNotificationService
             Log::warning('FCM send failed', ['status' => $response->status(), 'token' => substr($token, 0, 20)]);
 
             return false;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('FCM exception', ['error' => $e->getMessage()]);
 
             return false;
@@ -167,28 +168,28 @@ class PushNotificationService
 
     public function lowStockAlert(User $user, string $productName, int $remaining): void
     {
-        $lang  = $user->locale ?? 'en';
+        $lang = $user->locale ?? 'en';
         $title = $lang === 'ar' ? '⚠️ تنبيه مخزون منخفض' : '⚠️ Low Stock Alert';
-        $body  = $lang === 'ar'
+        $body = $lang === 'ar'
             ? "المنتج: {$productName} — متبقي {$remaining} فقط"
             : "Product: {$productName} — only {$remaining} left";
 
         $this->sendToUser($user, $title, $body, [
-            'type'    => 'low_stock',
+            'type' => 'low_stock',
             'product' => $productName,
         ]);
     }
 
     public function newOrderAlert(User $user, string $invoiceNumber, float $amount): void
     {
-        $lang  = $user->locale ?? 'en';
+        $lang = $user->locale ?? 'en';
         $title = $lang === 'ar' ? '🛒 فاتورة جديدة' : '🛒 New Invoice';
-        $body  = $lang === 'ar'
+        $body = $lang === 'ar'
             ? "رقم الفاتورة: {$invoiceNumber} — المبلغ: " . number_format($amount, 2)
             : "Invoice #{$invoiceNumber} — Amount: " . number_format($amount, 2);
 
         $this->sendToUser($user, $title, $body, [
-            'type'    => 'new_invoice',
+            'type' => 'new_invoice',
             'invoice' => $invoiceNumber,
         ]);
     }

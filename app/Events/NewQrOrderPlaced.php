@@ -14,7 +14,9 @@ use Illuminate\Queue\SerializesModels;
  */
 class NewQrOrderPlaced implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
 
     public function __construct(public readonly QrOrder $order) {}
 
@@ -31,12 +33,12 @@ class NewQrOrderPlaced implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'order_id'      => $this->order->id,
-            'table_name'    => $this->order->qrTable?->table_name,
-            'total'         => $this->order->total,
-            'items_count'   => $this->order->items()->count(),
+            'order_id' => $this->order->id,
+            'table_name' => $this->order->qrTable?->table_name,
+            'total' => $this->order->total,
+            'items_count' => $this->order->items()->count(),
             'customer_name' => $this->order->customer_name,
-            'created_at'    => $this->order->created_at?->toIso8601String(),
+            'created_at' => $this->order->created_at?->toIso8601String(),
         ];
     }
 }

@@ -30,7 +30,7 @@ class AuditInlineStylesCommand extends Command
 
         foreach ($finder as $file) {
             $content = $file->getContents();
-            $relative = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getRealPath());
+            $relative = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getRealPath());
 
             preg_match_all('/style="([^"]+)"/i', $content, $matches, PREG_OFFSET_CAPTURE);
 
@@ -73,11 +73,11 @@ class AuditInlineStylesCommand extends Command
         // Sort by file with most occurrences first
         uasort($report, fn ($a, $b) => $b['count'] <=> $a['count']);
 
-        $this->info("Found {$total} inline style attributes across ".count($report)." files.\n");
+        $this->info("Found {$total} inline style attributes across " . count($report) . " files.\n");
 
         $this->table(
             ['File', 'Count'],
-            collect($report)->map(fn ($data, $file) => [$file, $data['count']])->values()->toArray()
+            collect($report)->map(fn ($data, $file) => [$file, $data['count']])->values()->toArray(),
         );
 
         $outputPath = $this->option('output');

@@ -14,10 +14,12 @@ use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class ProductController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(
         private StockService $stockService,
@@ -33,14 +35,14 @@ class ProductController extends Controller
     public function all(Request $request)
     {
         $request->validate([
-            'search'    => 'nullable|string|max:100',
-            'category'  => 'nullable|string|max:100',
+            'search' => 'nullable|string|max:100',
+            'category' => 'nullable|string|max:100',
             'low_stock' => 'nullable|in:0,1,true,false',
-            'per_page'  => 'nullable|integer|min:10|max:200',
-            'all'       => 'nullable|in:0,1,true,false',
+            'per_page' => 'nullable|integer|min:10|max:200',
+            'all' => 'nullable|in:0,1,true,false',
         ]);
 
-        $filters  = $request->only(['search', 'category', 'low_stock', 'per_page']);
+        $filters = $request->only(['search', 'category', 'low_stock', 'per_page']);
         $fetchAll = $request->boolean('all');
 
         $products = $this->productRepo->all($filters, $fetchAll);
@@ -52,14 +54,14 @@ class ProductController extends Controller
             foreach ($productsWithPricing as &$p) {
                 $priceData = $this->pricing->getEffectivePrice($p['id'], 1, $request->integer('customer_group_id') ?: null);
                 $p['effective_price'] = $priceData['price'];
-                $p['discount_pct']    = $priceData['discount_pct'];
-                $p['price_rule']      = $priceData['rule'];
-                $p['has_discount']    = $priceData['has_discount'];
+                $p['discount_pct'] = $priceData['discount_pct'];
+                $p['price_rule'] = $priceData['rule'];
+                $p['has_discount'] = $priceData['has_discount'];
             }
         }
 
         return $this->success([
-            'products'          => $productsWithPricing,
+            'products' => $productsWithPricing,
             'happy_hour_active' => $happyHourActive,
         ]);
     }
@@ -74,8 +76,13 @@ class ProductController extends Controller
         $warehouseId = isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null;
         if ($initial > 0) {
             $this->stockService->addStock(
-                $product, $initial, __('pos.new_product_added'),
-                null, 'initial', null, $warehouseId
+                $product,
+                $initial,
+                __('pos.new_product_added'),
+                null,
+                'initial',
+                null,
+                $warehouseId,
             );
         }
 
@@ -136,14 +143,16 @@ class ProductController extends Controller
                     'brand' => $item['brand'] ?? null,
                 ], fn ($v) => $v !== null);
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
         }
 
         // ── 2. Open Food Facts (covers food/drink) ───────────────────────────
         try {
             $res = Http::timeout(3)
-                ->get("https://world.openfoodfacts.org/api/v2/product/{$barcode}",
-                    ['fields' => 'product_name,brands']);
+                ->get(
+                    "https://world.openfoodfacts.org/api/v2/product/{$barcode}",
+                    ['fields' => 'product_name,brands'],
+                );
             $prod = $res->ok() ? $res->json('product') : null;
             if ($prod && ! empty($prod['product_name'])) {
                 return array_filter([
@@ -151,7 +160,7 @@ class ProductController extends Controller
                     'brand' => $prod['brands'] ?? null,
                 ], fn ($v) => $v !== null);
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
         }
 
         return null;
@@ -168,7 +177,7 @@ class ProductController extends Controller
             null,
             $data['reference_type'] ?? 'adjustment',
             null,
-            isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null
+            isset($data['warehouse_id']) ? (int) $data['warehouse_id'] : null,
         );
         $this->audit('stock.added', Product::class, (int) $product->id, ['qty' => $data['quantity']]);
 

@@ -16,20 +16,22 @@ class NetworkConnector implements ConnectorInterface
     public function __construct(
         private string $ip,
         private int $port = 9100,
-        private int $timeout = 5
+        private int $timeout = 5,
     ) {}
 
     public function open(): void
     {
         $this->socket = @fsockopen(
-            $this->ip, $this->port,
-            $errno, $errstr,
-            $this->timeout
+            $this->ip,
+            $this->port,
+            $errno,
+            $errstr,
+            $this->timeout,
         );
 
         if (! $this->socket) {
             throw new Exception(
-                "Cannot connect to printer {$this->ip}:{$this->port} — [{$errno}] {$errstr}"
+                "Cannot connect to printer {$this->ip}:{$this->port} — [{$errno}] {$errstr}",
             );
         }
 
@@ -51,7 +53,7 @@ class NetworkConnector implements ConnectorInterface
 
         if ($written !== strlen($data)) {
             throw new Exception(
-                "Partial write: sent {$written} of ".strlen($data).' bytes'
+                "Partial write: sent {$written} of " . strlen($data) . ' bytes',
             );
         }
 

@@ -24,7 +24,7 @@ class WhatsAppController extends Controller
         $challenge = $this->service->verifyWebhook(
             $request->get('hub_mode', ''),
             $request->get('hub_verify_token', ''),
-            $request->get('hub_challenge', '')
+            $request->get('hub_challenge', ''),
         );
 
         if ($challenge !== null) {

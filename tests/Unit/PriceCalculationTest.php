@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\InvoiceService;
 use Database\Seeders\RolePermissionSeeder;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -49,7 +50,7 @@ class PriceCalculationTest extends TestCase
         $product = Product::factory()->create(['price' => 100.00, 'quantity' => 5]);
 
         // Discount of 999 exceeds the total (100) — service throws, not silently caps
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         $this->service->createInvoice([
             'items' => [['product_id' => $product->id, 'quantity' => 1]],

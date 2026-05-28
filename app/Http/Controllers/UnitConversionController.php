@@ -11,7 +11,8 @@ use Illuminate\Http\Request;
 
 class UnitConversionController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function show(Product $product): JsonResponse
     {
@@ -30,7 +31,7 @@ class UnitConversionController extends Controller
 
         $conv = UnitConversion::updateOrCreate(
             ['product_id' => $product->id],
-            $data
+            $data,
         );
 
         $this->audit('unit_conversion.upserted', 'Product', $product->id, $data);

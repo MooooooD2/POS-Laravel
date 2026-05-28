@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
@@ -75,14 +76,15 @@ class UserSeeder extends Seeder
                 }
                 $this->command->error('   أضف كلمات مرور قوية في ملف .env ثم أعد تشغيل الـ seed.');
             }
-            throw new \RuntimeException('Seed aborted: missing required passwords in .env');
+
+            throw new RuntimeException('Seed aborted: missing required passwords in .env');
         }
 
         // التحقق من أن كلمات المرور تستوفي الحد الأدنى من المتطلبات
         foreach ($required as $key => $value) {
             if (strlen($value) < 8) {
-                throw new \RuntimeException(
-                    "Seed aborted: {$key} must be at least 8 characters long."
+                throw new RuntimeException(
+                    "Seed aborted: {$key} must be at least 8 characters long.",
                 );
             }
         }

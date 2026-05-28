@@ -26,7 +26,7 @@ class AuthTest extends TestCase
     /** @test */
     public function active_user_can_login()
     {
-        $user = User::factory()->create(['username' => 'testuser_'.uniqid(), 'password' => bcrypt('Secret123'), 'is_active' => true]);
+        $user = User::factory()->create(['username' => 'testuser_' . uniqid(), 'password' => bcrypt('Secret123'), 'is_active' => true]);
         $user->assignRole('cashier');
 
         // Without a real tenant in the test DB, the login returns 401 (tenant not found).
@@ -42,7 +42,7 @@ class AuthTest extends TestCase
     /** @test */
     public function disabled_user_cannot_login()
     {
-        $user = User::factory()->create(['username' => 'disabled_'.uniqid(), 'password' => bcrypt('Secret123'), 'is_active' => false]);
+        $user = User::factory()->create(['username' => 'disabled_' . uniqid(), 'password' => bcrypt('Secret123'), 'is_active' => false]);
 
         // Without a real tenant the response is 401 (tenant not found).
         // With a real tenant it would be 403 (inactive). Both are non-200.
@@ -57,7 +57,7 @@ class AuthTest extends TestCase
     /** @test */
     public function wrong_password_returns_401()
     {
-        $user = User::factory()->create(['username' => 'active_'.uniqid(), 'password' => bcrypt('CorrectPass1'), 'is_active' => true]);
+        $user = User::factory()->create(['username' => 'active_' . uniqid(), 'password' => bcrypt('CorrectPass1'), 'is_active' => true]);
 
         $this->postJson('/login', [
             'tenant_code' => 'test',
@@ -69,7 +69,7 @@ class AuthTest extends TestCase
     /** @test */
     public function login_is_rate_limited_after_5_attempts()
     {
-        $user = User::factory()->create(['username' => 'ratetest_'.uniqid(), 'password' => bcrypt('Secret123'), 'is_active' => true]);
+        $user = User::factory()->create(['username' => 'ratetest_' . uniqid(), 'password' => bcrypt('Secret123'), 'is_active' => true]);
 
         for ($i = 0; $i < 10; $i++) {
             $this->postJson('/login', ['username' => $user->username, 'password' => 'Wrong1Pass']);

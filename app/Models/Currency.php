@@ -18,9 +18,9 @@ class Currency extends Model
     ];
 
     protected $casts = [
-        'exchange_rate'   => 'decimal:8',
-        'is_base'         => 'boolean',
-        'is_active'       => 'boolean',
+        'exchange_rate' => 'decimal:8',
+        'is_base' => 'boolean',
+        'is_active' => 'boolean',
         'rate_updated_at' => 'datetime',
     ];
 

@@ -260,7 +260,7 @@ class WarehouseTransferTest extends TestCase
     public function transfers_can_be_filtered_by_warehouse(): void
     {
         $response = $this->actingAs($this->admin)->getJson(
-            "/api/warehouse-transfers?warehouse_id={$this->warehouseA->id}"
+            "/api/warehouse-transfers?warehouse_id={$this->warehouseA->id}",
         );
         $response->assertStatus(200);
     }

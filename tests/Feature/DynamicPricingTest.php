@@ -45,24 +45,24 @@ class DynamicPricingTest extends TestCase
     private function makeRule(array $overrides = []): PriceRule
     {
         return PriceRule::create(array_merge([
-            'name'           => 'Test Rule ' . uniqid(),
-            'rule_type'      => 'happy_hour',
-            'discount_type'  => 'percentage',
+            'name' => 'Test Rule ' . uniqid(),
+            'rule_type' => 'happy_hour',
+            'discount_type' => 'percentage',
             'discount_value' => 10,
-            'is_active'      => true,
+            'is_active' => true,
         ], $overrides));
     }
 
     private function validRulePayload(array $overrides = []): array
     {
         return array_merge([
-            'name'           => 'Happy Hour',
-            'rule_type'      => 'happy_hour',
-            'discount_type'  => 'percentage',
+            'name' => 'Happy Hour',
+            'rule_type' => 'happy_hour',
+            'discount_type' => 'percentage',
             'discount_value' => 10,
-            'time_start'     => '18:00',
-            'time_end'       => '20:00',
-            'is_active'      => true,
+            'time_start' => '18:00',
+            'time_end' => '20:00',
+            'is_active' => true,
         ], $overrides);
     }
 

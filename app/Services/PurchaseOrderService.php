@@ -149,7 +149,7 @@ class PurchaseOrderService
                         __('pos.purchase_receipt', ['po' => $po->po_number]),
                         $po->id,
                         'purchase_order',
-                        $unitCost
+                        $unitCost,
                     );
                 }
 

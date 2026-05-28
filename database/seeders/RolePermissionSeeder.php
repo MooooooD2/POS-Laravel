@@ -124,11 +124,11 @@ class RolePermissionSeeder extends Seeder
         }
 
         // ── Roles ─────────────────────────────────────────────────────────────
-        $admin     = Role::firstOrCreate(['name' => 'admin',     'guard_name' => $guard]);
-        $manager   = Role::firstOrCreate(['name' => 'manager',   'guard_name' => $guard]);
+        $admin = Role::firstOrCreate(['name' => 'admin',     'guard_name' => $guard]);
+        $manager = Role::firstOrCreate(['name' => 'manager',   'guard_name' => $guard]);
         $warehouse = Role::firstOrCreate(['name' => 'warehouse',  'guard_name' => $guard]);
-        $cashier   = Role::firstOrCreate(['name' => 'cashier',   'guard_name' => $guard]);
-        $hr        = Role::firstOrCreate(['name' => 'hr',        'guard_name' => $guard]);
+        $cashier = Role::firstOrCreate(['name' => 'cashier',   'guard_name' => $guard]);
+        $hr = Role::firstOrCreate(['name' => 'hr',        'guard_name' => $guard]);
 
         // Admin gets everything except manage_tenants (master tenant only)
         $isMaster = config('tenancy.master_tenant') &&

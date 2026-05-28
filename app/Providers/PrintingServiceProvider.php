@@ -19,7 +19,7 @@ class PrintingServiceProvider extends ServiceProvider
         // Merge package config (allows env overrides)
         $this->mergeConfigFrom(
             base_path('config/thermal-printing.php'),
-            'thermal-printing'
+            'thermal-printing',
         );
 
         // ReceiptTemplateEngine — constructor-injected via container (SettingService resolved automatically)
@@ -49,7 +49,7 @@ class PrintingServiceProvider extends ServiceProvider
                     $released = $manager->releaseStuckJobs();
                     if ($released > 0) {
                         Log::info(
-                            "PrintJobManager: released {$released} stuck jobs"
+                            "PrintJobManager: released {$released} stuck jobs",
                         );
                     }
 
@@ -57,7 +57,7 @@ class PrintingServiceProvider extends ServiceProvider
                     $processed = $manager->processPendingJobs();
                     if ($processed > 0) {
                         Log::info(
-                            "PrintJobManager: processed {$processed} print jobs"
+                            "PrintJobManager: processed {$processed} print jobs",
                         );
                     }
                 })

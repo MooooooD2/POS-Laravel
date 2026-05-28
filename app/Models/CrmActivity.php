@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * CRM Activity — interactions with customers (Phase 8).
  *
- * @property int    $id
- * @property int    $customer_id
+ * @property int $id
+ * @property int $customer_id
  * @property int|null $user_id
  * @property string $type
  * @property string|null $subject
@@ -29,8 +29,8 @@ class CrmActivity extends Model
     ];
 
     protected $casts = [
-        'scheduled_at'  => 'datetime',
-        'completed_at'  => 'datetime',
+        'scheduled_at' => 'datetime',
+        'completed_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo
@@ -53,16 +53,16 @@ class CrmActivity extends Model
     public function getTypeIconAttribute(): string
     {
         return match ($this->type) {
-            'call'      => '📞',
-            'email'     => '📧',
-            'visit'     => '🏪',
-            'whatsapp'  => '💬',
-            'note'      => '📝',
+            'call' => '📞',
+            'email' => '📧',
+            'visit' => '🏪',
+            'whatsapp' => '💬',
+            'note' => '📝',
             'complaint' => '⚠️',
             'follow_up' => '🔔',
-            'sale'      => '💰',
-            'return'    => '↩️',
-            default     => '•',
+            'sale' => '💰',
+            'return' => '↩️',
+            default => '•',
         };
     }
 }

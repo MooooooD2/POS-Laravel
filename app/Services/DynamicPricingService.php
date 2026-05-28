@@ -17,15 +17,12 @@ class DynamicPricingService
     /**
      * Get the effective price for a product at a given quantity.
      *
-     * @param int   $productId
-     * @param float $quantity
-     * @param int|null $customerGroupId
      * @return array ['price' => float, 'original_price' => float, 'rule' => PriceRule|null, 'discount_pct' => float]
      */
     public function getEffectivePrice(int $productId, float $quantity = 1, ?int $customerGroupId = null): array
     {
         $product = Product::find($productId);
-        if (!$product) {
+        if (! $product) {
             return $this->noDiscount(0);
         }
 
@@ -39,14 +36,16 @@ class DynamicPricingService
         // Try each rule in priority order; apply the first that results in a lower price
         // (unless stackable — we allow multiple in that case)
         $bestPrice = $originalPrice;
-        $bestRule  = null;
+        $bestRule = null;
 
         foreach ($rules as $rule) {
             $adjusted = $rule->applyToPrice($originalPrice, $quantity);
             if ($adjusted < $bestPrice) {
                 $bestPrice = $adjusted;
-                $bestRule  = $rule;
-                if (!$rule->stackable) break; // stop at first non-stackable rule
+                $bestRule = $rule;
+                if (! $rule->stackable) {
+                    break;
+                } // stop at first non-stackable rule
             }
         }
 
@@ -55,15 +54,15 @@ class DynamicPricingService
             : 0;
 
         return [
-            'price'          => round($bestPrice, 2),
+            'price' => round($bestPrice, 2),
             'original_price' => $originalPrice,
-            'rule'           => $bestRule ? [
-                'id'   => $bestRule->id,
+            'rule' => $bestRule ? [
+                'id' => $bestRule->id,
                 'name' => $bestRule->name,
                 'type' => $bestRule->rule_type,
             ] : null,
-            'discount_pct'   => $discountPct,
-            'has_discount'   => $discountPct > 0,
+            'discount_pct' => $discountPct,
+            'has_discount' => $discountPct > 0,
         ];
     }
 
@@ -75,9 +74,10 @@ class DynamicPricingService
         $results = [];
         foreach ($items as $item) {
             $productId = $item['product_id'];
-            $quantity  = (float) ($item['quantity'] ?? 1);
+            $quantity = (float) ($item['quantity'] ?? 1);
             $results[$productId] = $this->getEffectivePrice($productId, $quantity, $customerGroupId);
         }
+
         return $results;
     }
 
@@ -95,8 +95,13 @@ class DynamicPricingService
         });
 
         return $rules->filter(function (PriceRule $rule) use ($productId, $category, $customerGroupId) {
-            if (!$rule->isCurrentlyActive()) return false;
-            if ($rule->customer_group_id && $rule->customer_group_id !== $customerGroupId) return false;
+            if (! $rule->isCurrentlyActive()) {
+                return false;
+            }
+            if ($rule->customer_group_id && $rule->customer_group_id !== $customerGroupId) {
+                return false;
+            }
+
             return $rule->appliesToProduct($productId, $category);
         });
     }
@@ -122,6 +127,7 @@ class DynamicPricingService
             ->get()
             ->map(function (PriceRule $rule) {
                 $rule->is_currently_active = $rule->isCurrentlyActive();
+
                 return $rule;
             });
     }
@@ -129,11 +135,11 @@ class DynamicPricingService
     private function noDiscount(float $price): array
     {
         return [
-            'price'          => $price,
+            'price' => $price,
             'original_price' => $price,
-            'rule'           => null,
-            'discount_pct'   => 0,
-            'has_discount'   => false,
+            'rule' => null,
+            'discount_pct' => 0,
+            'has_discount' => false,
         ];
     }
 }

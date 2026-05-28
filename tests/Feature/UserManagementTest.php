@@ -72,10 +72,10 @@ class UserManagementTest extends TestCase
     {
         $res = $this->actingAs($this->admin)
             ->postJson('/api/users', [
-                'username'  => 'newuser01',
+                'username' => 'newuser01',
                 'full_name' => 'New User',
-                'password'  => 'Password1!',
-                'role'      => 'cashier',
+                'password' => 'Password1!',
+                'role' => 'cashier',
             ]);
 
         $res->assertStatus(201)
@@ -90,8 +90,8 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/users', [
                 'full_name' => 'No Username',
-                'password'  => 'Password1!',
-                'role'      => 'cashier',
+                'password' => 'Password1!',
+                'role' => 'cashier',
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['username']);
     }
@@ -101,10 +101,10 @@ class UserManagementTest extends TestCase
     {
         $this->actingAs($this->admin)
             ->postJson('/api/users', [
-                'username'  => $this->cashier->username,
+                'username' => $this->cashier->username,
                 'full_name' => 'Dup User',
-                'password'  => 'Password1!',
-                'role'      => 'cashier',
+                'password' => 'Password1!',
+                'role' => 'cashier',
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['username']);
     }
@@ -114,10 +114,10 @@ class UserManagementTest extends TestCase
     {
         $this->actingAs($this->cashier)
             ->postJson('/api/users', [
-                'username'  => 'hacker',
+                'username' => 'hacker',
                 'full_name' => 'Hacker',
-                'password'  => 'Password1!',
-                'role'      => 'cashier',
+                'password' => 'Password1!',
+                'role' => 'cashier',
             ])->assertForbidden();
     }
 
@@ -132,7 +132,7 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->admin)
             ->putJson("/api/users/{$target->id}", [
                 'full_name' => 'Updated Name',
-                'role'      => 'cashier',
+                'role' => 'cashier',
             ])->assertOk()
             ->assertJsonPath('user.full_name', 'Updated Name');
     }
@@ -146,7 +146,7 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->cashier)
             ->putJson("/api/users/{$other->id}", [
                 'full_name' => 'Pwned',
-                'role'      => 'cashier',
+                'role' => 'cashier',
             ])->assertForbidden();
     }
 

@@ -33,7 +33,7 @@ class ProfitableProductsExport implements FromCollection, ShouldAutoSize, WithHe
             number_format($p->total_revenue, 2),
             number_format($p->total_cost, 2),
             number_format($p->gross_profit, 2),
-            $p->profit_margin.'%',
+            $p->profit_margin . '%',
         ]);
     }
 }

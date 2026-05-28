@@ -6,6 +6,7 @@ use App\Contracts\Repositories\AccountRepositoryInterface;
 use App\Models\Account;
 use App\Models\FiscalPeriod;
 use App\Models\JournalEntry;
+use DomainException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -24,14 +25,15 @@ class PeriodClosingService
         $overlap = FiscalPeriod::where(function ($q) use ($data) {
             $q->whereBetween('start_date', [$data['start_date'], $data['end_date']])
                 ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
-                ->orWhere(fn ($q2) => $q2
-                    ->where('start_date', '<=', $data['start_date'])
-                    ->where('end_date', '>=', $data['end_date'])
+                ->orWhere(
+                    fn ($q2) => $q2
+                        ->where('start_date', '<=', $data['start_date'])
+                        ->where('end_date', '>=', $data['end_date']),
                 );
         })->exists();
 
         if ($overlap) {
-            throw new \DomainException(__('pos.period_overlap'));
+            throw new DomainException(__('pos.period_overlap'));
         }
 
         return FiscalPeriod::create([
@@ -63,12 +65,12 @@ class PeriodClosingService
     {
         // Fast pre-flight check outside transaction (avoids unnecessary lock contention)
         if ($period->isClosed()) {
-            throw new \DomainException(__('pos.period_already_closed'));
+            throw new DomainException(__('pos.period_already_closed'));
         }
 
         $retainedEarnings = $this->accountRepo->findOrFail($retainedEarningsAccountId);
         if ($retainedEarnings->account_type !== 'equity') {
-            throw new \DomainException(__('pos.retained_earnings_must_be_equity'));
+            throw new DomainException(__('pos.retained_earnings_must_be_equity'));
         }
 
         return DB::transaction(function () use ($period, $retainedEarnings) {
@@ -76,7 +78,7 @@ class PeriodClosingService
             /** @var FiscalPeriod $locked */
             $locked = FiscalPeriod::lockForUpdate()->findOrFail($period->id);
             if ($locked->isClosed()) {
-                throw new \DomainException(__('pos.period_already_closed'));
+                throw new DomainException(__('pos.period_already_closed'));
             }
 
             $closingEntry = $this->generateClosingEntry($locked, $retainedEarnings);
@@ -101,7 +103,7 @@ class PeriodClosingService
         $netIncome = $preview['net_income'];
 
         if (empty($lines) && $netIncome == 0) {
-            throw new \DomainException(__('pos.period_no_activity'));
+            throw new DomainException(__('pos.period_no_activity'));
         }
 
         // Add the retained earnings impact line

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\Repositories\RoleRepositoryInterface;
+use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Spatie\Permission\Models\Role;
 
@@ -42,7 +43,7 @@ class RoleService
         $this->guardProtected($role);
         $count = $this->roleRepo->userCount($role);
         if ($count > 0) {
-            throw new \Exception(__('pos.role_has_users', ['count' => $count]));
+            throw new Exception(__('pos.role_has_users', ['count' => $count]));
         }
         $this->roleRepo->delete($role);
     }
@@ -56,7 +57,7 @@ class RoleService
     private function guardProtected(Role $role): void
     {
         if (in_array($role->name, self::PROTECTED_ROLES, true)) {
-            throw new \Exception(__('pos.role_protected'));
+            throw new Exception(__('pos.role_protected'));
         }
     }
 }

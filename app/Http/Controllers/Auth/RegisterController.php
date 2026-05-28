@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+use Throwable;
 
 class RegisterController extends Controller
 {
@@ -104,7 +105,7 @@ class RegisterController extends Controller
                 'redirect' => route('dashboard'),
             ]);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('Registration failed', [
                 'error' => $e->getMessage(),
                 'tenant_id' => $tenant?->id,
@@ -115,7 +116,7 @@ class RegisterController extends Controller
                 try {
                     tenancy()->end();
                     $tenant->delete(); // fires DeleteDatabase
-                } catch (\Throwable) {
+                } catch (Throwable) {
                 }
             }
 

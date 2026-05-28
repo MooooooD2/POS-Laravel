@@ -14,11 +14,11 @@ class ShiftTemplate extends Model
     ];
 
     protected $casts = [
-        'start_time'     => 'datetime:H:i',
-        'end_time'       => 'datetime:H:i',
-        'break_minutes'  => 'integer',
-        'is_overnight'   => 'boolean',
-        'is_active'      => 'boolean',
+        'start_time' => 'datetime:H:i',
+        'end_time' => 'datetime:H:i',
+        'break_minutes' => 'integer',
+        'is_overnight' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function shifts(): HasMany

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use Stancl\Tenancy\Contracts\TenantDatabaseManager;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 
@@ -57,7 +58,7 @@ class PrivilegedTenantDatabaseManager implements TenantDatabaseManager
     protected function assertSafeIdentifier(string $value, string $label): void
     {
         if (! preg_match('/^[A-Za-z0-9_]+$/', $value)) {
-            throw new \InvalidArgumentException("Unsafe MySQL identifier for {$label}: {$value}");
+            throw new InvalidArgumentException("Unsafe MySQL identifier for {$label}: {$value}");
         }
     }
 
@@ -72,7 +73,7 @@ class PrivilegedTenantDatabaseManager implements TenantDatabaseManager
         $this->assertSafeIdentifier($collation, 'collation');
 
         return $this->adminStatement(
-            "CREATE DATABASE `{$dbName}` CHARACTER SET `{$charset}` COLLATE `{$collation}`"
+            "CREATE DATABASE `{$dbName}` CHARACTER SET `{$charset}` COLLATE `{$collation}`",
         );
     }
 
@@ -90,7 +91,7 @@ class PrivilegedTenantDatabaseManager implements TenantDatabaseManager
         $rows = DB::connection($this->connection ?? 'mysql')
             ->select(
                 'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
-                [$dbName]
+                [$dbName],
             );
 
         return count($rows) > 0;

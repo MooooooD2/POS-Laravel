@@ -20,7 +20,7 @@ class ThermalPrinterService
 {
     public function __construct(
         private ReceiptTemplateEngine $templateEngine,
-        private SettingService $settings
+        private SettingService $settings,
     ) {}
 
     // ── Public Print Methods ───────────────────────────────────────────────────
@@ -150,7 +150,7 @@ class ThermalPrinterService
             if ($printJob->fresh()->status === 'failed') {
                 return [
                     'success' => false,
-                    'message' => 'Print failed: '.$e->getMessage(),
+                    'message' => 'Print failed: ' . $e->getMessage(),
                     'fallback' => 'browser',
                     'job_id' => $printJob->id,
                 ];
@@ -172,7 +172,7 @@ class ThermalPrinterService
             $driver->qrCode(
                 $section['data'],
                 $section['size'] ?? 4,
-                $section['ec_level'] ?? 'M'
+                $section['ec_level'] ?? 'M',
             );
 
             return;
@@ -181,7 +181,7 @@ class ThermalPrinterService
         if ($section['type'] === 'barcode') {
             $driver->barcode(
                 $section['data'],
-                $section['symbology'] ?? 'CODE128'
+                $section['symbology'] ?? 'CODE128',
             );
 
             return;

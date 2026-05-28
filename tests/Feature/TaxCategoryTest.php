@@ -44,12 +44,12 @@ class TaxCategoryTest extends TestCase
     private function makeTaxCategory(string $code, float $rate = 5.0, bool $isDefault = false): TaxCategory
     {
         return TaxCategory::create([
-            'name_ar'    => "ضريبة {$code}",
-            'name_en'    => "Tax {$code}",
-            'code'       => $code,
-            'rate'       => $rate,
+            'name_ar' => "ضريبة {$code}",
+            'name_en' => "Tax {$code}",
+            'code' => $code,
+            'rate' => $rate,
             'is_default' => $isDefault,
-            'is_active'  => true,
+            'is_active' => true,
         ]);
     }
 
@@ -81,10 +81,10 @@ class TaxCategoryTest extends TestCase
     {
         $res = $this->actingAs($this->admin)
             ->postJson('/api/tax-categories', [
-                'name_ar'    => 'ضريبة القيمة المضافة',
-                'name_en'    => 'VAT',
-                'code'       => 'VAT14',
-                'rate'       => 14,
+                'name_ar' => 'ضريبة القيمة المضافة',
+                'name_en' => 'VAT',
+                'code' => 'VAT14',
+                'rate' => 14,
                 'is_default' => false,
             ]);
 
@@ -101,8 +101,8 @@ class TaxCategoryTest extends TestCase
             ->postJson('/api/tax-categories', [
                 'name_ar' => 'ضريبة',
                 'name_en' => 'Tax',
-                'code'    => 'DUPE',
-                'rate'    => 5,
+                'code' => 'DUPE',
+                'rate' => 5,
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['code']);
     }
@@ -114,8 +114,8 @@ class TaxCategoryTest extends TestCase
             ->postJson('/api/tax-categories', [
                 'name_ar' => 'فئة',
                 'name_en' => 'Cat',
-                'code'    => 'CAT1',
-                'rate'    => 150,
+                'code' => 'CAT1',
+                'rate' => 150,
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['rate']);
     }
@@ -127,10 +127,10 @@ class TaxCategoryTest extends TestCase
 
         $this->actingAs($this->admin)
             ->postJson('/api/tax-categories', [
-                'name_ar'    => 'جديد',
-                'name_en'    => 'New Default',
-                'code'       => 'NEW_DEF',
-                'rate'       => 10,
+                'name_ar' => 'جديد',
+                'name_en' => 'New Default',
+                'code' => 'NEW_DEF',
+                'rate' => 10,
                 'is_default' => true,
             ])->assertStatus(201);
 
@@ -181,8 +181,8 @@ class TaxCategoryTest extends TestCase
             ->postJson('/api/tax-categories', [
                 'name_ar' => 'ضريبة',
                 'name_en' => 'Tax',
-                'code'    => 'T99',
-                'rate'    => 5,
+                'code' => 'T99',
+                'rate' => 5,
             ])->assertForbidden();
     }
 
@@ -194,7 +194,7 @@ class TaxCategoryTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/reports/tax', [
                 'from' => now()->startOfMonth()->toDateString(),
-                'to'   => now()->endOfMonth()->toDateString(),
+                'to' => now()->endOfMonth()->toDateString(),
             ])->assertOk()
             ->assertJsonStructure(['from', 'to', 'by_rate', 'totals']);
     }

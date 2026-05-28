@@ -8,12 +8,15 @@ use App\Services\Printing\ThermalPrinterService;
 use App\Services\SettingService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class CashRegisterController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(
         private CashRegisterService $cashRegisterService,
@@ -42,7 +45,7 @@ class CashRegisterController extends Controller
 
         try {
             $session = $this->cashRegisterService->open($request->only(['opening_amount', 'notes']));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
 
@@ -68,7 +71,7 @@ class CashRegisterController extends Controller
 
         try {
             $closed = $this->cashRegisterService->close($session, $request->only(['actual_cash', 'notes']));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $code = str_contains($e->getMessage(), 'آخر') ? 403 : 422;
 
             return $this->error($e->getMessage(), $code);
@@ -82,7 +85,7 @@ class CashRegisterController extends Controller
         if ($this->settingService->get('print_on_shift_close', false)) {
             try {
                 $printResult = $this->printerService->printShiftReport($closed);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::warning('Auto-print failed for shift report', [
                     'session_id' => $closed->id,
                     'error' => $e->getMessage(),
@@ -116,9 +119,9 @@ class CashRegisterController extends Controller
                 $session,
                 $request->type,
                 (float) $request->amount,
-                $request->reason
+                $request->reason,
             );
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
 
@@ -140,7 +143,7 @@ class CashRegisterController extends Controller
         ]);
 
         return $this->success(['sessions' => $this->cashRegisterService->history(
-            $request->only(['cashier_id', 'date_from', 'date_to', 'status'])
+            $request->only(['cashier_id', 'date_from', 'date_to', 'status']),
         )]);
     }
 }

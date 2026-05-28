@@ -35,8 +35,8 @@ class AiForecastingService
                 return ['error' => __('pos.forecast_insufficient_data')];
             }
 
-            $values     = $historical->pluck('total_sales')->toArray();
-            $dates      = $historical->pluck('sale_date')->toArray();
+            $values = $historical->pluck('total_sales')->toArray();
+            $dates = $historical->pluck('sale_date')->toArray();
 
             // Trend via linear regression
             $trend = $this->linearRegression($values);
@@ -46,8 +46,8 @@ class AiForecastingService
 
             // Generate forecasts
             $forecasts = [];
-            $lastDate  = end($dates);
-            $n         = count($values);
+            $lastDate = end($dates);
+            $n = count($values);
 
             // Exponential smoothing baseline
             $smoothed = $this->exponentialSmoothing($values, 0.3);
@@ -55,7 +55,7 @@ class AiForecastingService
 
             for ($i = 1; $i <= $days; $i++) {
                 $futureDate = date('Y-m-d', strtotime($lastDate . " +{$i} days"));
-                $dow        = (int) date('N', strtotime($futureDate)); // 1=Mon…7=Sun
+                $dow = (int) date('N', strtotime($futureDate)); // 1=Mon…7=Sun
 
                 // Trend projection
                 $trendValue = $trend['intercept'] + $trend['slope'] * ($n + $i);
@@ -69,11 +69,11 @@ class AiForecastingService
 
                 // Confidence interval (±15%)
                 $forecasts[] = [
-                    'date'       => $futureDate,
-                    'forecast'   => $forecast,
-                    'lower_ci'   => round($forecast * 0.85, 2),
-                    'upper_ci'   => round($forecast * 1.15, 2),
-                    'day_of_week'=> date('D', strtotime($futureDate)),
+                    'date' => $futureDate,
+                    'forecast' => $forecast,
+                    'lower_ci' => round($forecast * 0.85, 2),
+                    'upper_ci' => round($forecast * 1.15, 2),
+                    'day_of_week' => date('D', strtotime($futureDate)),
                 ];
             }
 
@@ -81,14 +81,14 @@ class AiForecastingService
             $accuracy = $this->computeBacktestAccuracy($historical, $smoothed);
 
             return [
-                'forecasts'      => $forecasts,
+                'forecasts' => $forecasts,
                 'total_forecast' => round(array_sum(array_column($forecasts, 'forecast')), 2),
-                'avg_daily'      => round(array_sum(array_column($forecasts, 'forecast')) / $days, 2),
-                'trend'          => $trend['slope'] > 0.5 ? 'growing' : ($trend['slope'] < -0.5 ? 'declining' : 'stable'),
-                'trend_slope'    => round($trend['slope'], 4),
-                'accuracy_pct'   => $accuracy,
-                'history_used'   => $historical->count(),
-                'generated_at'   => now()->toIso8601String(),
+                'avg_daily' => round(array_sum(array_column($forecasts, 'forecast')) / $days, 2),
+                'trend' => $trend['slope'] > 0.5 ? 'growing' : ($trend['slope'] < -0.5 ? 'declining' : 'stable'),
+                'trend_slope' => round($trend['slope'], 4),
+                'accuracy_pct' => $accuracy,
+                'history_used' => $historical->count(),
+                'generated_at' => now()->toIso8601String(),
             ];
         });
     }
@@ -119,35 +119,37 @@ class AiForecastingService
             $results = [];
             foreach ($productStats as $stat) {
                 $product = Product::find($stat->product_id);
-                if (!$product) continue;
+                if (! $product) {
+                    continue;
+                }
 
                 $avgDailyQty = $stat->total_qty / max($stat->active_days, 1);
-                $forecast30  = round($avgDailyQty * 30, 1);
+                $forecast30 = round($avgDailyQty * 30, 1);
 
                 // Velocity trend (last 14 days vs prior 14 days)
-                $recent  = $this->getProductDemand($stat->product_id, 14);
-                $prior   = $this->getProductDemand($stat->product_id, 28, 14);
+                $recent = $this->getProductDemand($stat->product_id, 14);
+                $prior = $this->getProductDemand($stat->product_id, 28, 14);
                 $velocity = $prior > 0 ? round((($recent - $prior) / $prior) * 100, 1) : 0;
 
                 // Stock coverage
                 $currentStock = $product->quantity ?? 0;
-                $daysLeft     = $avgDailyQty > 0 ? round($currentStock / $avgDailyQty) : 999;
+                $daysLeft = $avgDailyQty > 0 ? round($currentStock / $avgDailyQty) : 999;
 
                 $results[] = [
-                    'product_id'      => $stat->product_id,
-                    'product_name'    => $product->name,
-                    'avg_daily_qty'   => round($avgDailyQty, 2),
-                    'forecast_30_days'=> $forecast30,
-                    'current_stock'   => $currentStock,
+                    'product_id' => $stat->product_id,
+                    'product_name' => $product->name,
+                    'avg_daily_qty' => round($avgDailyQty, 2),
+                    'forecast_30_days' => $forecast30,
+                    'current_stock' => $currentStock,
                     'days_stock_left' => min($daysLeft, 365),
-                    'needs_reorder'   => $daysLeft <= 7,
-                    'velocity_pct'    => $velocity,   // +% = growing demand
-                    'total_revenue'   => round($stat->total_revenue, 2),
+                    'needs_reorder' => $daysLeft <= 7,
+                    'velocity_pct' => $velocity,   // +% = growing demand
+                    'total_revenue' => round($stat->total_revenue, 2),
                 ];
             }
 
             return [
-                'products'     => $results,
+                'products' => $results,
                 'generated_at' => now()->toIso8601String(),
             ];
         });
@@ -176,24 +178,28 @@ class AiForecastingService
             $alerts = [];
             foreach ($products as $product) {
                 $c = $consumed->get($product->id);
-                if (!$c) continue;
+                if (! $c) {
+                    continue;
+                }
 
                 $dailyRate = $c->consumed / $historyDays;
-                if ($dailyRate <= 0) continue;
+                if ($dailyRate <= 0) {
+                    continue;
+                }
 
-                $daysLeft   = round($product->quantity / $dailyRate);
+                $daysLeft = round($product->quantity / $dailyRate);
                 $depletedOn = now()->addDays($daysLeft)->format('Y-m-d');
 
                 if ($daysLeft <= 30) {
                     $alerts[] = [
-                        'product_id'     => $product->id,
-                        'product_name'   => $product->name,
-                        'current_stock'  => $product->quantity,
-                        'daily_rate'     => round($dailyRate, 2),
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'current_stock' => $product->quantity,
+                        'daily_rate' => round($dailyRate, 2),
                         'days_remaining' => $daysLeft,
-                        'depleted_on'    => $depletedOn,
-                        'urgency'        => $daysLeft <= 3 ? 'critical' : ($daysLeft <= 7 ? 'high' : ($daysLeft <= 14 ? 'medium' : 'low')),
-                        'reorder_qty'    => max($product->reorder_point ?? 0, (int) ceil($dailyRate * 30)),
+                        'depleted_on' => $depletedOn,
+                        'urgency' => $daysLeft <= 3 ? 'critical' : ($daysLeft <= 7 ? 'high' : ($daysLeft <= 14 ? 'medium' : 'low')),
+                        'reorder_qty' => max($product->reorder_point ?? 0, (int) ceil($dailyRate * 30)),
                     ];
                 }
             }
@@ -201,9 +207,9 @@ class AiForecastingService
             usort($alerts, fn ($a, $b) => $a['days_remaining'] - $b['days_remaining']);
 
             return [
-                'alerts'       => $alerts,
-                'total_at_risk'=> count($alerts),
-                'critical'     => count(array_filter($alerts, fn ($a) => $a['urgency'] === 'critical')),
+                'alerts' => $alerts,
+                'total_at_risk' => count($alerts),
+                'critical' => count(array_filter($alerts, fn ($a) => $a['urgency'] === 'critical')),
                 'generated_at' => now()->toIso8601String(),
             ];
         });
@@ -245,21 +251,28 @@ class AiForecastingService
     private function linearRegression(array $values): array
     {
         $n = count($values);
-        if ($n < 2) return ['slope' => 0, 'intercept' => $values[0] ?? 0];
+        if ($n < 2) {
+            return ['slope' => 0, 'intercept' => $values[0] ?? 0];
+        }
 
-        $sumX  = 0; $sumY  = 0; $sumXY = 0; $sumX2 = 0;
+        $sumX = 0;
+        $sumY = 0;
+        $sumXY = 0;
+        $sumX2 = 0;
         foreach ($values as $i => $y) {
-            $x      = $i + 1;
-            $sumX  += $x;
-            $sumY  += $y;
+            $x = $i + 1;
+            $sumX += $x;
+            $sumY += $y;
             $sumXY += $x * $y;
             $sumX2 += $x * $x;
         }
 
         $denom = ($n * $sumX2) - ($sumX * $sumX);
-        if ($denom == 0) return ['slope' => 0, 'intercept' => $sumY / $n];
+        if ($denom == 0) {
+            return ['slope' => 0, 'intercept' => $sumY / $n];
+        }
 
-        $slope     = (($n * $sumXY) - ($sumX * $sumY)) / $denom;
+        $slope = (($n * $sumXY) - ($sumX * $sumY)) / $denom;
         $intercept = ($sumY - ($slope * $sumX)) / $n;
 
         return ['slope' => $slope, 'intercept' => $intercept];
@@ -270,11 +283,14 @@ class AiForecastingService
      */
     private function exponentialSmoothing(array $values, float $alpha = 0.3): array
     {
-        if (empty($values)) return [];
+        if (empty($values)) {
+            return [];
+        }
         $smoothed = [$values[0]];
         for ($i = 1; $i < count($values); $i++) {
             $smoothed[] = $alpha * $values[$i] + (1 - $alpha) * $smoothed[$i - 1];
         }
+
         return $smoothed;
     }
 
@@ -292,10 +308,11 @@ class AiForecastingService
         }
 
         $globalAvg = $historical->avg('total_sales') ?: 1;
-        $factors   = [];
+        $factors = [];
         foreach ($byDow as $dow => $vals) {
             $factors[$dow] = count($vals) ? (array_sum($vals) / count($vals)) / $globalAvg : 1.0;
         }
+
         return $factors;
     }
 
@@ -304,17 +321,23 @@ class AiForecastingService
      */
     private function computeBacktestAccuracy(Collection $historical, array $smoothed): float
     {
-        $actuals   = $historical->pluck('total_sales')->toArray();
+        $actuals = $historical->pluck('total_sales')->toArray();
         $n = count($actuals);
-        if ($n < 2) return 80.0;
+        if ($n < 2) {
+            return 80.0;
+        }
 
         $errors = [];
         for ($i = 1; $i < $n; $i++) {
-            if ($actuals[$i] == 0) continue;
+            if ($actuals[$i] == 0) {
+                continue;
+            }
             $errors[] = abs($actuals[$i] - $smoothed[$i - 1]) / $actuals[$i];
         }
 
-        if (empty($errors)) return 80.0;
+        if (empty($errors)) {
+            return 80.0;
+        }
         $mape = array_sum($errors) / count($errors);
 
         return round(max(0, (1 - $mape) * 100), 1);

@@ -25,7 +25,7 @@ class CheckPlanFeature
     public function handle(Request $request, Closure $next, string ...$features): Response
     {
         // Master tenant always passes
-        $tenant   = tenancy()->tenant;
+        $tenant = tenancy()->tenant;
         $masterId = config('tenancy.master_tenant');
         if ($masterId && $tenant?->id === $masterId) {
             return $next($request);
@@ -37,8 +37,8 @@ class CheckPlanFeature
 
                 if ($request->expectsJson() || $request->is('api/*')) {
                     return response()->json([
-                        'success'          => false,
-                        'message'          => $message,
+                        'success' => false,
+                        'message' => $message,
                         'upgrade_required' => true,
                     ], Response::HTTP_FORBIDDEN);
                 }

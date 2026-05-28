@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use DomainException;
 use Illuminate\Database\Eloquent\Model;
 
 class JournalEntryLine extends Model
@@ -27,13 +28,13 @@ class JournalEntryLine extends Model
         // Lines of a posted entry cannot be modified or deleted
         static::updating(function (JournalEntryLine $line) {
             if ($line->entry?->is_posted) {
-                throw new \DomainException(__('pos.journal_entry_posted_immutable'));
+                throw new DomainException(__('pos.journal_entry_posted_immutable'));
             }
         });
 
         static::deleting(function (JournalEntryLine $line) {
             if ($line->entry?->is_posted) {
-                throw new \DomainException(__('pos.journal_entry_posted_immutable'));
+                throw new DomainException(__('pos.journal_entry_posted_immutable'));
             }
         });
     }

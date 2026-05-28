@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Services\InvoiceService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class SyncService
 {
@@ -52,7 +53,7 @@ class SyncService
                     'ip' => request()->ip(),
                     'timestamp' => now()->toIso8601String(),
                 ]);
-                $results[] = ['offline_uuid' => $uuid, 'status' => 'failed', 'message' => 'Price validation failed: '.implode('; ', $fraudWarnings)];
+                $results[] = ['offline_uuid' => $uuid, 'status' => 'failed', 'message' => 'Price validation failed: ' . implode('; ', $fraudWarnings)];
                 $failed++;
 
                 continue;
@@ -71,7 +72,7 @@ class SyncService
 
                 $results[] = ['offline_uuid' => $uuid, 'server_id' => $invoice->id, 'status' => 'synced'];
                 $synced++;
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::warning('offline.sync_failed', ['uuid' => $uuid, 'error' => $e->getMessage()]);
                 $results[] = ['offline_uuid' => $uuid, 'status' => 'failed', 'message' => $e->getMessage()];
                 $failed++;
@@ -116,7 +117,11 @@ class SyncService
                     if ($deviation > self::MAX_PRICE_DEVIATION) {
                         $warnings[] = sprintf(
                             'Product #%d "%s": sent price %.2f deviates %.1f%% from current price %.2f',
-                            $pid, $products[$pid]->name, $sentPrice, $deviation * 100, $dbPrice
+                            $pid,
+                            $products[$pid]->name,
+                            $sentPrice,
+                            $deviation * 100,
+                            $dbPrice,
                         );
                     }
                 }

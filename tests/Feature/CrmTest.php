@@ -35,8 +35,8 @@ class CrmTest extends TestCase
         $this->cashier->assignRole('cashier');
 
         $this->customer = Customer::create([
-            'code'      => 'CUST001',
-            'name'      => 'Test Customer',
+            'code' => 'CUST001',
+            'name' => 'Test Customer',
             'is_active' => true,
         ]);
     }
@@ -53,9 +53,9 @@ class CrmTest extends TestCase
     {
         return CrmActivity::create(array_merge([
             'customer_id' => $this->customer->id,
-            'user_id'     => $this->admin->id,
-            'type'        => 'call',
-            'outcome'     => 'neutral',
+            'user_id' => $this->admin->id,
+            'type' => 'call',
+            'outcome' => 'neutral',
         ], $overrides));
     }
 
@@ -97,10 +97,10 @@ class CrmTest extends TestCase
         $res = $this->actingAs($this->admin)
             ->postJson('/api/crm/activities', [
                 'customer_id' => $this->customer->id,
-                'type'        => 'call',
-                'subject'     => 'Follow up on order',
-                'notes'       => 'Customer satisfied',
-                'outcome'     => 'positive',
+                'type' => 'call',
+                'subject' => 'Follow up on order',
+                'notes' => 'Customer satisfied',
+                'outcome' => 'positive',
             ]);
 
         $res->assertStatus(201)
@@ -108,7 +108,7 @@ class CrmTest extends TestCase
 
         $this->assertDatabaseHas('crm_activities', [
             'customer_id' => $this->customer->id,
-            'type'        => 'call',
+            'type' => 'call',
         ]);
     }
 
@@ -118,7 +118,7 @@ class CrmTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/crm/activities', [
                 'customer_id' => $this->customer->id,
-                'type'        => 'smoke_signal',
+                'type' => 'smoke_signal',
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['type']);
     }
@@ -129,7 +129,7 @@ class CrmTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/crm/activities', [
                 'customer_id' => 99999,
-                'type'        => 'call',
+                'type' => 'call',
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['customer_id']);
     }
@@ -143,7 +143,7 @@ class CrmTest extends TestCase
 
         $this->actingAs($this->admin)
             ->putJson("/api/crm/activities/{$activity->id}", [
-                'notes'   => 'Updated notes',
+                'notes' => 'Updated notes',
                 'outcome' => 'positive',
             ])->assertOk()
             ->assertJsonPath('activity.outcome', 'positive');
@@ -170,8 +170,8 @@ class CrmTest extends TestCase
     {
         // Pending: has scheduled_at, no completed_at, outcome = 'pending', type = follow_up
         $this->makeActivity([
-            'type'         => 'follow_up',
-            'outcome'      => 'pending',
+            'type' => 'follow_up',
+            'outcome' => 'pending',
             'scheduled_at' => now()->addDay(),
             'completed_at' => null,
         ]);

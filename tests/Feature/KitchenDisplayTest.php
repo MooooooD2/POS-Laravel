@@ -48,17 +48,17 @@ class KitchenDisplayTest extends TestCase
     {
         $order = KitchenOrder::create([
             'order_number' => 'KDS-' . uniqid(),
-            'order_type'   => 'dine_in',
-            'status'       => $status,
+            'order_type' => 'dine_in',
+            'status' => $status,
             'table_number' => 'T1',
-            'branch_id'    => null,
+            'branch_id' => null,
         ]);
 
         KitchenOrderItem::create([
             'kitchen_order_id' => $order->id,
-            'product_name'     => 'Burger',
-            'quantity'         => 2,
-            'status'           => 'pending',
+            'product_name' => 'Burger',
+            'quantity' => 2,
+            'status' => 'pending',
         ]);
 
         return $order;
@@ -101,9 +101,9 @@ class KitchenDisplayTest extends TestCase
     {
         $res = $this->actingAs($this->cashier)
             ->postJson('/api/kitchen', [
-                'order_type'   => 'dine_in',
+                'order_type' => 'dine_in',
                 'table_number' => 'T5',
-                'items'        => [
+                'items' => [
                     ['product_name' => 'Pizza', 'quantity' => 1],
                     ['product_name' => 'Salad', 'quantity' => 2],
                 ],
@@ -121,7 +121,7 @@ class KitchenDisplayTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson('/api/kitchen', [
                 'order_type' => 'takeaway',
-                'items'      => [],
+                'items' => [],
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['items']);
     }
@@ -132,7 +132,7 @@ class KitchenDisplayTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson('/api/kitchen', [
                 'order_type' => 'invalid_type',
-                'items'      => [['product_name' => 'Burger', 'quantity' => 1]],
+                'items' => [['product_name' => 'Burger', 'quantity' => 1]],
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['order_type']);
     }
@@ -189,7 +189,7 @@ class KitchenDisplayTest extends TestCase
     public function cashier_can_update_item_status(): void
     {
         $order = $this->createKitchenOrder('preparing');
-        $item  = $order->items()->first();
+        $item = $order->items()->first();
 
         $this->actingAs($this->cashier)
             ->patchJson("/api/kitchen/items/{$item->id}/status", ['status' => 'done'])
@@ -201,7 +201,7 @@ class KitchenDisplayTest extends TestCase
     public function item_status_must_be_valid(): void
     {
         $order = $this->createKitchenOrder('preparing');
-        $item  = $order->items()->first();
+        $item = $order->items()->first();
 
         $this->actingAs($this->cashier)
             ->patchJson("/api/kitchen/items/{$item->id}/status", ['status' => 'flying'])

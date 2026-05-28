@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Kitchen Display System — Order model
@@ -32,8 +32,8 @@ class KitchenOrder extends Model
 
     protected $casts = [
         'accepted_at' => 'datetime',
-        'ready_at'    => 'datetime',
-        'served_at'   => 'datetime',
+        'ready_at' => 'datetime',
+        'served_at' => 'datetime',
     ];
 
     /* ─── Relationships ─────────────────────────────────────────────── */
@@ -79,18 +79,18 @@ class KitchenOrder extends Model
 
     public function getIsUrgentAttribute(): bool
     {
-        return $this->elapsed_minutes >= 15 && !in_array($this->status, ['ready', 'served', 'cancelled']);
+        return $this->elapsed_minutes >= 15 && ! in_array($this->status, ['ready', 'served', 'cancelled']);
     }
 
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {
-            'pending'   => 'warning',
+            'pending' => 'warning',
             'preparing' => 'info',
-            'ready'     => 'success',
-            'served'    => 'secondary',
+            'ready' => 'success',
+            'served' => 'secondary',
             'cancelled' => 'danger',
-            default     => 'secondary',
+            default => 'secondary',
         };
     }
 }

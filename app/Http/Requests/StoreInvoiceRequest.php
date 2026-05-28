@@ -16,7 +16,7 @@ class StoreInvoiceRequest extends FormRequest
     {
         $maxDiscountPercent = (float) Setting::get(
             'max_discount_percent',
-            config('security.invoice.max_discount_percent', 20)
+            config('security.invoice.max_discount_percent', 20),
         );
 
         return [

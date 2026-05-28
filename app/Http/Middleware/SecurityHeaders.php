@@ -44,19 +44,20 @@ class SecurityHeaders
         // Remove fingerprinting headers
         $response->headers->remove('X-Powered-By');
         $response->headers->remove('Server');
-        $response->headers->set('Content-Security-Policy',
-            "default-src 'self'; ".
-            "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; ".
-            "script-src-elem 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; ".
-            "style-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.bunny.net; ".
-            "style-src-elem 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.bunny.net; ".
-            "style-src-attr 'unsafe-inline'; ".
-            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://fonts.bunny.net data:; ".
-            "img-src 'self' data: blob: https://api.qrserver.com; ".
-            "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://sentry.io https://*.sentry.io wss: ws:; ".
-            "object-src 'none'; ".
-            "base-uri 'self'; ".
-            "form-action 'self';"
+        $response->headers->set(
+            'Content-Security-Policy',
+            "default-src 'self'; " .
+            "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
+            "script-src-elem 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
+            "style-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.bunny.net; " .
+            "style-src-elem 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.bunny.net; " .
+            "style-src-attr 'unsafe-inline'; " .
+            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://fonts.bunny.net data:; " .
+            "img-src 'self' data: blob: https://api.qrserver.com; " .
+            "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://sentry.io https://*.sentry.io wss: ws:; " .
+            "object-src 'none'; " .
+            "base-uri 'self'; " .
+            "form-action 'self';",
         );
 
         return $response;

@@ -6,7 +6,6 @@ use App\Models\Invoice;
 use App\Models\KitchenOrder;
 use App\Models\KitchenOrderItem;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Kitchen Display System service
@@ -21,24 +20,24 @@ class KitchenDisplayService
     {
         return DB::transaction(function () use ($invoice, $options) {
             $order = KitchenOrder::create([
-                'invoice_id'   => $invoice->id,
-                'branch_id'    => $invoice->branch_id,
+                'invoice_id' => $invoice->id,
+                'branch_id' => $invoice->branch_id,
                 'order_number' => $this->generateOrderNumber(),
                 'table_number' => $options['table_number'] ?? null,
-                'order_type'   => $options['order_type'] ?? 'dine_in',
-                'status'       => 'pending',
-                'notes'        => $options['notes'] ?? $invoice->notes,
+                'order_type' => $options['order_type'] ?? 'dine_in',
+                'status' => 'pending',
+                'notes' => $options['notes'] ?? $invoice->notes,
             ]);
 
             foreach ($invoice->items as $item) {
                 KitchenOrderItem::create([
                     'kitchen_order_id' => $order->id,
-                    'product_id'       => $item->product_id,
-                    'product_name'     => $item->product_name ?? $item->product?->name ?? 'Item',
-                    'quantity'         => $item->quantity,
-                    'unit'             => $item->unit ?? null,
-                    'notes'            => $item->notes ?? null,
-                    'status'           => 'pending',
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product_name ?? $item->product?->name ?? 'Item',
+                    'quantity' => $item->quantity,
+                    'unit' => $item->unit ?? null,
+                    'notes' => $item->notes ?? null,
+                    'status' => 'pending',
                 ]);
             }
 
@@ -53,23 +52,23 @@ class KitchenDisplayService
     {
         return DB::transaction(function () use ($data) {
             $order = KitchenOrder::create([
-                'branch_id'    => $data['branch_id'] ?? null,
+                'branch_id' => $data['branch_id'] ?? null,
                 'order_number' => $this->generateOrderNumber(),
                 'table_number' => $data['table_number'] ?? null,
-                'order_type'   => $data['order_type'] ?? 'dine_in',
-                'status'       => 'pending',
-                'notes'        => $data['notes'] ?? null,
+                'order_type' => $data['order_type'] ?? 'dine_in',
+                'status' => 'pending',
+                'notes' => $data['notes'] ?? null,
             ]);
 
             foreach ($data['items'] ?? [] as $item) {
                 KitchenOrderItem::create([
                     'kitchen_order_id' => $order->id,
-                    'product_id'       => $item['product_id'] ?? null,
-                    'product_name'     => $item['product_name'],
-                    'quantity'         => $item['quantity'],
-                    'unit'             => $item['unit'] ?? null,
-                    'notes'            => $item['notes'] ?? null,
-                    'status'           => 'pending',
+                    'product_id' => $item['product_id'] ?? null,
+                    'product_name' => $item['product_name'],
+                    'quantity' => $item['quantity'],
+                    'unit' => $item['unit'] ?? null,
+                    'notes' => $item['notes'] ?? null,
+                    'status' => 'pending',
                 ]);
             }
 
@@ -84,7 +83,7 @@ class KitchenDisplayService
     {
         $order = KitchenOrder::findOrFail($orderId);
         $order->update([
-            'status'      => 'preparing',
+            'status' => 'preparing',
             'accepted_at' => now(),
         ]);
         $order->items()->update(['status' => 'preparing']);
@@ -99,7 +98,7 @@ class KitchenDisplayService
     {
         $order = KitchenOrder::findOrFail($orderId);
         $order->update([
-            'status'   => 'ready',
+            'status' => 'ready',
             'ready_at' => now(),
         ]);
         $order->items()->whereNotIn('status', ['cancelled'])->update(['status' => 'done']);
@@ -114,7 +113,7 @@ class KitchenDisplayService
     {
         $order = KitchenOrder::findOrFail($orderId);
         $order->update([
-            'status'    => 'served',
+            'status' => 'served',
             'served_at' => now(),
         ]);
 
@@ -167,7 +166,8 @@ class KitchenDisplayService
             ->get()
             ->map(function ($order) {
                 $order->elapsed_minutes_val = $order->elapsed_minutes;
-                $order->is_urgent_val       = $order->is_urgent;
+                $order->is_urgent_val = $order->is_urgent;
+
                 return $order;
             });
     }
@@ -188,9 +188,9 @@ class KitchenDisplayService
             ->value('avg_min');
 
         return [
-            'pending'     => (clone $base)->where('status', 'pending')->count(),
-            'preparing'   => (clone $base)->where('status', 'preparing')->count(),
-            'ready'       => (clone $base)->where('status', 'ready')->count(),
+            'pending' => (clone $base)->where('status', 'pending')->count(),
+            'preparing' => (clone $base)->where('status', 'preparing')->count(),
+            'ready' => (clone $base)->where('status', 'ready')->count(),
             'served_today' => $completed->count(),
             'avg_prep_min' => $avgMinutes ? round($avgMinutes, 1) : 0,
         ];

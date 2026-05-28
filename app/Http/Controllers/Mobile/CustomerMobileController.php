@@ -29,9 +29,9 @@ class CustomerMobileController extends Controller
             ->sum('amount');
 
         return response()->json([
-            'customer'       => $customer->only(['id', 'name', 'email', 'phone', 'loyalty_points']),
-            'cashback_balance'=> (float) $cashback,
-            'tier'           => $customer->loyalty_tier ?? 'bronze',
+            'customer' => $customer->only(['id', 'name', 'email', 'phone', 'loyalty_points']),
+            'cashback_balance' => (float) $cashback,
+            'tier' => $customer->loyalty_tier ?? 'bronze',
         ]);
     }
 
@@ -74,7 +74,7 @@ class CustomerMobileController extends Controller
     {
         $promotions = \App\Models\Promotion::active()
             ->select(['id', 'name', 'description', 'discount_type', 'discount_value',
-                      'minimum_amount', 'starts_at', 'ends_at', 'image_path'])
+                'minimum_amount', 'starts_at', 'ends_at', 'image_path'])
             ->get();
 
         return response()->json(['promotions' => $promotions]);
@@ -97,10 +97,10 @@ class CustomerMobileController extends Controller
             ->get(['id', 'type', 'amount', 'description', 'created_at']);
 
         return response()->json([
-            'points'           => $customer->loyalty_points ?? 0,
+            'points' => $customer->loyalty_points ?? 0,
             'cashback_balance' => (float) $transactions->where('type', 'earn')->sum('amount')
                                 - (float) $transactions->where('type', 'redeem')->sum('amount'),
-            'transactions'     => $transactions,
+            'transactions' => $transactions,
         ]);
     }
 
@@ -122,19 +122,19 @@ class CustomerMobileController extends Controller
     public function placeQrOrder(Request $request): JsonResponse
     {
         $request->validate([
-            'table_id'              => 'nullable|exists:qr_tables,id',
-            'items'                 => 'required|array|min:1',
-            'items.*.product_id'    => 'required|exists:products,id',
-            'items.*.quantity'      => 'required|integer|min:1',
-            'notes'                 => 'nullable|string|max:500',
+            'table_id' => 'nullable|exists:qr_tables,id',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $order = \App\Models\QrOrder::create([
             'qr_table_id' => $request->table_id,
             'customer_id' => $request->user()->customer?->id,
-            'notes'       => $request->notes,
-            'status'      => 'pending',
-            'total'       => 0,
+            'notes' => $request->notes,
+            'status' => 'pending',
+            'total' => 0,
         ]);
 
         $total = 0;
@@ -143,9 +143,9 @@ class CustomerMobileController extends Controller
             $lineTotal = $product->sale_price * $item['quantity'];
             $order->items()->create([
                 'product_id' => $product->id,
-                'quantity'   => $item['quantity'],
+                'quantity' => $item['quantity'],
                 'unit_price' => $product->sale_price,
-                'total'      => $lineTotal,
+                'total' => $lineTotal,
             ]);
             $total += $lineTotal;
         }

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Throwable;
 
 /**
  * SECURITY FIX: previously extended AuthServiceProvider, which caused every policy
@@ -35,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
             if (! auth()->check()) {
                 return;
             }
+
             try {
                 $tid = tenant('id');
                 if (! $tid) {
@@ -43,10 +45,10 @@ class AppServiceProvider extends ServiceProvider
                 $branding = Cache::remember(
                     "wl_branding:{$tid}",
                     3600,
-                    fn () => WhiteLabel::where('tenant_id', $tid)->first()
+                    fn () => WhiteLabel::where('tenant_id', $tid)->first(),
                 );
                 $view->with('branding', $branding);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // Not in a tenancy context (login page, admin, etc.) — skip silently
             }
         });
@@ -56,9 +58,9 @@ class AppServiceProvider extends ServiceProvider
             DB::listen(function ($query) {
                 if ($query->time > 500) {
                     Log::warning('Slow query detected', [
-                        'sql'      => $query->sql,
+                        'sql' => $query->sql,
                         'bindings' => $query->bindings,
-                        'time_ms'  => $query->time,
+                        'time_ms' => $query->time,
                     ]);
                 }
             });
@@ -109,7 +111,7 @@ class AppServiceProvider extends ServiceProvider
         Blade::if('planFeature', function (string $feature): bool {
             try {
                 return PlanFeatureService::has($feature);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 return true; // fail-open outside tenancy context (admin, tests)
             }
         });
@@ -119,9 +121,10 @@ class AppServiceProvider extends ServiceProvider
             if (! auth()->check()) {
                 return;
             }
+
             try {
                 $view->with('_planFeatures', PlanFeatureService::features());
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 $view->with('_planFeatures', []);
             }
         });

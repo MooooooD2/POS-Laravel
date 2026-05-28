@@ -22,14 +22,14 @@ class Plan extends Model
 
     protected $casts = [
         'monthly_price' => 'float',
-        'annual_price'  => 'float',
-        'trial_days'    => 'integer',
-        'max_users'     => 'integer',
-        'max_products'  => 'integer',
-        'features'      => 'array',
+        'annual_price' => 'float',
+        'trial_days' => 'integer',
+        'max_users' => 'integer',
+        'max_products' => 'integer',
+        'features' => 'array',
         'feature_flags' => 'array',   // structured feature keys list
-        'is_active'     => 'boolean',
-        'sort_order'    => 'integer',
+        'is_active' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     /** Check whether this plan includes a specific feature key. */

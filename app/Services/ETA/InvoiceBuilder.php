@@ -76,10 +76,10 @@ class InvoiceBuilder
             return [
                 'description' => $item->product_name,
                 'itemType' => $item->product->item_code_type ?? 'EGS',
-                'itemCode' => $item->product->item_code ?? 'EG-'.$item->product_id,
+                'itemCode' => $item->product->item_code ?? 'EG-' . $item->product_id,
                 'unitType' => $item->product->unit_type ?? 'EA',
                 'quantity' => (float) $item->quantity,
-                'internalCode' => 'P-'.$item->product_id,
+                'internalCode' => 'P-' . $item->product_id,
                 'salesTotal' => (float) ($item->price * $item->quantity),
                 'total' => (float) $item->subtotal,
                 'valueDifference' => 0,

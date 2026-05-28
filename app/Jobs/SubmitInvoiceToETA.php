@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Invoice;
 use App\Services\ETA\ETAClient;
 use App\Services\ETA\InvoiceBuilder;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -13,7 +14,10 @@ use Illuminate\Queue\SerializesModels;
 
 class SubmitInvoiceToETA implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries = 5;
 
@@ -55,7 +59,7 @@ class SubmitInvoiceToETA implements ShouldQueue
                 'eta_response' => json_encode($response),
             ]);
 
-            throw new \Exception('ETA rejected invoice: '.json_encode($response['rejectedDocuments'] ?? []));
+            throw new Exception('ETA rejected invoice: ' . json_encode($response['rejectedDocuments'] ?? []));
         }
     }
 }

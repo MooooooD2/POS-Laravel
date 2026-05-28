@@ -40,20 +40,21 @@ Route::get('/', function () {
     // This is safe to attempt from the public context — tenant may not be initialised here,
     // so we do a direct DB lookup on the central connection.
     $branding = null;
+
     try {
         $masterId = config('tenancy.master_tenant');
         if ($masterId) {
-            $branding = \Illuminate\Support\Facades\Cache::remember(
+            $branding = Illuminate\Support\Facades\Cache::remember(
                 "wl_branding_landing:{$masterId}",
                 3600,
-                fn () => \App\Models\WhiteLabel::on('mysql')->where('tenant_id', $masterId)->first()
+                fn () => App\Models\WhiteLabel::on('mysql')->where('tenant_id', $masterId)->first(),
             );
         }
-    } catch (\Throwable) {
+    } catch (Throwable) {
         // Not critical — fall through to default colours
     }
 
-    $allModules = \App\Services\PlanFeatureService::allModules();
+    $allModules = App\Services\PlanFeatureService::allModules();
 
     return view('welcome', compact('plans', 'branding', 'allModules'));
 })->name('welcome');
@@ -115,9 +116,9 @@ Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class])->g
         Route::get('/waste', [WasteController::class, 'index'])->name('waste');
         Route::get('/suppliers', fn () => view('suppliers.index'))->name('suppliers');
         // ── Product Import / Export ───────────────────────────────────────────
-        Route::get('/products/import/template', [\App\Http\Controllers\ProductImportController::class, 'template'])->name('products.import.template');
-        Route::post('/products/import', [\App\Http\Controllers\ProductImportController::class, 'import'])->name('products.import');
-        Route::get('/products/export', [\App\Http\Controllers\ProductImportController::class, 'export'])->name('products.export');
+        Route::get('/products/import/template', [App\Http\Controllers\ProductImportController::class, 'template'])->name('products.import.template');
+        Route::post('/products/import', [App\Http\Controllers\ProductImportController::class, 'import'])->name('products.import');
+        Route::get('/products/export', [App\Http\Controllers\ProductImportController::class, 'export'])->name('products.export');
         Route::get('/purchase-orders', fn () => view('purchase-orders.index'))->name('purchase-orders');
         Route::get('/supplier-payments', fn () => view('supplier-payments.index'))->name('supplier-payments');
         Route::get('/supplier-accounts', fn () => view('supplier-accounts.index'))->name('supplier-accounts');
@@ -234,55 +235,59 @@ Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'pe
 
 // ── Phase 11: Kiosk (public self-service, no auth required) ──────────────
 Route::middleware(['tenancy', 'throttle:30,1'])->group(function () {
-    Route::get('/kiosk', [\App\Http\Controllers\KioskController::class, 'index'])->name('kiosk');
+    Route::get('/kiosk', [App\Http\Controllers\KioskController::class, 'index'])->name('kiosk');
 });
 
 // ── Phase 2: Shift Management ─────────────────────────────────────────────
 Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'planFeature:shift_management'])->group(function () {
-    Route::get('/shifts', [\App\Http\Controllers\ShiftController::class, 'index'])
-         ->middleware('permission:view_shifts')->name('shifts.index');
-    Route::get('/my-shift', [\App\Http\Controllers\ShiftController::class, 'myShift'])->name('shifts.my');
+    Route::get('/shifts', [App\Http\Controllers\ShiftController::class, 'index'])
+        ->middleware('permission:view_shifts')->name('shifts.index');
+    Route::get('/my-shift', [App\Http\Controllers\ShiftController::class, 'myShift'])->name('shifts.my');
 });
 
 // ── Phase 4: White Label Settings ─────────────────────────────────────────
 Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'planFeature:white_label', 'permission:manage_white_label'])->group(function () {
-    Route::get('/white-label', [\App\Http\Controllers\WhiteLabelController::class, 'index'])->name('white-label');
-    Route::get('/white-label/css', [\App\Http\Controllers\WhiteLabelController::class, 'cssVars'])->name('white-label.css');
+    Route::get('/white-label', [App\Http\Controllers\WhiteLabelController::class, 'index'])->name('white-label');
+    Route::get('/white-label/css', [App\Http\Controllers\WhiteLabelController::class, 'cssVars'])->name('white-label.css');
 });
 
 // ── Phase 10: HR Module ────────────────────────────────────────────────────
 Route::middleware(['auth', 'tenancy', '2fa', CheckSubscriptionActive::class, 'planFeature:hr_module'])->group(function () {
     // Attendance & schedule: anyone with view_hr or manage_hr
     Route::get('/hr/attendance', function () {
-        /** @var \App\Models\User $u */
+        /** @var App\Models\User $u */
         $u = auth()->user();
         abort_unless($u->hasAnyPermission(['view_hr', 'manage_hr', 'manage_settings']), 403);
-        $branches = \App\Models\Branch::orderBy('name')->get();
+        $branches = App\Models\Branch::orderBy('name')->get();
+
         return view('hr.attendance', compact('branches'));
     })->name('hr.attendance');
 
     // Payroll: manage_hr or manage_settings only
     Route::get('/hr/payroll', function () {
-        /** @var \App\Models\User $u */
+        /** @var App\Models\User $u */
         $u = auth()->user();
         abort_unless($u->hasAnyPermission(['manage_hr', 'manage_settings']), 403);
-        $branches = \App\Models\Branch::orderBy('name')->get();
+        $branches = App\Models\Branch::orderBy('name')->get();
+
         return view('hr.payroll', compact('branches'));
     })->name('hr.payroll');
 
     Route::get('/hr/leaves', function () {
-        /** @var \App\Models\User $u */
+        /** @var App\Models\User $u */
         $u = auth()->user();
         abort_unless($u->hasAnyPermission(['view_hr', 'manage_hr', 'manage_settings']), 403);
+
         return view('hr.leaves');
     })->name('hr.leaves');
 
     // Employees — manage salaries and leave allocations
     Route::get('/hr/employees', function () {
-        /** @var \App\Models\User $u */
+        /** @var App\Models\User $u */
         $u = auth()->user();
         abort_unless($u->hasAnyPermission(['view_hr', 'manage_hr', 'manage_settings']), 403);
-        $branches = \App\Models\Branch::orderBy('name')->get();
+        $branches = App\Models\Branch::orderBy('name')->get();
+
         return view('hr.employees', compact('branches'));
     })->name('hr.employees');
 });

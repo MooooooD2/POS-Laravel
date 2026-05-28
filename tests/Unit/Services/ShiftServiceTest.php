@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\ShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -44,7 +45,7 @@ class ShiftServiceTest extends TestCase
         $user = User::factory()->create();
         $this->service->clockIn($user);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->service->clockIn($user);
     }
 

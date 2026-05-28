@@ -49,7 +49,7 @@ class SalesReportTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/reports/sales', [
                 'start_date' => now()->startOfMonth()->toDateString(),
-                'end_date'   => now()->endOfMonth()->toDateString(),
+                'end_date' => now()->endOfMonth()->toDateString(),
             ])->assertOk();
     }
 
@@ -60,7 +60,7 @@ class SalesReportTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson('/api/reports/sales', [
                 'start_date' => now()->startOfMonth()->toDateString(),
-                'end_date'   => now()->endOfMonth()->toDateString(),
+                'end_date' => now()->endOfMonth()->toDateString(),
             ])->assertForbidden();
     }
 
@@ -150,7 +150,7 @@ class SalesReportTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/reports/returns', [
                 'start_date' => now()->startOfMonth()->toDateString(),
-                'end_date'   => now()->endOfMonth()->toDateString(),
+                'end_date' => now()->endOfMonth()->toDateString(),
             ])->assertOk();
     }
 
@@ -162,7 +162,7 @@ class SalesReportTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/reports/net-profit', [
                 'start_date' => now()->startOfMonth()->toDateString(),
-                'end_date'   => now()->endOfMonth()->toDateString(),
+                'end_date' => now()->endOfMonth()->toDateString(),
             ])->assertOk();
     }
 
@@ -174,7 +174,7 @@ class SalesReportTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/reports/best-selling', [
                 'start_date' => now()->startOfMonth()->toDateString(),
-                'end_date'   => now()->endOfMonth()->toDateString(),
+                'end_date' => now()->endOfMonth()->toDateString(),
             ])->assertOk();
     }
 
@@ -185,7 +185,7 @@ class SalesReportTest extends TestCase
     {
         // Controller validates required start_date/end_date — pass as query params on GET
         $start = now()->startOfMonth()->toDateString();
-        $end   = now()->endOfMonth()->toDateString();
+        $end = now()->endOfMonth()->toDateString();
 
         $this->actingAs($this->admin)
             ->getJson("/api/reports/inventory-turnover?start_date={$start}&end_date={$end}")

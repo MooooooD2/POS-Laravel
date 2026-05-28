@@ -30,9 +30,9 @@ use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withProviders([
@@ -61,17 +61,17 @@ return Application::configure(basePath: dirname(__DIR__))
                 StartSession::class,
                 InitializeTenancyBySession::class,
                 CheckUserIsActive::class,
-            ]
+            ],
         );
 
         $middleware->alias([
-            'tenancy'          => InitializeTenancyBySession::class,
-            '2fa'              => EnforceTwoFactor::class,
-            'ip.whitelist'     => IpWhitelist::class,
-            'permission'       => PermissionMiddleware::class,
-            'role'             => RoleMiddleware::class,
+            'tenancy' => InitializeTenancyBySession::class,
+            '2fa' => EnforceTwoFactor::class,
+            'ip.whitelist' => IpWhitelist::class,
+            'permission' => PermissionMiddleware::class,
+            'role' => RoleMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
-            'planFeature'      => CheckPlanFeature::class,
+            'planFeature' => CheckPlanFeature::class,
         ]);
 
         $middleware->priority([

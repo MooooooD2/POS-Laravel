@@ -9,10 +9,12 @@ use App\Models\User;
 use App\Services\UserService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 
 class UserController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(private UserService $userService) {}
 
@@ -44,9 +46,10 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         $this->authorize('delete', $user);
+
         try {
             $this->userService->delete($user);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 403);
         }
         $this->audit('user.deleted', User::class, (int) $user->id, ['username' => (string) $user->username]);
@@ -57,9 +60,10 @@ class UserController extends Controller
     public function toggleActive(User $user)
     {
         $this->authorize('toggleActive', $user);
+
         try {
             $updated = $this->userService->toggleActive($user);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 403);
         }
         $this->audit('user.toggled', User::class, (int) $user->id, ['is_active' => $updated->is_active]);

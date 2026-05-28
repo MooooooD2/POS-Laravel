@@ -20,8 +20,8 @@ class SequenceService
      *
      * FIX-5: تسجيل خطأ إذا فشل الـ sequence بدلاً من الفشل الصامت
      *
-     * @param  string  $name  e.g. 'invoice', 'purchase', 'return'
-     * @param  string|null  $prefix  Override prefix (optional, uses DB default)
+     * @param string $name e.g. 'invoice', 'purchase', 'return'
+     * @param string|null $prefix Override prefix (optional, uses DB default)
      * @return string e.g. 'INV-20260425-000001'
      */
     public static function next(string $name, ?string $prefix = null): string
@@ -49,6 +49,6 @@ class SequenceService
             return ['id' => $newValue, 'prefix' => $prefix ?? $row->prefix ?? strtoupper($name)];
         });
 
-        return "{$resolvedPrefix}-".now()->format('Ymd').'-'.str_pad($id, 6, '0', STR_PAD_LEFT);
+        return "{$resolvedPrefix}-" . now()->format('Ymd') . '-' . str_pad($id, 6, '0', STR_PAD_LEFT);
     }
 }

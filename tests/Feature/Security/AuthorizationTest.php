@@ -177,7 +177,7 @@ class AuthorizationTest extends TestCase
     {
         // /api/search-product requires search_products permission which cashier has
         $response = $this->actingAs($this->cashier)->getJson(
-            '/api/search-product?query='.urlencode("' OR 1=1; --")
+            '/api/search-product?query=' . urlencode("' OR 1=1; --"),
         );
 
         // Must not crash; 200 (empty results) or 404 (no match) are both safe

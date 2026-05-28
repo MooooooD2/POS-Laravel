@@ -12,8 +12,8 @@ class UserFactory extends Factory
         // Use uniqid to guarantee no collision across test runs even when
         // the tenant DB is not fully cleaned between test classes.
         return [
-            'username' => 'u_'.uniqid('', true),
-            'email'    => fake()->unique()->safeEmail(),
+            'username' => 'u_' . uniqid('', true),
+            'email' => fake()->unique()->safeEmail(),
             'password' => Hash::make('password'),
             'full_name' => fake()->name(),
             'role' => fake()->randomElement(['admin', 'cashier', 'warehouse']),

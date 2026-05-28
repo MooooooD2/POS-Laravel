@@ -7,6 +7,7 @@ use App\Models\FiscalPeriod;
 use App\Models\JournalEntry;
 use App\Models\User;
 use App\Services\AccountingService;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -89,7 +90,7 @@ class AccountingServiceTest extends TestCase
             ],
         ];
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         $this->service->createJournalEntry($data);
     }
@@ -107,7 +108,7 @@ class AccountingServiceTest extends TestCase
 
         try {
             $this->service->createJournalEntry($data);
-        } catch (\Exception) {
+        } catch (Exception) {
         }
 
         $this->assertDatabaseCount('journal_entries', 0);
@@ -141,7 +142,7 @@ class AccountingServiceTest extends TestCase
         $data = $this->validEntryData();
         $data['entry_date'] = '2026-01-15'; // inside the closed period
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         $this->service->createJournalEntry($data);
     }
@@ -182,7 +183,7 @@ class AccountingServiceTest extends TestCase
         $entry = $this->service->createJournalEntry($this->validEntryData());
         $this->service->postEntry($entry);
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         $this->service->postEntry($entry->fresh());
     }
@@ -212,7 +213,7 @@ class AccountingServiceTest extends TestCase
         $entry = $this->service->createJournalEntry($this->validEntryData());
         // Not posted — reversal should fail
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         $this->service->reverseEntry($entry, 'Should fail');
     }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\Repositories\SupplierRepositoryInterface;
 use App\Models\Supplier;
+use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -29,7 +30,7 @@ class SupplierService
     public function delete(Supplier $supplier): void
     {
         if ($this->supplierRepo->hasActiveOrders($supplier)) {
-            throw new \Exception(__('pos.supplier_has_active_orders'));
+            throw new Exception(__('pos.supplier_has_active_orders'));
         }
         $this->supplierRepo->delete($supplier);
     }

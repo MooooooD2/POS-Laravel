@@ -7,6 +7,8 @@ namespace App\Services\ZATCA;
 use App\Models\Invoice;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Str;
+use Throwable;
 
 /**
  * Phase 5 — ZATCA e-Invoicing (Saudi Arabia)
@@ -23,7 +25,7 @@ class ZatcaService
 
     public function __construct()
     {
-        $this->baseUrl   = config('zatca.api_url', 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal');
+        $this->baseUrl = config('zatca.api_url', 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal');
         $this->certToken = config('zatca.cert_token', '');
     }
 
@@ -35,11 +37,11 @@ class ZatcaService
      */
     public function generateQrTlv(Invoice $invoice): string
     {
-        $vatNumber   = config('zatca.vat_number', '');
-        $timestamp   = $invoice->created_at->toIso8601String();
+        $vatNumber = config('zatca.vat_number', '');
+        $timestamp = $invoice->created_at->toIso8601String();
         $totalAmount = number_format((float) $invoice->total, 2, '.', '');
-        $vatAmount   = number_format((float) ($invoice->vat_amount ?? 0), 2, '.', '');
-        $sellerName  = config('app.name', 'Seller');
+        $vatAmount = number_format((float) ($invoice->vat_amount ?? 0), 2, '.', '');
+        $sellerName = config('app.name', 'Seller');
 
         $tlv = $this->encodeTlv(1, $sellerName)
              . $this->encodeTlv(2, $vatNumber)
@@ -59,7 +61,7 @@ class ZatcaService
     {
         $items = $invoice->items->map(fn ($item) => $this->buildLineItem($item))->implode("\n");
         $vatAmount = number_format((float) ($invoice->vat_amount ?? 0), 2, '.', '');
-        $total     = number_format((float) $invoice->total, 2, '.', '');
+        $total = number_format((float) $invoice->total, 2, '.', '');
 
         return <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
@@ -103,40 +105,40 @@ XML;
      */
     public function submit(Invoice $invoice, bool $clearance = false): array
     {
-        $xml      = $this->buildUblXml($invoice);
-        $hash     = hash('sha256', $xml);
-        $b64Xml   = base64_encode($xml);
+        $xml = $this->buildUblXml($invoice);
+        $hash = hash('sha256', $xml);
+        $b64Xml = base64_encode($xml);
         $endpoint = $clearance ? '/invoices/clearance/single' : '/invoices/reporting/single';
 
         try {
             $response = Http::withHeaders([
-                'Accept'           => 'application/json',
-                'Accept-Language'  => 'en',
-                'Accept-Version'   => 'V2',
-                'Authorization'    => 'Basic ' . $this->certToken,
+                'Accept' => 'application/json',
+                'Accept-Language' => 'en',
+                'Accept-Version' => 'V2',
+                'Authorization' => 'Basic ' . $this->certToken,
                 'Clearance-Status' => $clearance ? '1' : '0',
             ])->post($this->baseUrl . $endpoint, [
-                'invoiceHash'  => $hash,
-                'uuid'         => $invoice->uuid ?? \Str::uuid()->toString(),
-                'invoice'      => $b64Xml,
+                'invoiceHash' => $hash,
+                'uuid' => $invoice->uuid ?? Str::uuid()->toString(),
+                'invoice' => $b64Xml,
             ]);
 
             $result = $response->json();
 
             Log::info('ZATCA submission', [
-                'invoice'   => $invoice->invoice_number,
+                'invoice' => $invoice->invoice_number,
                 'clearance' => $clearance,
-                'status'    => $response->status(),
+                'status' => $response->status(),
             ]);
 
             return [
-                'success'        => $response->successful(),
-                'status'         => $response->status(),
-                'response'       => $result,
-                'invoice_hash'   => $hash,
-                'cleared_at'     => now()->toIso8601String(),
+                'success' => $response->successful(),
+                'status' => $response->status(),
+                'response' => $result,
+                'invoice_hash' => $hash,
+                'cleared_at' => now()->toIso8601String(),
             ];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('ZATCA submission failed', ['error' => $e->getMessage()]);
 
             return ['success' => false, 'error' => $e->getMessage()];
@@ -148,17 +150,17 @@ XML;
     private function encodeTlv(int $tag, string $value): string
     {
         $valueBytes = mb_convert_encoding($value, 'UTF-8');
-        $length     = strlen($valueBytes);
+        $length = strlen($valueBytes);
 
         return chr($tag) . chr($length) . $valueBytes;
     }
 
     private function buildLineItem($item): string
     {
-        $qty       = (float) $item->quantity;
+        $qty = (float) $item->quantity;
         $unitPrice = number_format((float) $item->unit_price, 2, '.', '');
         $lineTotal = number_format((float) ($qty * (float) $item->unit_price), 2, '.', '');
-        $vatRate   = number_format((float) ($item->vat_rate ?? 15), 2, '.', '');
+        $vatRate = number_format((float) ($item->vat_rate ?? 15), 2, '.', '');
 
         return <<<XML
   <cac:InvoiceLine>

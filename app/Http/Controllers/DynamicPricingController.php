@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PriceRule;
 use App\Services\DynamicPricingService;
+use BadMethodCallException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -56,7 +57,7 @@ class DynamicPricingController extends Controller
     public function toggle(int $id): JsonResponse
     {
         $rule = PriceRule::findOrFail($id);
-        $rule->update(['is_active' => !$rule->is_active]);
+        $rule->update(['is_active' => ! $rule->is_active]);
         $this->clearCache();
 
         return response()->json(['rule' => $rule, 'is_active' => $rule->is_active]);
@@ -68,17 +69,17 @@ class DynamicPricingController extends Controller
     public function evaluate(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'items'              => 'required|array',
+            'items' => 'required|array',
             'items.*.product_id' => 'required|integer',
-            'items.*.quantity'   => 'nullable|numeric|min:0.01',
-            'customer_group_id'  => 'nullable|integer',
+            'items.*.quantity' => 'nullable|numeric|min:0.01',
+            'customer_group_id' => 'nullable|integer',
         ]);
 
         $results = $this->pricing->evaluateBatch($data['items'], $data['customer_group_id'] ?? null);
 
         return response()->json([
-            'prices'           => $results,
-            'happy_hour_active'=> $this->pricing->isHappyHourActive(),
+            'prices' => $results,
+            'happy_hour_active' => $this->pricing->isHappyHourActive(),
         ]);
     }
 
@@ -87,25 +88,25 @@ class DynamicPricingController extends Controller
     private function validateRule(Request $request): array
     {
         return $request->validate([
-            'name'              => 'required|string|max:150',
-            'description'       => 'nullable|string|max:500',
-            'rule_type'         => 'required|in:happy_hour,bulk_discount,day_of_week,loyalty_tier,category,flat_price',
-            'discount_type'     => 'required|in:percentage,fixed_amount,new_price',
-            'discount_value'    => 'required|numeric|min:0',
-            'product_ids'       => 'nullable|array',
-            'product_ids.*'     => 'integer',
-            'category_ids'      => 'nullable|array',
+            'name' => 'required|string|max:150',
+            'description' => 'nullable|string|max:500',
+            'rule_type' => 'required|in:happy_hour,bulk_discount,day_of_week,loyalty_tier,category,flat_price',
+            'discount_type' => 'required|in:percentage,fixed_amount,new_price',
+            'discount_value' => 'required|numeric|min:0',
+            'product_ids' => 'nullable|array',
+            'product_ids.*' => 'integer',
+            'category_ids' => 'nullable|array',
             'customer_group_id' => 'nullable|integer',
-            'time_start'        => 'nullable|date_format:H:i',
-            'time_end'          => 'nullable|date_format:H:i',
-            'days_of_week'      => 'nullable|array',
-            'days_of_week.*'    => 'integer|between:1,7',
-            'valid_from'        => 'nullable|date',
-            'valid_until'       => 'nullable|date',
-            'min_quantity'      => 'nullable|numeric|min:0',
-            'priority'          => 'nullable|integer|min:1|max:100',
-            'is_active'         => 'nullable|boolean',
-            'stackable'         => 'nullable|boolean',
+            'time_start' => 'nullable|date_format:H:i',
+            'time_end' => 'nullable|date_format:H:i',
+            'days_of_week' => 'nullable|array',
+            'days_of_week.*' => 'integer|between:1,7',
+            'valid_from' => 'nullable|date',
+            'valid_until' => 'nullable|date',
+            'min_quantity' => 'nullable|numeric|min:0',
+            'priority' => 'nullable|integer|min:1|max:100',
+            'is_active' => 'nullable|boolean',
+            'stackable' => 'nullable|boolean',
         ]);
     }
 
@@ -113,7 +114,7 @@ class DynamicPricingController extends Controller
     {
         try {
             Cache::tags(['price_rules'])->flush();
-        } catch (\BadMethodCallException $e) {
+        } catch (BadMethodCallException $e) {
             Cache::flush();
         }
     }

@@ -16,10 +16,10 @@ class ShiftSummary extends Model
     ];
 
     protected $casts = [
-        'total_sales'     => 'decimal:2',
-        'cash_collected'  => 'decimal:2',
-        'card_collected'  => 'decimal:2',
-        'expected_cash'   => 'decimal:2',
+        'total_sales' => 'decimal:2',
+        'cash_collected' => 'decimal:2',
+        'card_collected' => 'decimal:2',
+        'expected_cash' => 'decimal:2',
         'cash_difference' => 'decimal:2',
     ];
 

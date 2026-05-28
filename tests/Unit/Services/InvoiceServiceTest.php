@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\InvoiceService;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -92,7 +93,7 @@ class InvoiceServiceTest extends TestCase
     {
         $product = Product::factory()->create(['quantity' => 2, 'price' => 100.00]);
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         $this->service->createInvoice([
             'payment_method' => 'cash',

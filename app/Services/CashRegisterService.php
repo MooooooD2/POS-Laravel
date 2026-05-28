@@ -10,10 +10,12 @@ use App\Models\Invoice;
 use App\Models\JournalEntry;
 use App\Models\SalesReturn;
 use App\Models\Setting;
+use Exception;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class CashRegisterService
 {
@@ -45,7 +47,7 @@ class CashRegisterService
                 ->first();
 
             if ($existing) {
-                throw new \Exception('يوجد جلسة مفتوحة بالفعل. أغلقها أولاً.');
+                throw new Exception('يوجد جلسة مفتوحة بالفعل. أغلقها أولاً.');
             }
 
             return $this->sessionRepo->create([
@@ -72,10 +74,10 @@ class CashRegisterService
             $locked = CashRegisterSession::lockForUpdate()->findOrFail($session->id);
 
             if ($locked->cashier_id !== Auth::id()) {
-                throw new \Exception('لا يمكنك إغلاق جلسة كاشير آخر.');
+                throw new Exception('لا يمكنك إغلاق جلسة كاشير آخر.');
             }
             if ($locked->status === 'closed') {
-                throw new \Exception('الجلسة مغلقة بالفعل.');
+                throw new Exception('الجلسة مغلقة بالفعل.');
             }
 
             $this->sessionRepo->update($locked, [
@@ -119,13 +121,13 @@ class CashRegisterService
     public function recordMovement(CashRegisterSession $session, string $type, float $amount, ?string $reason): array
     {
         if ($session->status !== 'open') {
-            throw new \Exception('لا يمكن تسجيل حركة على جلسة مغلقة.');
+            throw new Exception('لا يمكن تسجيل حركة على جلسة مغلقة.');
         }
         if ($session->cashier_id !== Auth::id()) {
-            throw new \Exception('لا يمكنك تسجيل حركة على جلسة كاشير آخر.');
+            throw new Exception('لا يمكنك تسجيل حركة على جلسة كاشير آخر.');
         }
         if ($amount <= 0) {
-            throw new \Exception('يجب أن يكون المبلغ أكبر من صفر.');
+            throw new Exception('يجب أن يكون المبلغ أكبر من صفر.');
         }
 
         // Daily withdrawal limit check
@@ -138,7 +140,7 @@ class CashRegisterService
                     ->sum('amount');
 
                 if ($todayWithdrawals + $amount > $maxDailyWithdrawal) {
-                    throw new \Exception(__('pos.daily_withdrawal_limit_exceeded', [
+                    throw new Exception(__('pos.daily_withdrawal_limit_exceeded', [
                         'limit' => number_format($maxDailyWithdrawal, 2),
                         'used' => number_format($todayWithdrawals, 2),
                     ]));
@@ -190,7 +192,7 @@ class CashRegisterService
 
         return round(
             $session->opening_amount + $stats['cash_sales'] - $stats['cash_returns'] + $deposits - $withdrawals,
-            2
+            2,
         );
     }
 
@@ -261,7 +263,7 @@ class CashRegisterService
 
             $this->accountingService->postEntry($entry);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Non-fatal: accounting link is optional; log and continue
             Log::warning('cash_session.accounting_link_failed', [
                 'session_id' => $session->id,

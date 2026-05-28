@@ -9,15 +9,18 @@ use App\Services\ReturnService;
 use App\Services\SettingService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ReturnController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(
         private ReturnService $returnService,
@@ -75,7 +78,7 @@ class ReturnController extends Controller
             if ($this->settingService->get('print_on_return', false)) {
                 try {
                     $printResult = $this->printerService->printReturnReceipt($return);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     Log::warning('Auto-print failed for return', [
                         'return_id' => $return->id,
                         'error' => $e->getMessage(),
@@ -95,7 +98,7 @@ class ReturnController extends Controller
             ]);
 
             return $this->error(__('pos.return_creation_failed'), 500);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
     }

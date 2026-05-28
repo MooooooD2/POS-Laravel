@@ -15,10 +15,12 @@ use App\Models\ReturnItem;
 use App\Models\SalesReturn;
 use App\Models\Warehouse;
 use App\Services\ETA\ETAClient;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class InvoiceService
 {
@@ -56,10 +58,10 @@ class InvoiceService
             foreach ($data['items'] as $item) {
                 $product = $products->get($item['product_id']);
                 if (! $product) {
-                    throw new \Exception(__('pos.product_not_found_id', ['id' => $item['product_id']]));
+                    throw new Exception(__('pos.product_not_found_id', ['id' => $item['product_id']]));
                 }
                 if (! $allowNeg && $product->quantity < $item['quantity']) {
-                    throw new \Exception(__('pos.insufficient_stock', ['name' => $product->name]));
+                    throw new Exception(__('pos.insufficient_stock', ['name' => $product->name]));
                 }
             }
 
@@ -95,7 +97,7 @@ class InvoiceService
 
             $maxDiscountPercent = (float) $this->settingRepo->get(
                 'max_discount_percent',
-                config('security.invoice.max_discount_percent', 20)
+                config('security.invoice.max_discount_percent', 20),
             );
             $requestedDiscount = (float) ($data['discount'] ?? 0);
             $maxAllowedDiscount = $total * ($maxDiscountPercent / 100);
@@ -110,7 +112,8 @@ class InvoiceService
                     'ip' => request()->ip(),
                     'timestamp' => now()->toIso8601String(),
                 ]);
-                throw new \Exception(__('pos.discount_exceeds_limit', ['max' => $maxDiscountPercent]));
+
+                throw new Exception(__('pos.discount_exceeds_limit', ['max' => $maxDiscountPercent]));
             }
 
             $discount = max(0.0, min($requestedDiscount, $total, $maxAllowedDiscount));
@@ -160,7 +163,7 @@ class InvoiceService
                     : round($finalTotal, 2);
 
                 if ($cashReceived < round($finalTotal, 2)) {
-                    throw new \Exception(__('pos.cash_received_insufficient', [
+                    throw new Exception(__('pos.cash_received_insufficient', [
                         'total' => round($finalTotal, 2),
                         'received' => $cashReceived,
                     ]));
@@ -172,7 +175,7 @@ class InvoiceService
             if ($isSplit) {
                 $paymentsTotal = collect($data['payments'])->sum('amount');
                 if (abs($paymentsTotal - round($finalTotal, 2)) > 0.01) {
-                    throw new \Exception(__('pos.payments_total_mismatch', [
+                    throw new Exception(__('pos.payments_total_mismatch', [
                         'expected' => round($finalTotal, 2),
                         'received' => $paymentsTotal,
                     ]));
@@ -187,7 +190,7 @@ class InvoiceService
                 //      this check and the decrement calls below.
                 $warehouse = Warehouse::lockForUpdate()->find($warehouseId);
                 if ($warehouse?->is_locked) {
-                    throw new \Exception(__('pos.warehouse_locked'));
+                    throw new Exception(__('pos.warehouse_locked'));
                 }
             }
 
@@ -220,8 +223,13 @@ class InvoiceService
 
                 if ($product->track_batches) {
                     $allocations = $this->stockService->deductBatchStock(
-                        $product, $item['quantity'], 'sale',
-                        __('pos.sale_deduction'), $invoice->id, 'invoice', $warehouseId
+                        $product,
+                        $item['quantity'],
+                        'sale',
+                        __('pos.sale_deduction'),
+                        $invoice->id,
+                        'invoice',
+                        $warehouseId,
                     );
                     // Distribute per-item tax across batch allocations by qty ratio
                     $totalAllocQty = array_sum(array_column($allocations, 'quantity'));
@@ -244,8 +252,13 @@ class InvoiceService
                     }
                 } else {
                     $unitCost = $this->stockService->deductLockedStock(
-                        $product, $item['quantity'], 'sale',
-                        __('pos.sale_deduction'), $invoice->id, 'invoice', $warehouseId
+                        $product,
+                        $item['quantity'],
+                        'sale',
+                        __('pos.sale_deduction'),
+                        $invoice->id,
+                        'invoice',
+                        $warehouseId,
                     );
 
                     InvoiceItem::create([
@@ -298,7 +311,7 @@ class InvoiceService
                     $item['product_id'],
                     (float) $item['quantity'],
                     $invoice->id,
-                    $warehouseId
+                    $warehouseId,
                 );
             }
 
@@ -313,7 +326,7 @@ class InvoiceService
             // Phase 8: Earn cashback after successful invoice
             try {
                 $this->cashbackService->earnFromInvoice($invoice);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::warning('cashback.earn_failed', ['invoice_id' => $invoice->id, 'error' => $e->getMessage()]);
             }
 
@@ -339,10 +352,10 @@ class InvoiceService
             $locked = Invoice::with('items.product')->lockForUpdate()->findOrFail($invoice->id);
 
             if ($locked->status === 'cancelled') {
-                throw new \Exception(__('pos.invoice_already_cancelled'));
+                throw new Exception(__('pos.invoice_already_cancelled'));
             }
             if ($locked->status !== 'completed') {
-                throw new \Exception(__('pos.invoice_cannot_be_cancelled'));
+                throw new Exception(__('pos.invoice_cannot_be_cancelled'));
             }
 
             // Block cancellation if any return exists
@@ -350,7 +363,7 @@ class InvoiceService
                 ->where('status', 'completed')
                 ->exists();
             if ($hasReturns) {
-                throw new \Exception(__('pos.invoice_has_returns'));
+                throw new Exception(__('pos.invoice_has_returns'));
             }
 
             // Restore stock for each item
@@ -374,7 +387,7 @@ class InvoiceService
                         'invoice_cancel',
                         $restoreCost,
                         $warehouseId,
-                        $item->batch_id
+                        $item->batch_id,
                     );
                 }
             }
@@ -398,7 +411,7 @@ class InvoiceService
                         $locked->id,
                         'invoice_cancel',
                         null,
-                        $warehouseId
+                        $warehouseId,
                     );
                 }
             }
@@ -436,7 +449,7 @@ class InvoiceService
                     $this->customerService->recordPayment(
                         Customer::findOrFail($locked->customer_id),
                         $creditAmount,
-                        'cancellation'
+                        'cancellation',
                     );
                 }
             }
@@ -465,10 +478,10 @@ class InvoiceService
             try {
                 app(ETAClient::class)->cancelDocument(
                     $invoice->eta_uuid,
-                    __('pos.invoice_cancelled_note', ['inv' => $invoice->invoice_number])
+                    __('pos.invoice_cancelled_note', ['inv' => $invoice->invoice_number]),
                 );
                 $invoice->update(['eta_status' => 'cancelled']);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::channel('audit')->error('eta.cancel_failed', [
                     'invoice_number' => $invoice->invoice_number,
                     'eta_uuid' => $invoice->eta_uuid,
@@ -494,7 +507,7 @@ class InvoiceService
     {
         $returned = ReturnItem::whereHas(
             'salesReturn',
-            fn ($q) => $q->where('invoice_id', $invoice->id)->where('status', 'completed')
+            fn ($q) => $q->where('invoice_id', $invoice->id)->where('status', 'completed'),
         )->selectRaw('product_id, SUM(quantity) as total_returned')
             ->groupBy('product_id')
             ->pluck('total_returned', 'product_id');

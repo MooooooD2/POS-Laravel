@@ -11,7 +11,8 @@ use Illuminate\Http\Request;
 
 class StockReconciliationController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(
         private StockReconciliationService $service,
@@ -44,7 +45,7 @@ class StockReconciliationController extends Controller
         $this->productRepo->findOrFail($productId);
 
         return $this->success(
-            $this->service->productAuditTrail($productId, $request->from, $request->to)
+            $this->service->productAuditTrail($productId, $request->from, $request->to),
         );
     }
 }

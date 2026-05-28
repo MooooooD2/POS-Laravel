@@ -64,9 +64,9 @@ class ReceiptTemplateEngine
                         ? $invoice->date->format('Y-m-d')
                         : (string) $invoice->date),     'format' => 'center'];
         if ($invoice->customer) {
-            $header[] = ['text' => 'Customer: '.$invoice->customer->name, 'format' => 'left'];
+            $header[] = ['text' => 'Customer: ' . $invoice->customer->name, 'format' => 'left'];
         }
-        $header[] = ['text' => 'Cashier: '.$invoice->cashier_name, 'format' => 'left'];
+        $header[] = ['text' => 'Cashier: ' . $invoice->cashier_name, 'format' => 'left'];
         $header[] = ['text' => '', 'format' => 'separator'];
         $sections[] = ['type' => 'header', 'lines' => $header];
 
@@ -76,7 +76,7 @@ class ReceiptTemplateEngine
         foreach ($invoice->items as $item) {
             $items[] = ['text' => $item->product_name, 'format' => 'left'];
             $items[] = [
-                'text' => ['left' => "  x{$item->quantity}", 'right' => number_format($item->subtotal, 2)." {$currency}"],
+                'text' => ['left' => "  x{$item->quantity}", 'right' => number_format($item->subtotal, 2) . " {$currency}"],
                 'format' => 'two-column',
             ];
         }
@@ -86,30 +86,30 @@ class ReceiptTemplateEngine
         // ── Totals ───────────────────────────────────────────────────────────────
         $totals = [];
         $totals[] = [
-            'text' => ['left' => 'Subtotal:', 'right' => number_format($invoice->total, 2)." {$currency}"],
+            'text' => ['left' => 'Subtotal:', 'right' => number_format($invoice->total, 2) . " {$currency}"],
             'format' => 'two-column',
         ];
         if ($invoice->discount > 0) {
             $totals[] = [
-                'text' => ['left' => 'Discount:', 'right' => '-'.number_format($invoice->discount, 2)." {$currency}"],
+                'text' => ['left' => 'Discount:', 'right' => '-' . number_format($invoice->discount, 2) . " {$currency}"],
                 'format' => 'two-column',
             ];
         }
         if (($invoice->loyalty_discount ?? 0) > 0) {
             $totals[] = [
-                'text' => ['left' => 'Loyalty Discount:', 'right' => '-'.number_format($invoice->loyalty_discount, 2)." {$currency}"],
+                'text' => ['left' => 'Loyalty Discount:', 'right' => '-' . number_format($invoice->loyalty_discount, 2) . " {$currency}"],
                 'format' => 'two-column',
             ];
         }
         if (($invoice->tax_amount ?? 0) > 0 && $this->settings->get('show_tax_invoice', true)) {
             $totals[] = [
-                'text' => ['left' => "Tax ({$invoice->tax_rate}%):", 'right' => number_format($invoice->tax_amount, 2)." {$currency}"],
+                'text' => ['left' => "Tax ({$invoice->tax_rate}%):", 'right' => number_format($invoice->tax_amount, 2) . " {$currency}"],
                 'format' => 'two-column',
             ];
         }
         $totals[] = ['text' => '', 'format' => 'separator'];
         $totals[] = [
-            'text' => ['left' => 'TOTAL:', 'right' => number_format($invoice->final_total, 2)." {$currency}"],
+            'text' => ['left' => 'TOTAL:', 'right' => number_format($invoice->final_total, 2) . " {$currency}"],
             'format' => 'two-column,bold,double',
         ];
         $sections[] = ['type' => 'totals', 'lines' => $totals];
@@ -120,7 +120,7 @@ class ReceiptTemplateEngine
             $payment[] = ['text' => 'PAYMENT', 'format' => 'bold'];
             foreach ($invoice->payments as $pay) {
                 $payment[] = [
-                    'text' => ['left' => ucfirst($pay->method).':', 'right' => number_format($pay->amount, 2)." {$currency}"],
+                    'text' => ['left' => ucfirst($pay->method) . ':', 'right' => number_format($pay->amount, 2) . " {$currency}"],
                     'format' => 'two-column',
                 ];
             }
@@ -132,11 +132,11 @@ class ReceiptTemplateEngine
         }
         if ($invoice->cash_received) {
             $payment[] = [
-                'text' => ['left' => 'Received:', 'right' => number_format($invoice->cash_received, 2)." {$currency}"],
+                'text' => ['left' => 'Received:', 'right' => number_format($invoice->cash_received, 2) . " {$currency}"],
                 'format' => 'two-column',
             ];
             $payment[] = [
-                'text' => ['left' => 'Change:', 'right' => number_format($invoice->change_amount ?? 0, 2)." {$currency}"],
+                'text' => ['left' => 'Change:', 'right' => number_format($invoice->change_amount ?? 0, 2) . " {$currency}"],
                 'format' => 'two-column',
             ];
         }
@@ -188,19 +188,19 @@ class ReceiptTemplateEngine
         $header[] = ['text' => $storeName,              'format' => 'center,bold,double'];
         $header[] = ['text' => '*** RETURN RECEIPT ***', 'format' => 'center,bold'];
         $header[] = ['text' => '',                       'format' => 'separator'];
-        $header[] = ['text' => 'Return #: '.$return->return_number,    'format' => 'left'];
-        $header[] = ['text' => 'Original Invoice: '.($return->invoice_number ?? ''), 'format' => 'left'];
+        $header[] = ['text' => 'Return #: ' . $return->return_number,    'format' => 'left'];
+        $header[] = ['text' => 'Original Invoice: ' . ($return->invoice_number ?? ''), 'format' => 'left'];
         $header[] = [
-            'text' => 'Date: '.($return->return_date instanceof Carbon
+            'text' => 'Date: ' . ($return->return_date instanceof Carbon
                 ? $return->return_date->format('Y-m-d H:i:s')
                 : (string) $return->return_date),
             'format' => 'left',
         ];
         if (! empty($return->customer_name)) {
-            $header[] = ['text' => 'Customer: '.$return->customer_name, 'format' => 'left'];
+            $header[] = ['text' => 'Customer: ' . $return->customer_name, 'format' => 'left'];
         }
         if (! empty($return->processed_by_name)) {
-            $header[] = ['text' => 'Processed by: '.$return->processed_by_name, 'format' => 'left'];
+            $header[] = ['text' => 'Processed by: ' . $return->processed_by_name, 'format' => 'left'];
         }
         $header[] = ['text' => '', 'format' => 'separator'];
         $sections[] = ['type' => 'header', 'lines' => $header];
@@ -210,7 +210,7 @@ class ReceiptTemplateEngine
         foreach ($return->items as $item) {
             $items[] = ['text' => $item->product_name, 'format' => 'left'];
             $items[] = [
-                'text' => ['left' => "  x{$item->quantity}", 'right' => number_format($item->subtotal, 2)." {$currency}"],
+                'text' => ['left' => "  x{$item->quantity}", 'right' => number_format($item->subtotal, 2) . " {$currency}"],
                 'format' => 'two-column',
             ];
         }
@@ -224,11 +224,11 @@ class ReceiptTemplateEngine
             'format' => 'two-column,bold',
         ];
         $totals[] = [
-            'text' => ['left' => 'Refund Amount:', 'right' => number_format($return->refund_amount ?? 0, 2)." {$currency}"],
+            'text' => ['left' => 'Refund Amount:', 'right' => number_format($return->refund_amount ?? 0, 2) . " {$currency}"],
             'format' => 'two-column,bold',
         ];
         if (! empty($return->reason)) {
-            $totals[] = ['text' => 'Reason: '.$return->reason, 'format' => 'left'];
+            $totals[] = ['text' => 'Reason: ' . $return->reason, 'format' => 'left'];
         }
         $sections[] = ['type' => 'totals', 'lines' => $totals];
 
@@ -277,11 +277,11 @@ class ReceiptTemplateEngine
         $header[] = ['text' => $storeName,    'format' => 'center,bold'];
         $header[] = ['text' => 'SHIFT REPORT', 'format' => 'center,bold,double'];
         $header[] = ['text' => '',             'format' => 'separator'];
-        $header[] = ['text' => 'Session: '.($session->session_number ?? ''),  'format' => 'left'];
-        $header[] = ['text' => 'Cashier: '.($session->cashier_name ?? ''),    'format' => 'left'];
-        $header[] = ['text' => 'Opened: '.($session->opened_at?->format('Y-m-d H:i') ?? ''), 'format' => 'left'];
+        $header[] = ['text' => 'Session: ' . ($session->session_number ?? ''),  'format' => 'left'];
+        $header[] = ['text' => 'Cashier: ' . ($session->cashier_name ?? ''),    'format' => 'left'];
+        $header[] = ['text' => 'Opened: ' . ($session->opened_at?->format('Y-m-d H:i') ?? ''), 'format' => 'left'];
         if ($session->closed_at) {
-            $header[] = ['text' => 'Closed: '.$session->closed_at->format('Y-m-d H:i'), 'format' => 'left'];
+            $header[] = ['text' => 'Closed: ' . $session->closed_at->format('Y-m-d H:i'), 'format' => 'left'];
         }
         $header[] = ['text' => '', 'format' => 'separator'];
         $sections[] = ['type' => 'header', 'lines' => $header];
@@ -289,32 +289,32 @@ class ReceiptTemplateEngine
         // Financial Summary
         $summary = [];
         $summary[] = ['text' => 'FINANCIAL SUMMARY', 'format' => 'bold'];
-        $summary[] = ['text' => ['left' => 'Opening Amount:', 'right' => number_format($session->opening_amount ?? 0, 2)." {$currency}"], 'format' => 'two-column'];
+        $summary[] = ['text' => ['left' => 'Opening Amount:', 'right' => number_format($session->opening_amount ?? 0, 2) . " {$currency}"], 'format' => 'two-column'];
 
         if (! is_null($session->total_sales)) {
-            $summary[] = ['text' => ['left' => 'Total Sales:', 'right' => number_format($session->total_sales, 2)." {$currency}"], 'format' => 'two-column'];
+            $summary[] = ['text' => ['left' => 'Total Sales:', 'right' => number_format($session->total_sales, 2) . " {$currency}"], 'format' => 'two-column'];
         }
         if (! is_null($session->total_card)) {
-            $summary[] = ['text' => ['left' => 'Card Sales:', 'right' => number_format($session->total_card, 2)." {$currency}"], 'format' => 'two-column'];
+            $summary[] = ['text' => ['left' => 'Card Sales:', 'right' => number_format($session->total_card, 2) . " {$currency}"], 'format' => 'two-column'];
         }
         if (! is_null($session->total_returns) && $session->total_returns > 0) {
-            $summary[] = ['text' => ['left' => 'Returns:', 'right' => '-'.number_format($session->total_returns, 2)." {$currency}"], 'format' => 'two-column'];
+            $summary[] = ['text' => ['left' => 'Returns:', 'right' => '-' . number_format($session->total_returns, 2) . " {$currency}"], 'format' => 'two-column'];
         }
 
         $summary[] = ['text' => '', 'format' => 'separator'];
 
         if (! is_null($session->expected_cash)) {
-            $summary[] = ['text' => ['left' => 'Expected Cash:', 'right' => number_format($session->expected_cash, 2)." {$currency}"], 'format' => 'two-column'];
+            $summary[] = ['text' => ['left' => 'Expected Cash:', 'right' => number_format($session->expected_cash, 2) . " {$currency}"], 'format' => 'two-column'];
         }
         if (! is_null($session->actual_cash)) {
-            $summary[] = ['text' => ['left' => 'Actual Cash:', 'right' => number_format($session->actual_cash, 2)." {$currency}"], 'format' => 'two-column'];
+            $summary[] = ['text' => ['left' => 'Actual Cash:', 'right' => number_format($session->actual_cash, 2) . " {$currency}"], 'format' => 'two-column'];
         }
         if (! is_null($session->difference)) {
             $diff = $session->difference;
             $warn = abs($diff) > 5;
             $summary[] = [
-                'text' => ['left' => 'Difference'.($warn ? ' !!' : '').':', 'right' => ($diff >= 0 ? '+' : '').number_format($diff, 2)." {$currency}"],
-                'format' => 'two-column'.($warn ? ',bold' : ''),
+                'text' => ['left' => 'Difference' . ($warn ? ' !!' : '') . ':', 'right' => ($diff >= 0 ? '+' : '') . number_format($diff, 2) . " {$currency}"],
+                'format' => 'two-column' . ($warn ? ',bold' : ''),
             ];
         }
         $sections[] = ['type' => 'summary', 'lines' => $summary];
@@ -327,7 +327,7 @@ class ReceiptTemplateEngine
             foreach ($session->movements as $m) {
                 $sign = $m->type === 'deposit' ? '+' : '-';
                 $moves[] = [
-                    'text' => ['left' => $m->type.' - '.($m->reason ?? ''), 'right' => $sign.number_format($m->amount, 2)." {$currency}"],
+                    'text' => ['left' => $m->type . ' - ' . ($m->reason ?? ''), 'right' => $sign . number_format($m->amount, 2) . " {$currency}"],
                     'format' => 'two-column',
                 ];
             }
@@ -339,7 +339,7 @@ class ReceiptTemplateEngine
             'type' => 'footer',
             'lines' => [
                 ['text' => '',                                          'format' => 'separator'],
-                ['text' => 'Invoices: '.($session->invoices_count ?? 0), 'format' => 'center'],
+                ['text' => 'Invoices: ' . ($session->invoices_count ?? 0), 'format' => 'center'],
                 ['text' => '',                                          'format' => 'feed:3'],
             ],
         ];
@@ -365,7 +365,7 @@ class ReceiptTemplateEngine
 
         $header = [];
         $header[] = ['text' => mb_substr($product->name, 0, $this->charsPerLine), 'format' => 'center,bold'];
-        $header[] = ['text' => number_format($product->price, 2)." {$currency}", 'format' => 'center'];
+        $header[] = ['text' => number_format($product->price, 2) . " {$currency}", 'format' => 'center'];
         $sections[] = ['type' => 'header', 'lines' => $header];
 
         if ($product->barcode) {

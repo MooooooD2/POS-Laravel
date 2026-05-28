@@ -27,7 +27,7 @@ class ReportService
     public function salesReport(array $filters): array
     {
         $start = $filters['start_date'];
-        $end = $filters['end_date'].' 23:59:59';
+        $end = $filters['end_date'] . ' 23:59:59';
 
         return $this->reportRepo->salesReport($start, $end, $filters);
     }
@@ -35,7 +35,7 @@ class ReportService
     public function salesReportForExport(array $filters): Collection
     {
         $start = $filters['start_date'];
-        $end = $filters['end_date'].' 23:59:59';
+        $end = $filters['end_date'] . ' 23:59:59';
 
         return $this->reportRepo->salesReportAll($start, $end, $filters);
     }
@@ -45,7 +45,7 @@ class ReportService
         return $this->reportRepo->returnsReport(
             $filters['start_date'],
             $filters['end_date'],
-            $filters['status'] ?? null
+            $filters['status'] ?? null,
         );
     }
 
@@ -54,7 +54,7 @@ class ReportService
         return $this->reportRepo->returnsReportAll(
             $filters['start_date'],
             $filters['end_date'],
-            $filters['status'] ?? null
+            $filters['status'] ?? null,
         );
     }
 
@@ -83,7 +83,7 @@ class ReportService
         return $this->reportRepo->profitByProduct(
             $filters['start_date'],
             $filters['end_date'],
-            $filters['category'] ?? null
+            $filters['category'] ?? null,
         );
     }
 
@@ -95,7 +95,7 @@ class ReportService
     public function inventoryMovements(array $filters): array
     {
         $start = $filters['start_date'];
-        $end = $filters['end_date'].' 23:59:59';
+        $end = $filters['end_date'] . ' 23:59:59';
         $perPage = (int) ($filters['per_page'] ?? 50);
 
         $query = DB::table('stock_movements')
@@ -114,10 +114,11 @@ class ReportService
         }
         if (! empty($filters['search'])) {
             // FIX: escape LIKE wildcards to prevent injection via user-supplied % or _
-            $s = '%'.Str::escapeLike($filters['search']).'%';
-            $query->where(fn ($q) => $q
-                ->where('stock_movements.product_name', 'like', $s)
-                ->orWhere('stock_movements.reason', 'like', $s)
+            $s = '%' . Str::escapeLike($filters['search']) . '%';
+            $query->where(
+                fn ($q) => $q
+                    ->where('stock_movements.product_name', 'like', $s)
+                    ->orWhere('stock_movements.reason', 'like', $s),
             );
         }
 
@@ -286,7 +287,7 @@ class ReportService
 
     public function bestSellingProducts(string $start, string $end, int $limit = 20): array
     {
-        $endOfDay = $end.' 23:59:59';
+        $endOfDay = $end . ' 23:59:59';
 
         $products = DB::table('invoice_items')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
@@ -323,7 +324,7 @@ class ReportService
 
     public function cashierPerformance(string $start, string $end): array
     {
-        $endOfDay = $end.' 23:59:59';
+        $endOfDay = $end . ' 23:59:59';
 
         $stats = DB::table('invoices')
             ->whereBetween('created_at', [$start, $endOfDay])
@@ -412,7 +413,7 @@ class ReportService
             ->transform(function ($batch) {
                 $batch->days_to_expiry = (int) now()->startOfDay()->diffInDays(
                     Carbon::parse($batch->expiry_date)->startOfDay(),
-                    false
+                    false,
                 );
 
                 return $batch;
@@ -432,13 +433,13 @@ class ReportService
 
     public function cashFlowReport(string $start, string $end): array
     {
-        $endOfDay = $end.' 23:59:59';
+        $endOfDay = $end . ' 23:59:59';
 
         // Inflows: sales by payment method (all methods shown; 'credit' is AR, not cash)
         $salesInflows = InvoicePayment::whereHas(
             'invoice',
             fn ($q) => $q->whereBetween('created_at', [$start, $endOfDay])
-                ->whereNotIn('status', ['cancelled', 'draft'])
+                ->whereNotIn('status', ['cancelled', 'draft']),
         )->selectRaw('method, SUM(amount) as total')
             ->groupBy('method')
             ->pluck('total', 'method');
@@ -486,7 +487,7 @@ class ReportService
         $dailyInflows = InvoicePayment::whereHas(
             'invoice',
             fn ($q) => $q->whereBetween('created_at', [$start, $endOfDay])
-                ->whereNotIn('status', ['cancelled', 'draft'])
+                ->whereNotIn('status', ['cancelled', 'draft']),
         )->where('method', '!=', 'credit')
             ->selectRaw('DATE(created_at) as day, SUM(amount) as total')
             ->groupBy('day')
@@ -521,7 +522,7 @@ class ReportService
                 ->merge($dailySupplierPayments->keys())
                 ->merge($dailySalesReturnRefunds->keys())
                 ->unique()
-                ->sort()
+                ->sort(),
         );
 
         $dailyRows = $dailyDates->map(fn ($date) => [
@@ -531,14 +532,14 @@ class ReportService
                 (float) ($dailyExpenses[$date] ?? 0)
                 + (float) ($dailySupplierPayments[$date] ?? 0)
                 + (float) ($dailySalesReturnRefunds[$date] ?? 0),
-                2
+                2,
             ),
             'net' => round(
                 (float) ($dailyInflows[$date] ?? 0)
                 - (float) ($dailyExpenses[$date] ?? 0)
                 - (float) ($dailySupplierPayments[$date] ?? 0)
                 - (float) ($dailySalesReturnRefunds[$date] ?? 0),
-                2
+                2,
             ),
         ])->values();
 
@@ -572,7 +573,7 @@ class ReportService
         foreach ($months as $m) {
             $startDate = sprintf('%04d-%02d-01', $year, $m);
             $endDate = date('Y-m-t', strtotime($startDate));
-            $endOfDay = $endDate.' 23:59:59';
+            $endOfDay = $endDate . ' 23:59:59';
 
             // Actual revenue: completed invoices final_total
             $actualRevenue = (float) Invoice::whereBetween('date', [$startDate, $endOfDay])
@@ -652,7 +653,7 @@ class ReportService
      */
     public function inventoryTurnover(string $start, string $end): array
     {
-        $endOfDay = $end.' 23:59:59';
+        $endOfDay = $end . ' 23:59:59';
 
         $sold = DB::table('invoice_items')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
@@ -1123,8 +1124,8 @@ class ReportService
      * Returns a portable SQL expression for (dateA - dateB) in whole days.
      * Works on MySQL/MariaDB (default), SQLite, and PostgreSQL.
      *
-     * @param  string  $dateA  Column or SQL expression for the minuend date
-     * @param  string  $dateB  Column or SQL expression for the subtrahend date
+     * @param string $dateA Column or SQL expression for the minuend date
+     * @param string $dateB Column or SQL expression for the subtrahend date
      */
     private function datediffSql(string $dateA, string $dateB): string
     {
@@ -1135,12 +1136,12 @@ class ReportService
             'sqlite' => sprintf(
                 'CAST(JULIANDAY(%s) - JULIANDAY(%s) AS INTEGER)',
                 $nowA ? "'now'" : $dateA,
-                $nowB ? "'now'" : $dateB
+                $nowB ? "'now'" : $dateB,
             ),
             'pgsql' => sprintf(
                 'EXTRACT(EPOCH FROM (%s::date - %s::date))::INTEGER',
                 $nowA ? 'CURRENT_DATE' : $dateA,
-                $nowB ? 'CURRENT_DATE' : $dateB
+                $nowB ? 'CURRENT_DATE' : $dateB,
             ),
             default => "DATEDIFF($dateA, $dateB)",   // MySQL / MariaDB
         };

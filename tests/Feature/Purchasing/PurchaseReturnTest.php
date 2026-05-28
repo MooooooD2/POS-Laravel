@@ -47,7 +47,7 @@ class PurchaseReturnTest extends TestCase
 
         // Create a received purchase order
         $this->purchaseOrderId = DB::table('purchase_orders')->insertGetId([
-            'po_number' => 'PO-TEST-'.uniqid(),
+            'po_number' => 'PO-TEST-' . uniqid(),
             'supplier_id' => $supplier->id,
             'supplier_name' => $supplier->name,
             'status' => 'received',
@@ -200,7 +200,7 @@ class PurchaseReturnTest extends TestCase
     public function admin_can_query_returnable_items_for_purchase_order(): void
     {
         $response = $this->actingAs($this->admin)->getJson(
-            "/api/purchase-orders/{$this->purchaseOrderId}/returnable-items"
+            "/api/purchase-orders/{$this->purchaseOrderId}/returnable-items",
         );
 
         // May vary by route — accept 200 or 404
@@ -224,7 +224,7 @@ class PurchaseReturnTest extends TestCase
     {
         $supplier = Supplier::factory()->create();
         $response = $this->actingAs($this->admin)->getJson(
-            "/api/purchase-returns?supplier_id={$supplier->id}"
+            "/api/purchase-returns?supplier_id={$supplier->id}",
         );
         $this->assertContains($response->status(), [200, 404]);
     }

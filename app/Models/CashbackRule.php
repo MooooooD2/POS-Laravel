@@ -9,10 +9,10 @@ class CashbackRule extends Model
     protected $fillable = ['name', 'percentage', 'min_purchase', 'max_cashback', 'is_active'];
 
     protected $casts = [
-        'percentage'   => 'float',
+        'percentage' => 'float',
         'min_purchase' => 'float',
         'max_cashback' => 'float',
-        'is_active'    => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function scopeActive($query)

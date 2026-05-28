@@ -38,9 +38,9 @@ class QrOrderTest extends TestCase
         // QrTable uses 'table_name', not 'table_number'
         $this->table = QrTable::create([
             'table_name' => 'T10',
-            'token'      => 'test-token-abc123',
-            'is_active'  => true,
-            'capacity'   => 4,
+            'token' => 'test-token-abc123',
+            'is_active' => true,
+            'capacity' => 4,
         ]);
     }
 
@@ -61,7 +61,7 @@ class QrOrderTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson('/qr-tables', [
                 'table_name' => 'T20',
-                'capacity'   => 4,
+                'capacity' => 4,
             ])->assertStatus(201);
 
         $this->assertDatabaseHas('qr_tables', ['table_name' => 'T20']);
@@ -129,8 +129,8 @@ class QrOrderTest extends TestCase
         // orderStatus() returns {status, order} — create a minimal QrOrder row
         $order = QrOrder::create([
             'qr_table_id' => $this->table->id,
-            'status'      => 'pending',
-            'total'       => 60.00,
+            'status' => 'pending',
+            'total' => 60.00,
         ]);
 
         $this->getJson("/api/qr/order/{$order->id}/status")

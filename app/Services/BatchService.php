@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 /**
  * Dedicated service for ProductBatch lifecycle management.
@@ -94,7 +95,7 @@ class BatchService
                     ? (float) $data['cost_price']
                     : null,
                 (int) $data['warehouse_id'],
-                $batch->id
+                $batch->id,
             );
 
             Log::channel('audit')->info('batch.created', [
@@ -120,7 +121,7 @@ class BatchService
     public function adjust(ProductBatch $batch, int $newQty, string $reason): ProductBatch
     {
         if ($newQty < 0) {
-            throw new \InvalidArgumentException('Batch quantity cannot be negative');
+            throw new InvalidArgumentException('Batch quantity cannot be negative');
         }
 
         return DB::transaction(function () use ($batch, $newQty, $reason) {
@@ -135,18 +136,25 @@ class BatchService
 
             if ($diff > 0) {
                 $this->stockService->addStock(
-                    $product, $diff, $reason,
-                    $batch->id, 'batch_adjustment',
+                    $product,
+                    $diff,
+                    $reason,
+                    $batch->id,
+                    'batch_adjustment',
                     $batch->cost_price > 0 ? (float) $batch->cost_price : null,
                     $batch->warehouse_id,
-                    $batch->id
+                    $batch->id,
                 );
             } else {
                 $this->stockService->deductStock(
-                    $product, abs($diff), 'adjustment_remove', $reason,
-                    $batch->id, 'batch_adjustment',
+                    $product,
+                    abs($diff),
+                    'adjustment_remove',
+                    $reason,
+                    $batch->id,
+                    'batch_adjustment',
                     $batch->warehouse_id,
-                    $batch->id
+                    $batch->id,
                 );
             }
 
@@ -203,13 +211,14 @@ class BatchService
             if ($qty > 0) {
                 // Product already locked — use the locked variant to avoid a second lock
                 $this->stockService->deductLockedStock(
-                    $product, $qty,
+                    $product,
+                    $qty,
                     'write_off',
                     $writeOffReason,
                     $batch->id,
                     'batch_write_off',
                     $batch->warehouse_id,
-                    $batch->id
+                    $batch->id,
                 );
             }
 

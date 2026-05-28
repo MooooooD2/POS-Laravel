@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Branch;
+use Exception;
 use Illuminate\Support\Facades\DB;
 
 class BranchService
@@ -42,13 +43,13 @@ class BranchService
     public function delete(Branch $branch): void
     {
         if ($branch->is_default) {
-            throw new \Exception(__('pos.cannot_delete_default_branch'));
+            throw new Exception(__('pos.cannot_delete_default_branch'));
         }
         if ($branch->users()->exists()) {
-            throw new \Exception(__('pos.branch_has_users'));
+            throw new Exception(__('pos.branch_has_users'));
         }
         if ($branch->invoices()->exists()) {
-            throw new \Exception(__('pos.branch_has_invoices'));
+            throw new Exception(__('pos.branch_has_invoices'));
         }
         $branch->delete();
     }

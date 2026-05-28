@@ -10,13 +10,17 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * #27 تقارير المبيعات الثقيلة تُعالَج في الخلفية عبر Queue
  */
 class GenerateSalesReport implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries = 3;
 
@@ -26,12 +30,12 @@ class GenerateSalesReport implements ShouldQueue
         private string $startDate,
         private string $endDate,
         private int $userId,
-        private string $cacheKey
+        private string $cacheKey,
     ) {}
 
     public function handle(): void
     {
-        $end = $this->endDate.' 23:59:59';
+        $end = $this->endDate . ' 23:59:59';
 
         $totals = Invoice::where('status', 'completed')
             ->whereBetween('created_at', [$this->startDate, $end])
@@ -70,7 +74,7 @@ class GenerateSalesReport implements ShouldQueue
         Cache::put($this->cacheKey, $result, 3600);
     }
 
-    public function failed(\Throwable $e): void
+    public function failed(Throwable $e): void
     {
         Cache::put($this->cacheKey, ['status' => 'failed', 'error' => $e->getMessage()], 600);
     }

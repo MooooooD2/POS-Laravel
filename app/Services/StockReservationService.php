@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
+use Exception;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 /**
  * Manages the stock reservation lifecycle.
@@ -31,13 +33,13 @@ class StockReservationService
     /**
      * Reserve $qty units of a product in the given warehouse.
      *
-     * @throws \InvalidArgumentException If $qty ≤ 0.
-     * @throws \Exception If available stock < $qty.
+     * @throws InvalidArgumentException If $qty ≤ 0.
+     * @throws Exception If available stock < $qty.
      */
     public function reserve(Product $product, int $qty, ?int $warehouseId = null): void
     {
         if ($qty <= 0) {
-            throw new \InvalidArgumentException("Reservation qty must be > 0 (got {$qty})");
+            throw new InvalidArgumentException("Reservation qty must be > 0 (got {$qty})");
         }
 
         DB::transaction(function () use ($product, $qty, $warehouseId) {
@@ -48,7 +50,7 @@ class StockReservationService
                 : $product->quantity;   // fallback for products with no warehouse row
 
             if ($available < $qty) {
-                throw new \Exception(__('pos.insufficient_available_stock', [
+                throw new Exception(__('pos.insufficient_available_stock', [
                     'name' => $product->name,
                     'available' => $available,
                     'requested' => $qty,
@@ -101,10 +103,10 @@ class StockReservationService
         string $reason,
         ?int $referenceId = null,
         string $referenceType = 'manual',
-        ?int $warehouseId = null
+        ?int $warehouseId = null,
     ): float {
         if ($qty <= 0) {
-            throw new \InvalidArgumentException("Fulfillment qty must be > 0 (got {$qty})");
+            throw new InvalidArgumentException("Fulfillment qty must be > 0 (got {$qty})");
         }
 
         return DB::transaction(function () use ($product, $qty, $movementType, $reason, $referenceId, $referenceType, $warehouseId) {
@@ -121,7 +123,13 @@ class StockReservationService
             // Deduct using the locked variant (product already locked above).
             // Returns the actual unit cost consumed (correct for all valuation methods).
             return $this->stockService->deductLockedStock(
-                $fresh, $qty, $movementType, $reason, $referenceId, $referenceType, $warehouseId
+                $fresh,
+                $qty,
+                $movementType,
+                $reason,
+                $referenceId,
+                $referenceType,
+                $warehouseId,
             );
         });
     }
@@ -170,7 +178,7 @@ class StockReservationService
         // Ensure the row exists
         WarehouseStock::firstOrCreate(
             ['warehouse_id' => $wid, 'product_id' => $productId],
-            ['quantity' => 0, 'reserved_qty' => 0, 'min_stock' => 0]
+            ['quantity' => 0, 'reserved_qty' => 0, 'min_stock' => 0],
         );
 
         // Re-fetch with a row-level write lock so concurrent calls serialize correctly

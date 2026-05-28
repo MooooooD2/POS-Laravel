@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Srmklive\PayPal\Services\PayPal as PayPalClient;
+use Throwable;
 
 class PayPalController extends Controller
 {
@@ -46,7 +47,7 @@ class PayPalController extends Controller
                 'purchase_units' => [
                     [
                         'reference_id' => "{$tenant->id}|{$plan->id}|{$months}",
-                        'description' => $plan->name.' — '.($isAnnual ? '12 months' : '1 month'),
+                        'description' => $plan->name . ' — ' . ($isAnnual ? '12 months' : '1 month'),
                         'amount' => [
                             'currency_code' => $currency,
                             'value' => number_format($price, 2, '.', ''),
@@ -74,7 +75,7 @@ class PayPalController extends Controller
 
             return $this->error(__('pos.payment_error'), 500);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('PayPal exception', ['message' => $e->getMessage()]);
 
             return $this->error(__('pos.payment_error'), 500);
@@ -142,7 +143,7 @@ class PayPalController extends Controller
                 ]);
             }
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('PayPal capture exception', ['message' => $e->getMessage()]);
         }
 

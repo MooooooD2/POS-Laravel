@@ -120,8 +120,13 @@ class WarehouseController extends Controller
 
                 $type = $delta > 0 ? 'adjustment_add' : 'adjustment_remove';
                 $this->stockService->logMovement(
-                    $product, abs($delta), $type,
-                    'warehouse_stock_sync', $warehouse->id, 'warehouse_sync', $warehouse->id
+                    $product,
+                    abs($delta),
+                    $type,
+                    'warehouse_stock_sync',
+                    $warehouse->id,
+                    'warehouse_sync',
+                    $warehouse->id,
                 );
 
                 $updated++;
@@ -155,7 +160,7 @@ class WarehouseController extends Controller
 
         $wStock = WarehouseStock::firstOrCreate(
             ['warehouse_id' => $warehouse->id, 'product_id' => $data['product_id']],
-            ['quantity' => 0, 'reserved_qty' => 0, 'min_stock' => 0]
+            ['quantity' => 0, 'reserved_qty' => 0, 'min_stock' => 0],
         );
 
         $delta = $data['new_quantity'] - $wStock->quantity;
@@ -177,7 +182,7 @@ class WarehouseController extends Controller
             $data['reason'] ?? 'Manual stock adjustment',
             null,
             'adjustment',
-            $warehouse->id
+            $warehouse->id,
         );
 
         return response()->json(['success' => true, 'message' => __('pos.stock_adjusted')]);

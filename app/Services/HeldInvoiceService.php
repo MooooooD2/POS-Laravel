@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\HeldInvoice;
+use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 
@@ -52,16 +53,17 @@ class HeldInvoiceService
     public function resume(HeldInvoice $held): HeldInvoice
     {
         if ($held->cashier_id !== Auth::id()) {
-            throw new \Exception(__('pos.held_invoice_not_yours'));
+            throw new Exception(__('pos.held_invoice_not_yours'));
         }
 
         if ($held->status !== 'held') {
-            throw new \Exception(__('pos.held_invoice_not_available'));
+            throw new Exception(__('pos.held_invoice_not_available'));
         }
 
         if ($held->expires_at && $held->expires_at->isPast()) {
             $held->update(['status' => 'expired']);
-            throw new \Exception(__('pos.held_invoice_expired'));
+
+            throw new Exception(__('pos.held_invoice_expired'));
         }
 
         $held->update(['status' => 'resumed']);
@@ -73,11 +75,11 @@ class HeldInvoiceService
     {
         $user = Auth::user();
         if ($held->cashier_id !== Auth::id() && ! $user?->hasRole('admin')) {
-            throw new \Exception(__('pos.held_invoice_not_yours'));
+            throw new Exception(__('pos.held_invoice_not_yours'));
         }
 
         if (! in_array($held->status, ['held', 'expired'])) {
-            throw new \Exception(__('pos.held_invoice_not_available'));
+            throw new Exception(__('pos.held_invoice_not_available'));
         }
         $held->update(['status' => 'discarded']);
     }

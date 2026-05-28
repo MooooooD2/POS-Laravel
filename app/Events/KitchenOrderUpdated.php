@@ -15,11 +15,13 @@ use Illuminate\Queue\SerializesModels;
  */
 class KitchenOrderUpdated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
 
     public function __construct(
         public readonly KitchenOrder $order,
-        public readonly string $action = 'updated'   // created, updated, cancelled
+        public readonly string $action = 'updated',   // created, updated, cancelled
     ) {}
 
     public function broadcastOn(): Channel
@@ -40,13 +42,13 @@ class KitchenOrderUpdated implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'action'       => $this->action,
-            'order_id'     => $this->order->id,
+            'action' => $this->action,
+            'order_id' => $this->order->id,
             'order_number' => $this->order->order_number,
-            'status'       => $this->order->status,
+            'status' => $this->order->status,
             'table_number' => $this->order->table_number,
-            'order_type'   => $this->order->order_type,
-            'elapsed_min'  => $this->order->elapsed_minutes,
+            'order_type' => $this->order->order_type,
+            'elapsed_min' => $this->order->elapsed_minutes,
         ];
     }
 }

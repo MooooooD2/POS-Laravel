@@ -9,10 +9,14 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 class SendWhatsAppMessage implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries = 3;
 
@@ -30,7 +34,7 @@ class SendWhatsAppMessage implements ShouldQueue
         $service->dispatchMessage($log);
     }
 
-    public function failed(\Throwable $e): void
+    public function failed(Throwable $e): void
     {
         WhatsAppMessage::where('id', $this->messageLogId)->update([
             'status' => 'failed',

@@ -139,7 +139,7 @@ class ExpenseTest extends TestCase
     public function admin_can_update_expense(): void
     {
         $id = DB::table('expenses')->insertGetId([
-            'expense_number' => 'EXP-UPD-'.uniqid(),
+            'expense_number' => 'EXP-UPD-' . uniqid(),
             'category_id' => $this->categoryId,
             'title' => 'مصروف قديم',
             'amount' => 300.00,
@@ -166,7 +166,7 @@ class ExpenseTest extends TestCase
     public function admin_can_delete_expense(): void
     {
         $id = DB::table('expenses')->insertGetId([
-            'expense_number' => 'EXP-DEL-'.uniqid(),
+            'expense_number' => 'EXP-DEL-' . uniqid(),
             'category_id' => $this->categoryId,
             'title' => 'مصروف للحذف',
             'amount' => 100.00,
@@ -191,8 +191,8 @@ class ExpenseTest extends TestCase
     public function expense_summary_returns_correct_total_for_period(): void
     {
         DB::table('expenses')->insert([
-            ['expense_number' => 'EXP-S1-'.uniqid(), 'category_id' => $this->categoryId, 'title' => 'مصروف 1', 'amount' => 200.00, 'payment_method' => 'cash', 'expense_date' => now()->toDateString(), 'created_by' => $this->admin->id, 'created_by_name' => $this->admin->full_name, 'created_at' => now(), 'updated_at' => now()],
-            ['expense_number' => 'EXP-S2-'.uniqid(), 'category_id' => $this->categoryId, 'title' => 'مصروف 2', 'amount' => 300.00, 'payment_method' => 'card', 'expense_date' => now()->toDateString(), 'created_by' => $this->admin->id, 'created_by_name' => $this->admin->full_name, 'created_at' => now(), 'updated_at' => now()],
+            ['expense_number' => 'EXP-S1-' . uniqid(), 'category_id' => $this->categoryId, 'title' => 'مصروف 1', 'amount' => 200.00, 'payment_method' => 'cash', 'expense_date' => now()->toDateString(), 'created_by' => $this->admin->id, 'created_by_name' => $this->admin->full_name, 'created_at' => now(), 'updated_at' => now()],
+            ['expense_number' => 'EXP-S2-' . uniqid(), 'category_id' => $this->categoryId, 'title' => 'مصروف 2', 'amount' => 300.00, 'payment_method' => 'card', 'expense_date' => now()->toDateString(), 'created_by' => $this->admin->id, 'created_by_name' => $this->admin->full_name, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         $response = $this->actingAs($this->admin)->postJson('/api/expenses/summary', [

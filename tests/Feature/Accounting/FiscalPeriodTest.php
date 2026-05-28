@@ -48,10 +48,10 @@ class FiscalPeriodTest extends TestCase
     private function makePeriod(array $overrides = []): FiscalPeriod
     {
         return FiscalPeriod::create(array_merge([
-            'name'       => 'Test Period ' . uniqid(),
+            'name' => 'Test Period ' . uniqid(),
             'start_date' => now()->startOfMonth()->toDateString(),
-            'end_date'   => now()->endOfMonth()->toDateString(),
-            'status'     => 'open',
+            'end_date' => now()->endOfMonth()->toDateString(),
+            'status' => 'open',
         ], $overrides));
     }
 
@@ -83,7 +83,7 @@ class FiscalPeriodTest extends TestCase
         // FiscalPeriod model uses start_date / end_date (not starts_at / ends_at)
         $this->makePeriod([
             'start_date' => now()->startOfMonth()->toDateString(),
-            'end_date'   => now()->endOfMonth()->toDateString(),
+            'end_date' => now()->endOfMonth()->toDateString(),
         ]);
 
         $this->actingAs($this->admin)
@@ -99,9 +99,9 @@ class FiscalPeriodTest extends TestCase
         // store() returns 201 + plain model (no success wrapper)
         $res = $this->actingAs($this->admin)
             ->postJson('/api/fiscal-periods', [
-                'name'       => 'Q1 2027',
+                'name' => 'Q1 2027',
                 'start_date' => '2027-01-01',
-                'end_date'   => '2027-03-31',
+                'end_date' => '2027-03-31',
             ]);
 
         $res->assertStatus(201);
@@ -123,9 +123,9 @@ class FiscalPeriodTest extends TestCase
     {
         $this->actingAs($this->admin)
             ->postJson('/api/fiscal-periods', [
-                'name'       => 'Bad Period',
+                'name' => 'Bad Period',
                 'start_date' => '2027-06-01',
-                'end_date'   => '2027-05-01',
+                'end_date' => '2027-05-01',
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['end_date']);
     }
@@ -135,9 +135,9 @@ class FiscalPeriodTest extends TestCase
     {
         $this->actingAs($this->cashier)
             ->postJson('/api/fiscal-periods', [
-                'name'       => 'Hack Period',
+                'name' => 'Hack Period',
                 'start_date' => '2027-01-01',
-                'end_date'   => '2027-03-31',
+                'end_date' => '2027-03-31',
             ])->assertForbidden();
     }
 
@@ -147,11 +147,11 @@ class FiscalPeriodTest extends TestCase
     public function admin_can_close_open_fiscal_period(): void
     {
         $startDate = now()->subMonths(2)->startOfMonth()->toDateString();
-        $endDate   = now()->subMonth()->endOfMonth()->toDateString();
+        $endDate = now()->subMonth()->endOfMonth()->toDateString();
 
         $period = $this->makePeriod([
             'start_date' => $startDate,
-            'end_date'   => $endDate,
+            'end_date' => $endDate,
         ]);
 
         // close() requires retained_earnings_account_id (equity type)
@@ -172,7 +172,7 @@ class FiscalPeriodTest extends TestCase
             'account_code' => 'REV001',
             'account_name' => 'Sales Revenue',
             'account_type' => 'revenue',
-            'parent_id'    => $revParent->id,
+            'parent_id' => $revParent->id,
         ]);
         $cashAcc = Account::create([
             'account_code' => 'CASH001',
@@ -184,10 +184,10 @@ class FiscalPeriodTest extends TestCase
         $entryDate = now()->subMonths(2)->startOfMonth()->addDays(5)->toDateString();
         $je = JournalEntry::create([
             'entry_number' => 'JE-CLOSE-TEST',
-            'entry_date'   => $entryDate,
-            'description'  => 'Test revenue for closing',
-            'created_by'   => $this->admin->id,
-            'is_posted'    => false,
+            'entry_date' => $entryDate,
+            'description' => 'Test revenue for closing',
+            'created_by' => $this->admin->id,
+            'is_posted' => false,
         ]);
         JournalEntryLine::create(['entry_id' => $je->id, 'account_id' => $cashAcc->id,    'debit' => 1000, 'credit' => 0]);
         JournalEntryLine::create(['entry_id' => $je->id, 'account_id' => $revenueAcc->id, 'debit' => 0,    'credit' => 1000]);
@@ -207,7 +207,7 @@ class FiscalPeriodTest extends TestCase
     {
         $period = $this->makePeriod([
             'start_date' => '2027-01-01',
-            'end_date'   => '2027-03-31',
+            'end_date' => '2027-03-31',
         ]);
 
         $this->actingAs($this->admin)

@@ -15,7 +15,7 @@ class CustomerGroupController extends Controller
     public function index(Request $request): JsonResponse
     {
         $groups = CustomerGroup::query()
-            ->when($request->search, fn ($q, $s) => $q->where('name', 'like', '%'.Str::escapeLike($s).'%'))
+            ->when($request->search, fn ($q, $s) => $q->where('name', 'like', '%' . Str::escapeLike($s) . '%'))
             ->when(! $request->boolean('with_inactive'), fn ($q) => $q->where('is_active', true))
             ->withCount('customers')
             ->orderBy('name')
@@ -49,7 +49,7 @@ class CustomerGroupController extends Controller
     public function update(Request $request, CustomerGroup $customerGroup): JsonResponse
     {
         $data = $request->validate([
-            'name' => 'sometimes|string|max:100|unique:customer_groups,name,'.$customerGroup->id,
+            'name' => 'sometimes|string|max:100|unique:customer_groups,name,' . $customerGroup->id,
             'description' => 'nullable|string|max:500',
             'discount_percent' => 'nullable|numeric|min:0|max:100',
             'price_level' => 'nullable|in:retail,wholesale,vip',

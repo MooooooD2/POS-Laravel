@@ -8,9 +8,10 @@ use App\Models\Product;
 use App\Services\StockService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
+use Throwable;
 
 /**
  * Product bulk-import from Excel / CSV.
@@ -34,10 +35,10 @@ use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
  *  • Match found  → UPDATE product fields (does NOT touch stock quantity)
  *  • No match     → CREATE product; if initial_qty > 0 add opening stock
  */
-class ProductsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
+class ProductsImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
-    public int   $importedCount = 0;
-    public int   $updatedCount  = 0;
+    public int $importedCount = 0;
+    public int $updatedCount = 0;
     /** @var array<int, array{row:int, error:string}> */
     public array $errors = [];
 
@@ -50,7 +51,7 @@ class ProductsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
 
             try {
                 $this->processRow($row->toArray(), $rowNum);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->errors[] = ['row' => $rowNum, 'error' => $e->getMessage()];
             }
         }
@@ -73,6 +74,7 @@ class ProductsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
         $name = trim((string) $name);
         if ($name === '') {
             $this->errors[] = ['row' => $rowNum, 'error' => __('pos.import_name_required')];
+
             return;
         }
 
@@ -80,32 +82,33 @@ class ProductsImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
         $price = (float) ($r['price'] ?? $r['السعر'] ?? 0);
         if ($price <= 0) {
             $this->errors[] = ['row' => $rowNum, 'error' => __('pos.import_price_required', ['name' => $name])];
+
             return;
         }
 
         // ── Optional fields ───────────────────────────────────────────────────
-        $barcode       = (string) ($r['barcode']         ?? $r['الباركود']         ?? '');
-        $category      = (string) ($r['category']        ?? $r['الفئة']            ?? '');
-        $costPrice     = (float)  ($r['cost_price']      ?? $r['سعر_التكلفة']      ?? $price);
-        $wholesalePrice= (float)  ($r['wholesale_price'] ?? $r['سعر_الجملة']       ?? 0);
-        $vipPrice      = (float)  ($r['vip_price']       ?? $r['سعر_vip']          ?? 0);
-        $minStock      = (int)    ($r['min_stock']        ?? $r['الحد_الادنى']      ?? 0);
-        $initialQty    = (int)    ($r['initial_qty']      ?? $r['الكمية_الابتدائية'] ?? 0);
-        $description   = (string) ($r['description']      ?? $r['الوصف']            ?? '');
-        $rawActive     = strtolower((string) ($r['is_active'] ?? $r['نشط'] ?? '1'));
-        $isActive      = !in_array($rawActive, ['0', 'no', 'false', 'لا', 'غير نشط', 'inactive'], true);
+        $barcode = (string) ($r['barcode'] ?? $r['الباركود'] ?? '');
+        $category = (string) ($r['category'] ?? $r['الفئة'] ?? '');
+        $costPrice = (float) ($r['cost_price'] ?? $r['سعر_التكلفة'] ?? $price);
+        $wholesalePrice = (float) ($r['wholesale_price'] ?? $r['سعر_الجملة'] ?? 0);
+        $vipPrice = (float) ($r['vip_price'] ?? $r['سعر_vip'] ?? 0);
+        $minStock = (int) ($r['min_stock'] ?? $r['الحد_الادنى'] ?? 0);
+        $initialQty = (int) ($r['initial_qty'] ?? $r['الكمية_الابتدائية'] ?? 0);
+        $description = (string) ($r['description'] ?? $r['الوصف'] ?? '');
+        $rawActive = strtolower((string) ($r['is_active'] ?? $r['نشط'] ?? '1'));
+        $isActive = ! in_array($rawActive, ['0', 'no', 'false', 'لا', 'غير نشط', 'inactive'], true);
 
         $data = [
-            'name'            => $name,
-            'barcode'         => $barcode ?: null,
-            'category'        => $category ?: null,
-            'price'           => $price,
-            'cost_price'      => $costPrice > 0 ? $costPrice : $price,
+            'name' => $name,
+            'barcode' => $barcode ?: null,
+            'category' => $category ?: null,
+            'price' => $price,
+            'cost_price' => $costPrice > 0 ? $costPrice : $price,
             'wholesale_price' => $wholesalePrice > 0 ? $wholesalePrice : null,
-            'vip_price'       => $vipPrice > 0 ? $vipPrice : null,
-            'min_stock'       => max(0, $minStock),
-            'description'     => $description ?: null,
-            'is_active'       => $isActive,
+            'vip_price' => $vipPrice > 0 ? $vipPrice : null,
+            'min_stock' => max(0, $minStock),
+            'description' => $description ?: null,
+            'is_active' => $isActive,
         ];
 
         // ── Upsert ────────────────────────────────────────────────────────────

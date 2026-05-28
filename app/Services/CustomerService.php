@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\CustomerAccount;
 use App\Models\Invoice;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -23,11 +24,11 @@ class CustomerService
             $newBalance = $customer->balance + $chargeAmount;
 
             if ($customer->credit_limit > 0 && $newBalance > $customer->credit_limit) {
-                throw new \Exception(
+                throw new Exception(
                     __('pos.credit_limit_exceeded', [
                         'limit' => $customer->credit_limit,
                         'new' => $newBalance,
-                    ])
+                    ]),
                 );
             }
 
@@ -93,7 +94,7 @@ class CustomerService
         $locked = Customer::lockForUpdate()->findOrFail($customer->id);
 
         if ($points < $min || $locked->loyalty_points < $points) {
-            throw new \Exception(__('pos.insufficient_loyalty_points', ['min' => $min]));
+            throw new Exception(__('pos.insufficient_loyalty_points', ['min' => $min]));
         }
 
         $locked->decrement('loyalty_points', $points);
@@ -133,6 +134,6 @@ class CustomerService
         $last = Customer::withTrashed()->orderByDesc('id')->value('code');
         $num = $last ? ((int) substr($last, 5)) + 1 : 1;
 
-        return 'CUST-'.str_pad($num, 4, '0', STR_PAD_LEFT);
+        return 'CUST-' . str_pad($num, 4, '0', STR_PAD_LEFT);
     }
 }

@@ -6,6 +6,8 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Throwable;
 
 /**
  * Phase 10 — Franchise Royalties Engine
@@ -19,8 +21,8 @@ class FranchiseRoyaltyService
     public function generateMonthlyStatements(int $year, int $month): array
     {
         $periodStart = \Carbon\Carbon::create($year, $month, 1)->startOfDay();
-        $periodEnd   = $periodStart->copy()->endOfMonth()->endOfDay();
-        $period      = $periodStart->format('Y-m');
+        $periodEnd = $periodStart->copy()->endOfMonth()->endOfDay();
+        $period = $periodStart->format('Y-m');
 
         $agreements = DB::table('franchise_agreements')
             ->where('status', 'active')
@@ -34,10 +36,10 @@ class FranchiseRoyaltyService
             try {
                 $stmt = $this->generateStatement($agreement, $period, $periodStart, $periodEnd);
                 $generated[] = $stmt;
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('FranchiseRoyalty: failed to generate statement', [
                     'agreement' => $agreement->id,
-                    'error'     => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -52,20 +54,20 @@ class FranchiseRoyaltyService
         object $agreement,
         string $period,
         \Carbon\Carbon $start,
-        \Carbon\Carbon $end
+        \Carbon\Carbon $end,
     ): array {
         // Pull gross sales from the franchisee's tenant DB
         $grossSales = $this->fetchFranchiseeSales(
             $agreement->franchisee_tenant_id,
             $start,
-            $end
+            $end,
         );
 
         // Calculate royalty
-        $royaltyAmount  = $this->calculateRoyalty($agreement, $grossSales);
-        $marketingFee   = round($grossSales * ((float) $agreement->marketing_fee_rate / 100), 2);
-        $totalDue       = $royaltyAmount + $marketingFee;
-        $dueDate        = $end->copy()->addDays(15);
+        $royaltyAmount = $this->calculateRoyalty($agreement, $grossSales);
+        $marketingFee = round($grossSales * ((float) $agreement->marketing_fee_rate / 100), 2);
+        $totalDue = $royaltyAmount + $marketingFee;
+        $dueDate = $end->copy()->addDays(15);
 
         $breakdown = $this->buildBreakdown($agreement, $grossSales, $royaltyAmount, $marketingFee);
 
@@ -73,29 +75,29 @@ class FranchiseRoyaltyService
         $id = DB::table('royalty_statements')->updateOrInsert(
             ['franchise_agreement_id' => $agreement->id, 'period' => $period],
             [
-                'period_start'   => $start->toDateString(),
-                'period_end'     => $end->toDateString(),
-                'gross_sales'    => $grossSales,
+                'period_start' => $start->toDateString(),
+                'period_end' => $end->toDateString(),
+                'gross_sales' => $grossSales,
                 'royalty_amount' => $royaltyAmount,
-                'marketing_fee'  => $marketingFee,
-                'total_due'      => $totalDue,
-                'balance_due'    => $totalDue,     // recalculated after payments
-                'status'         => 'draft',
-                'due_date'       => $dueDate->toDateString(),
-                'breakdown'      => json_encode($breakdown),
-                'updated_at'     => now(),
-                'created_at'     => now(),
-            ]
+                'marketing_fee' => $marketingFee,
+                'total_due' => $totalDue,
+                'balance_due' => $totalDue,     // recalculated after payments
+                'status' => 'draft',
+                'due_date' => $dueDate->toDateString(),
+                'breakdown' => json_encode($breakdown),
+                'updated_at' => now(),
+                'created_at' => now(),
+            ],
         );
 
         return [
-            'agreement_id'   => $agreement->id,
-            'period'         => $period,
-            'gross_sales'    => $grossSales,
+            'agreement_id' => $agreement->id,
+            'period' => $period,
+            'gross_sales' => $grossSales,
             'royalty_amount' => $royaltyAmount,
-            'marketing_fee'  => $marketingFee,
-            'total_due'      => $totalDue,
-            'due_date'       => $dueDate->toDateString(),
+            'marketing_fee' => $marketingFee,
+            'total_due' => $totalDue,
+            'due_date' => $dueDate->toDateString(),
         ];
     }
 
@@ -107,20 +109,20 @@ class FranchiseRoyaltyService
         $stmt = DB::table('royalty_statements')->where('id', $statementId)->first();
 
         if (! $stmt) {
-            throw new \RuntimeException("Statement #{$statementId} not found.");
+            throw new RuntimeException("Statement #{$statementId} not found.");
         }
 
-        $paid       = (float) $stmt->amount_paid + $amount;
-        $balance    = max(0, (float) $stmt->total_due - $paid);
-        $status     = $balance <= 0.01 ? 'paid' : 'invoiced';
+        $paid = (float) $stmt->amount_paid + $amount;
+        $balance = max(0, (float) $stmt->total_due - $paid);
+        $status = $balance <= 0.01 ? 'paid' : 'invoiced';
 
         DB::table('royalty_statements')->where('id', $statementId)->update([
-            'amount_paid'       => $paid,
-            'balance_due'       => $balance,
-            'status'            => $status,
-            'paid_at'           => $status === 'paid' ? now() : null,
+            'amount_paid' => $paid,
+            'balance_due' => $balance,
+            'status' => $status,
+            'paid_at' => $status === 'paid' ? now() : null,
             'payment_reference' => $reference ?: $stmt->payment_reference,
-            'updated_at'        => now(),
+            'updated_at' => now(),
         ]);
     }
 
@@ -142,9 +144,9 @@ class FranchiseRoyaltyService
     {
         return match ($agreement->royalty_type) {
             'percentage' => round($grossSales * ((float) $agreement->royalty_rate / 100), 2),
-            'fixed'      => (float) $agreement->fixed_amount,
-            'tiered'     => $this->calculateTieredRoyalty($agreement, $grossSales),
-            default      => 0.0,
+            'fixed' => (float) $agreement->fixed_amount,
+            'tiered' => $this->calculateTieredRoyalty($agreement, $grossSales),
+            default => 0.0,
         };
     }
 
@@ -167,14 +169,14 @@ class FranchiseRoyaltyService
     private function buildBreakdown(object $agreement, float $grossSales, float $royalty, float $marketing): array
     {
         return [
-            'gross_sales'      => $grossSales,
-            'royalty_type'     => $agreement->royalty_type,
-            'royalty_rate'     => $agreement->royalty_rate,
-            'royalty_amount'   => $royalty,
-            'marketing_rate'   => $agreement->marketing_fee_rate,
-            'marketing_fee'    => $marketing,
-            'total_due'        => $royalty + $marketing,
-            'currency'         => $agreement->currency_code,
+            'gross_sales' => $grossSales,
+            'royalty_type' => $agreement->royalty_type,
+            'royalty_rate' => $agreement->royalty_rate,
+            'royalty_amount' => $royalty,
+            'marketing_rate' => $agreement->marketing_fee_rate,
+            'marketing_fee' => $marketing,
+            'total_due' => $royalty + $marketing,
+            'currency' => $agreement->currency_code,
         ];
     }
 }

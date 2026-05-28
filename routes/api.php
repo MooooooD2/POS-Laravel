@@ -5,8 +5,8 @@ use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\BackupMonitorController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\BudgetController;
-use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\CashbackController;
+use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\CrmController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerGroupController;
@@ -94,7 +94,7 @@ Route::middleware(['auth', 'throttle:60,1', CheckSubscriptionActive::class])->gr
 
             // 1. Try Open Food Facts (free, no key, supports Arabic)
             try {
-                $off = \Illuminate\Support\Facades\Http::timeout(6)
+                $off = Illuminate\Support\Facades\Http::timeout(6)
                     ->withoutVerifying()
                     ->get("https://world.openfoodfacts.org/api/v2/product/{$barcode}.json", [
                         'fields' => 'product_name,product_name_ar,brands,categories_tags',
@@ -103,7 +103,7 @@ Route::middleware(['auth', 'throttle:60,1', CheckSubscriptionActive::class])->gr
                 if ($off->successful()) {
                     $data = $off->json();
                     if (($data['status'] ?? 0) === 1 && isset($data['product'])) {
-                        $p    = $data['product'];
+                        $p = $data['product'];
                         $name = $locale === 'ar'
                             ? ($p['product_name_ar'] ?? $p['product_name'] ?? null)
                             : ($p['product_name'] ?? null);
@@ -111,39 +111,39 @@ Route::middleware(['auth', 'throttle:60,1', CheckSubscriptionActive::class])->gr
 
                         if ($name !== '') {
                             return response()->json([
-                                'name'   => $name,
-                                'brand'  => isset($p['brands']) ? trim(explode(',', $p['brands'])[0]) : null,
+                                'name' => $name,
+                                'brand' => isset($p['brands']) ? trim(explode(',', $p['brands'])[0]) : null,
                                 'source' => 'openfoodfacts',
                             ]);
                         }
                     }
                 }
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // silent fallback
             }
 
             // 2. Fallback: UPC Item DB (free trial, no key, general products)
             try {
-                $upc = \Illuminate\Support\Facades\Http::timeout(5)
+                $upc = Illuminate\Support\Facades\Http::timeout(5)
                     ->withoutVerifying()
-                    ->get("https://api.upcitemdb.com/prod/trial/lookup", ['upc' => $barcode]);
+                    ->get('https://api.upcitemdb.com/prod/trial/lookup', ['upc' => $barcode]);
 
                 if ($upc->successful()) {
-                    $data  = $upc->json();
+                    $data = $upc->json();
                     $items = $data['items'] ?? [];
                     if (! empty($items)) {
                         $item = $items[0];
                         $name = trim($item['title'] ?? '');
                         if ($name !== '') {
                             return response()->json([
-                                'name'   => $name,
-                                'brand'  => isset($item['brand']) ? trim($item['brand']) : null,
+                                'name' => $name,
+                                'brand' => isset($item['brand']) ? trim($item['brand']) : null,
                                 'source' => 'upcitemdb',
                             ]);
                         }
                     }
                 }
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // silent fallback
             }
 
@@ -453,65 +453,65 @@ Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->group(funct
 
 // ── Kitchen Display System API ────────────────────────────────────────────
 Route::middleware(['auth', 'permission:view_pos', 'throttle:120,1'])->prefix('kitchen')->group(function () {
-    Route::get('/',                              [KitchenDisplayController::class, 'orders'])->name('api.kitchen.orders');
-    Route::post('/',                             [KitchenDisplayController::class, 'store'])->name('api.kitchen.store');
-    Route::post('/{id}/accept',                  [KitchenDisplayController::class, 'accept'])->name('api.kitchen.accept');
-    Route::post('/{id}/ready',                   [KitchenDisplayController::class, 'ready'])->name('api.kitchen.ready');
-    Route::post('/{id}/served',                  [KitchenDisplayController::class, 'served'])->name('api.kitchen.served');
-    Route::post('/{id}/cancel',                  [KitchenDisplayController::class, 'cancel'])->name('api.kitchen.cancel');
-    Route::patch('/items/{itemId}/status',       [KitchenDisplayController::class, 'updateItem'])->name('api.kitchen.item.status');
-    Route::get('/stats',                         [KitchenDisplayController::class, 'stats'])->name('api.kitchen.stats');
+    Route::get('/', [KitchenDisplayController::class, 'orders'])->name('api.kitchen.orders');
+    Route::post('/', [KitchenDisplayController::class, 'store'])->name('api.kitchen.store');
+    Route::post('/{id}/accept', [KitchenDisplayController::class, 'accept'])->name('api.kitchen.accept');
+    Route::post('/{id}/ready', [KitchenDisplayController::class, 'ready'])->name('api.kitchen.ready');
+    Route::post('/{id}/served', [KitchenDisplayController::class, 'served'])->name('api.kitchen.served');
+    Route::post('/{id}/cancel', [KitchenDisplayController::class, 'cancel'])->name('api.kitchen.cancel');
+    Route::patch('/items/{itemId}/status', [KitchenDisplayController::class, 'updateItem'])->name('api.kitchen.item.status');
+    Route::get('/stats', [KitchenDisplayController::class, 'stats'])->name('api.kitchen.stats');
 });
 
 // ── QR Orders API ─────────────────────────────────────────────────────────
 Route::middleware(['throttle:30,1'])->prefix('qr')->group(function () {
-    Route::get('/{token}/products',  [QrOrderController::class, 'products'])->name('api.qr.products');
-    Route::post('/{token}/order',    [QrOrderController::class, 'placeOrder'])->name('api.qr.order');
+    Route::get('/{token}/products', [QrOrderController::class, 'products'])->name('api.qr.products');
+    Route::post('/{token}/order', [QrOrderController::class, 'placeOrder'])->name('api.qr.order');
     Route::get('/order/{id}/status', [QrOrderController::class, 'orderStatus'])->name('api.qr.order.status');
 });
 
 // ── Forecasting API ───────────────────────────────────────────────────────
 Route::middleware(['auth', 'permission:view_reports', 'throttle:30,1'])->group(function () {
-    Route::get('/forecast/sales',    [ForecastController::class, 'salesForecast'])->name('api.forecast.sales');
+    Route::get('/forecast/sales', [ForecastController::class, 'salesForecast'])->name('api.forecast.sales');
     Route::get('/forecast/products', [ForecastController::class, 'productForecast'])->name('api.forecast.products');
-    Route::get('/forecast/stock',    [ForecastController::class, 'stockForecast'])->name('api.forecast.stock');
+    Route::get('/forecast/stock', [ForecastController::class, 'stockForecast'])->name('api.forecast.stock');
 });
 
 // ── Dynamic Pricing API ───────────────────────────────────────────────────
 Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->prefix('pricing-rules')->group(function () {
-    Route::get('/',         [DynamicPricingController::class, 'all'])->name('api.pricing-rules.all');
-    Route::post('/',        [DynamicPricingController::class, 'store'])->name('api.pricing-rules.store');
-    Route::put('/{id}',     [DynamicPricingController::class, 'update'])->name('api.pricing-rules.update');
-    Route::delete('/{id}',  [DynamicPricingController::class, 'destroy'])->name('api.pricing-rules.destroy');
+    Route::get('/', [DynamicPricingController::class, 'all'])->name('api.pricing-rules.all');
+    Route::post('/', [DynamicPricingController::class, 'store'])->name('api.pricing-rules.store');
+    Route::put('/{id}', [DynamicPricingController::class, 'update'])->name('api.pricing-rules.update');
+    Route::delete('/{id}', [DynamicPricingController::class, 'destroy'])->name('api.pricing-rules.destroy');
     Route::patch('/{id}/toggle', [DynamicPricingController::class, 'toggle'])->name('api.pricing-rules.toggle');
     Route::post('/evaluate', [DynamicPricingController::class, 'evaluate'])->name('api.pricing-rules.evaluate');
 });
 
 // ── Device Sessions API ───────────────────────────────────────────────────
 Route::middleware(['auth', 'throttle:30,1'])->group(function () {
-    Route::get('/device-sessions',              [DeviceSessionController::class, 'list'])->name('api.device-sessions.list');
-    Route::delete('/device-sessions/revoke-all',[DeviceSessionController::class, 'revokeAll'])->name('api.device-sessions.revoke-all');
-    Route::delete('/device-sessions/{id}',      [DeviceSessionController::class, 'revoke'])->name('api.device-sessions.revoke');
+    Route::get('/device-sessions', [DeviceSessionController::class, 'list'])->name('api.device-sessions.list');
+    Route::delete('/device-sessions/revoke-all', [DeviceSessionController::class, 'revokeAll'])->name('api.device-sessions.revoke-all');
+    Route::delete('/device-sessions/{id}', [DeviceSessionController::class, 'revoke'])->name('api.device-sessions.revoke');
 });
 
 // ── Cashback API ──────────────────────────────────────────────────────────
 Route::middleware(['auth', 'permission:view_pos', 'throttle:60,1'])->group(function () {
     Route::get('/cashback/customer/{id}', [CashbackController::class, 'balance'])->name('api.cashback.balance');
-    Route::post('/cashback/redeem',       [CashbackController::class, 'redeem'])->name('api.cashback.redeem');
-    Route::get('/cashback/history',       [CashbackController::class, 'history'])->name('api.cashback.history');
+    Route::post('/cashback/redeem', [CashbackController::class, 'redeem'])->name('api.cashback.redeem');
+    Route::get('/cashback/history', [CashbackController::class, 'history'])->name('api.cashback.history');
     // Cashback rules management
-    Route::get('/cashback/rules',         [CashbackController::class, 'rules'])->name('api.cashback.rules');
-    Route::post('/cashback/rules',        [CashbackController::class, 'storeRule'])->name('api.cashback.rules.store');
+    Route::get('/cashback/rules', [CashbackController::class, 'rules'])->name('api.cashback.rules');
+    Route::post('/cashback/rules', [CashbackController::class, 'storeRule'])->name('api.cashback.rules.store');
 });
 
 // ── CRM API ───────────────────────────────────────────────────────────────
 Route::middleware(['auth', 'permission:view_warehouse', 'throttle:60,1'])->prefix('crm')->group(function () {
     Route::get('/customers/{id}/activities', [CrmController::class, 'activities'])->name('api.crm.activities');
-    Route::post('/activities',               [CrmController::class, 'storeActivity'])->name('api.crm.store');
-    Route::put('/activities/{id}',           [CrmController::class, 'updateActivity'])->name('api.crm.update');
-    Route::delete('/activities/{id}',        [CrmController::class, 'deleteActivity'])->name('api.crm.delete');
-    Route::get('/follow-ups',                [CrmController::class, 'followUps'])->name('api.crm.followups');
-    Route::get('/stats',                     [CrmController::class, 'stats'])->name('api.crm.stats');
+    Route::post('/activities', [CrmController::class, 'storeActivity'])->name('api.crm.store');
+    Route::put('/activities/{id}', [CrmController::class, 'updateActivity'])->name('api.crm.update');
+    Route::delete('/activities/{id}', [CrmController::class, 'deleteActivity'])->name('api.crm.delete');
+    Route::get('/follow-ups', [CrmController::class, 'followUps'])->name('api.crm.followups');
+    Route::get('/stats', [CrmController::class, 'stats'])->name('api.crm.stats');
 });
 
-require __DIR__.'/_api_additions.php';
+require __DIR__ . '/_api_additions.php';

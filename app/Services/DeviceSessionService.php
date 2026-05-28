@@ -28,15 +28,15 @@ class DeviceSessionService
         $token = Str::random(80);
 
         return DeviceSession::create([
-            'user_id'        => $user->id,
-            'session_token'  => $token,
-            'device_name'    => "{$browser} on {$os}",
-            'device_type'    => $deviceType,
-            'browser'        => $browser,
-            'os'             => $os,
-            'ip_address'     => $request->ip(),
+            'user_id' => $user->id,
+            'session_token' => $token,
+            'device_name' => "{$browser} on {$os}",
+            'device_type' => $deviceType,
+            'browser' => $browser,
+            'os' => $os,
+            'ip_address' => $request->ip(),
             'last_active_at' => now(),
-            'is_current'     => true,
+            'is_current' => true,
         ]);
     }
 
@@ -67,9 +67,12 @@ class DeviceSessionService
 
         $session = $query->first();
 
-        if (!$session) return false;
+        if (! $session) {
+            return false;
+        }
 
         $session->revoke();
+
         return true;
     }
 
@@ -105,7 +108,7 @@ class DeviceSessionService
     {
         return DeviceSession::where(function ($q) use ($daysOld) {
             $q->whereNotNull('revoked_at')
-              ->orWhere('last_active_at', '<', now()->subDays($daysOld));
+                ->orWhere('last_active_at', '<', now()->subDays($daysOld));
         })->delete();
     }
 
@@ -117,29 +120,29 @@ class DeviceSessionService
     private function parseUserAgent(string $ua): array
     {
         $browser = match (true) {
-            str_contains($ua, 'Edg/')    => 'Edge',
-            str_contains($ua, 'Chrome')  => 'Chrome',
+            str_contains($ua, 'Edg/') => 'Edge',
+            str_contains($ua, 'Chrome') => 'Chrome',
             str_contains($ua, 'Firefox') => 'Firefox',
-            str_contains($ua, 'Safari')  => 'Safari',
-            str_contains($ua, 'Opera')   => 'Opera',
+            str_contains($ua, 'Safari') => 'Safari',
+            str_contains($ua, 'Opera') => 'Opera',
             str_contains($ua, 'MSIE') || str_contains($ua, 'Trident') => 'Internet Explorer',
             default => 'Unknown Browser',
         };
 
         $os = match (true) {
-            str_contains($ua, 'Windows NT 10')  => 'Windows 10',
-            str_contains($ua, 'Windows NT 11')  => 'Windows 11',
-            str_contains($ua, 'Windows')        => 'Windows',
-            str_contains($ua, 'Mac OS X')       => 'macOS',
-            str_contains($ua, 'Linux')           => 'Linux',
-            str_contains($ua, 'Android')         => 'Android',
+            str_contains($ua, 'Windows NT 10') => 'Windows 10',
+            str_contains($ua, 'Windows NT 11') => 'Windows 11',
+            str_contains($ua, 'Windows') => 'Windows',
+            str_contains($ua, 'Mac OS X') => 'macOS',
+            str_contains($ua, 'Linux') => 'Linux',
+            str_contains($ua, 'Android') => 'Android',
             str_contains($ua, 'iPhone') || str_contains($ua, 'iPad') => 'iOS',
             default => 'Unknown OS',
         };
 
         $deviceType = match (true) {
             str_contains($ua, 'Mobile') || str_contains($ua, 'iPhone') => 'mobile',
-            str_contains($ua, 'iPad') || str_contains($ua, 'Tablet')   => 'tablet',
+            str_contains($ua, 'iPad') || str_contains($ua, 'Tablet') => 'tablet',
             default => 'desktop',
         };
 

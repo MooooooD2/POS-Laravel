@@ -36,7 +36,7 @@ class EscposDriver
 
     public function initialize(): self
     {
-        $this->buffer .= self::ESC.'@'; // Initialize printer
+        $this->buffer .= self::ESC . '@'; // Initialize printer
         $this->selectCharacterSet();
 
         return $this;
@@ -50,11 +50,11 @@ class EscposDriver
             'UTF-8' => 0,
             default => 0,
         };
-        $this->buffer .= self::ESC.'t'.chr($table);
+        $this->buffer .= self::ESC . 't' . chr($table);
 
         if ($this->charSet === 'CP720') {
-            $this->buffer .= self::FS.'.';       // Select Arabic mode
-            $this->buffer .= self::FS.'q'.chr(1); // Enable Arabic character shaping
+            $this->buffer .= self::FS . '.';       // Select Arabic mode
+            $this->buffer .= self::FS . 'q' . chr(1); // Enable Arabic character shaping
         }
     }
 
@@ -145,7 +145,7 @@ class EscposDriver
         $leftLen = mb_strlen($left, 'UTF-8');
         $rightLen = mb_strlen($right, 'UTF-8');
         $spaces = max(1, $this->charsPerLine - $leftLen - $rightLen);
-        $this->line($left.str_repeat(' ', $spaces).$right);
+        $this->line($left . str_repeat(' ', $spaces) . $right);
 
         return $this;
     }
@@ -156,8 +156,8 @@ class EscposDriver
         $col2 = 10;
         $col3 = $this->charsPerLine - $col1 - $col2;
         $line = str_pad(mb_substr($left, 0, $col1), $col1)
-              .str_pad(mb_substr($center, 0, $col2), $col2)
-              .str_pad($right, $col3, ' ', STR_PAD_LEFT);
+              . str_pad(mb_substr($center, 0, $col2), $col2)
+              . str_pad($right, $col3, ' ', STR_PAD_LEFT);
         $this->line($line);
 
         return $this;
@@ -168,10 +168,10 @@ class EscposDriver
         $nameWidth = $this->charsPerLine - 20;
         $truncated = mb_substr($name, 0, $nameWidth);
         $padded = str_pad($truncated, $nameWidth);
-        $qtyStr = str_pad('x'.$qty, 5);
+        $qtyStr = str_pad('x' . $qty, 5);
         $priceStr = str_pad($price, 7);
         $totalStr = str_pad($subtotal, 8, ' ', STR_PAD_LEFT);
-        $this->line($padded.$qtyStr.$priceStr.$totalStr);
+        $this->line($padded . $qtyStr . $priceStr . $totalStr);
 
         return $this;
     }
@@ -188,7 +188,7 @@ class EscposDriver
             default => 73,
         };
         // GS k m n d1…dk
-        $this->buffer .= self::GS.'k'.chr($typeCode).chr(strlen($data)).$data;
+        $this->buffer .= self::GS . 'k' . chr($typeCode) . chr(strlen($data)) . $data;
         $this->buffer .= self::LF;
 
         return $this;
@@ -201,18 +201,18 @@ class EscposDriver
             default => 49,
         };
         // Select QR model 2
-        $this->buffer .= self::GS.'(k'.chr(2).chr(0).chr(49).chr(65).chr(50);
+        $this->buffer .= self::GS . '(k' . chr(2) . chr(0) . chr(49) . chr(65) . chr(50);
         // Set size
-        $this->buffer .= self::GS.'(k'.chr(3).chr(0).chr(49).chr(67).chr($size);
+        $this->buffer .= self::GS . '(k' . chr(3) . chr(0) . chr(49) . chr(67) . chr($size);
         // Set error correction
-        $this->buffer .= self::GS.'(k'.chr(3).chr(0).chr(49).chr(69).chr($ecCode);
+        $this->buffer .= self::GS . '(k' . chr(3) . chr(0) . chr(49) . chr(69) . chr($ecCode);
         // Store data
         $len = strlen($data) + 3;
-        $this->buffer .= self::GS.'(k'
-            .chr($len % 256).chr((int) ($len / 256))
-            .chr(49).chr(80).chr(48).$data;
+        $this->buffer .= self::GS . '(k'
+            . chr($len % 256) . chr((int) ($len / 256))
+            . chr(49) . chr(80) . chr(48) . $data;
         // Print
-        $this->buffer .= self::GS.'(k'.chr(3).chr(0).chr(49).chr(81).chr(48);
+        $this->buffer .= self::GS . '(k' . chr(3) . chr(0) . chr(49) . chr(81) . chr(48);
         $this->buffer .= self::LF;
 
         return $this;
@@ -223,7 +223,7 @@ class EscposDriver
     public function cut(bool $partial = false): self
     {
         $mode = $partial ? chr(1) : chr(0);
-        $this->buffer .= self::GS.'V'.$mode;
+        $this->buffer .= self::GS . 'V' . $mode;
 
         return $this;
     }
@@ -231,14 +231,14 @@ class EscposDriver
     public function openCashDrawer(): self
     {
         // ESC p m t1 t2
-        $this->buffer .= self::ESC.'p'.chr(0).chr(50).chr(50);
+        $this->buffer .= self::ESC . 'p' . chr(0) . chr(50) . chr(50);
 
         return $this;
     }
 
     public function feed(int $lines = 3): self
     {
-        $this->buffer .= self::ESC.'d'.chr($lines);
+        $this->buffer .= self::ESC . 'd' . chr($lines);
 
         return $this;
     }
@@ -247,14 +247,14 @@ class EscposDriver
 
     public function setBold(bool $on): self
     {
-        $this->buffer .= self::ESC.'E'.chr($on ? 1 : 0);
+        $this->buffer .= self::ESC . 'E' . chr($on ? 1 : 0);
 
         return $this;
     }
 
     public function setUnderline(int $mode = 1): self
     {
-        $this->buffer .= self::ESC.'-'.chr($mode);
+        $this->buffer .= self::ESC . '-' . chr($mode);
 
         return $this;
     }
@@ -262,7 +262,7 @@ class EscposDriver
     public function setDoubleHeight(bool $on): self
     {
         $n = $on ? chr(0x11) : chr(0x00);
-        $this->buffer .= self::ESC.'!'.$n;
+        $this->buffer .= self::ESC . '!' . $n;
 
         return $this;
     }
@@ -270,7 +270,7 @@ class EscposDriver
     public function setDoubleWidth(bool $on): self
     {
         $n = $on ? chr(0x20) : chr(0x00);
-        $this->buffer .= self::ESC.'!'.$n;
+        $this->buffer .= self::ESC . '!' . $n;
 
         return $this;
     }
@@ -283,7 +283,7 @@ class EscposDriver
             'right' => 2,
             default => 0,
         };
-        $this->buffer .= self::ESC.'a'.chr($n);
+        $this->buffer .= self::ESC . 'a' . chr($n);
 
         return $this;
     }

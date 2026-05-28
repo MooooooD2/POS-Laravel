@@ -3,13 +3,15 @@
 namespace App\Models;
 
 use App\Services\Printing\Connectors\ConnectorFactory;
+use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Printer extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'name', 'branch_id', 'connection_type', 'ip_address',
@@ -91,11 +93,11 @@ class Printer extends Model
         try {
             $connector = ConnectorFactory::make($this);
             $connector->open();
-            $connector->send(chr(0x1B).chr(0x40)); // ESC @ = Initialize
+            $connector->send(chr(0x1B) . chr(0x40)); // ESC @ = Initialize
             $connector->close();
 
             return ['success' => true, 'message' => 'Connection OK'];
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }

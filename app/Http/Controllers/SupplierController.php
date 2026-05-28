@@ -8,11 +8,13 @@ use App\Models\Supplier;
 use App\Services\SupplierService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(private SupplierService $supplierService) {}
 
@@ -57,9 +59,10 @@ class SupplierController extends Controller
     public function destroy(Supplier $supplier)
     {
         $this->authorize('delete', $supplier);
+
         try {
             $this->supplierService->delete($supplier);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
         $this->audit('supplier.deleted', Supplier::class, (int) $supplier->id, ['name' => $supplier->name]);

@@ -7,6 +7,8 @@ use App\Contracts\Repositories\JournalEntryRepositoryInterface;
 use App\Models\FiscalPeriod;
 use App\Models\JournalEntry;
 // JournalEntryLine intentionally removed — was imported but never referenced directly here
+use DomainException;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -23,7 +25,7 @@ class AccountingService
             // Reject writes into a closed fiscal period
             $period = FiscalPeriod::forDate($data['entry_date']);
             if ($period && $period->isClosed()) {
-                throw new \DomainException(__('pos.period_is_closed', ['name' => $period->name]));
+                throw new DomainException(__('pos.period_is_closed', ['name' => $period->name]));
             }
 
             $totalDebit = collect($data['lines'])->sum('debit');
@@ -33,7 +35,7 @@ class AccountingService
             //      which silently accepts imbalances up to 0.004, differing from the Request
             //      validator (> 0.01) and the old controller check (> 0.001).
             if (abs(round($totalDebit, 2) - round($totalCredit, 2)) > 0.01) {
-                throw new \Exception(__('pos.journal_unbalanced'));
+                throw new Exception(__('pos.journal_unbalanced'));
             }
 
             $entry = $this->journalRepo->create([
@@ -81,13 +83,13 @@ class AccountingService
             $locked = JournalEntry::lockForUpdate()->findOrFail($entry->id);
 
             if ($locked->is_posted) {
-                throw new \DomainException(__('pos.journal_entry_already_posted'));
+                throw new DomainException(__('pos.journal_entry_already_posted'));
             }
 
             // Reject if entry_date falls in a closed period
             $period = FiscalPeriod::forDate($locked->entry_date->format('Y-m-d'));
             if ($period?->isClosed()) {
-                throw new \DomainException(__('pos.period_is_closed', ['name' => $period->name]));
+                throw new DomainException(__('pos.period_is_closed', ['name' => $period->name]));
             }
 
             // Bypass the immutability guard — posting IS the one allowed state change
@@ -111,11 +113,11 @@ class AccountingService
     public function reverseEntry(JournalEntry $entry, string $description): JournalEntry
     {
         if (! $entry->is_posted) {
-            throw new \DomainException(__('pos.journal_entry_not_posted'));
+            throw new DomainException(__('pos.journal_entry_not_posted'));
         }
 
         if ($entry->reversals()->exists()) {
-            throw new \DomainException(__('pos.journal_entry_already_reversed'));
+            throw new DomainException(__('pos.journal_entry_already_reversed'));
         }
 
         return DB::transaction(function () use ($entry, $description) {

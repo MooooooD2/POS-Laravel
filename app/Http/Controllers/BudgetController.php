@@ -54,7 +54,7 @@ class BudgetController extends Controller
                 [
                     'amount' => $entry['amount'],
                     'notes' => $entry['notes'] ?? null,
-                ]
+                ],
             );
         }
 
@@ -77,7 +77,7 @@ class BudgetController extends Controller
 
         $data = $this->reportService->budgetVsActual(
             (int) $request->year,
-            $request->month ? (int) $request->month : null
+            $request->month ? (int) $request->month : null,
         );
 
         return $this->success($data);

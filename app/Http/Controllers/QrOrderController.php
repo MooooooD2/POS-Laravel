@@ -12,7 +12,6 @@ use App\Services\KitchenDisplayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class QrOrderController extends Controller
 {
@@ -60,13 +59,13 @@ class QrOrderController extends Controller
         $table = QrTable::where('token', $token)->where('is_active', true)->firstOrFail();
 
         $data = $request->validate([
-            'customer_name'  => 'nullable|string|max:100',
+            'customer_name' => 'nullable|string|max:100',
             'customer_phone' => 'nullable|string|max:30',
-            'notes'          => 'nullable|string|max:500',
-            'items'          => 'required|array|min:1',
+            'notes' => 'nullable|string|max:500',
+            'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',
-            'items.*.quantity'   => 'required|numeric|min:0.5',
-            'items.*.notes'      => 'nullable|string|max:200',
+            'items.*.quantity' => 'required|numeric|min:0.5',
+            'items.*.notes' => 'nullable|string|max:200',
         ]);
 
         $order = DB::transaction(function () use ($data, $table) {
@@ -76,24 +75,24 @@ class QrOrderController extends Controller
             foreach ($data['items'] as $item) {
                 $product = Product::findOrFail($item['product_id']);
                 $subtotal = $product->price * $item['quantity'];
-                $total   += $subtotal;
+                $total += $subtotal;
 
                 $itemsData[] = [
-                    'product_id'   => $product->id,
+                    'product_id' => $product->id,
                     'product_name' => $product->name,
-                    'price'        => $product->price,
-                    'quantity'     => $item['quantity'],
-                    'notes'        => $item['notes'] ?? null,
+                    'price' => $product->price,
+                    'quantity' => $item['quantity'],
+                    'notes' => $item['notes'] ?? null,
                 ];
             }
 
             $order = QrOrder::create([
-                'qr_table_id'    => $table->id,
-                'customer_name'  => $data['customer_name'] ?? null,
+                'qr_table_id' => $table->id,
+                'customer_name' => $data['customer_name'] ?? null,
                 'customer_phone' => $data['customer_phone'] ?? null,
-                'status'         => 'pending',
-                'notes'          => $data['notes'] ?? null,
-                'total'          => $total,
+                'status' => 'pending',
+                'notes' => $data['notes'] ?? null,
+                'total' => $total,
             ]);
 
             foreach ($itemsData as $item) {
@@ -102,22 +101,22 @@ class QrOrderController extends Controller
 
             // Auto-create KDS order
             $kitchenOrder = KitchenOrder::create([
-                'branch_id'    => $table->branch_id,
+                'branch_id' => $table->branch_id,
                 'order_number' => 'QR' . date('md') . str_pad($order->id, 3, '0', STR_PAD_LEFT),
                 'table_number' => $table->table_name,
-                'order_type'   => 'qr',
-                'status'       => 'pending',
-                'notes'        => $data['notes'] ?? null,
+                'order_type' => 'qr',
+                'status' => 'pending',
+                'notes' => $data['notes'] ?? null,
             ]);
 
             foreach ($itemsData as $item) {
                 KitchenOrderItem::create([
                     'kitchen_order_id' => $kitchenOrder->id,
-                    'product_id'       => $item['product_id'],
-                    'product_name'     => $item['product_name'],
-                    'quantity'         => $item['quantity'],
-                    'notes'            => $item['notes'],
-                    'status'           => 'pending',
+                    'product_id' => $item['product_id'],
+                    'product_name' => $item['product_name'],
+                    'quantity' => $item['quantity'],
+                    'notes' => $item['notes'],
+                    'status' => 'pending',
                 ]);
             }
 
@@ -128,9 +127,9 @@ class QrOrderController extends Controller
 
         return response()->json([
             'order_id' => $order->id,
-            'total'    => $order->total,
-            'status'   => $order->status,
-            'message'  => 'Your order has been placed! We\'ll prepare it shortly.',
+            'total' => $order->total,
+            'status' => $order->status,
+            'message' => 'Your order has been placed! We\'ll prepare it shortly.',
         ], 201);
     }
 
@@ -152,17 +151,18 @@ class QrOrderController extends Controller
         }
 
         return response()->json([
-            'id'             => $order->id,
-            'status'         => $order->status,
+            'id' => $order->id,
+            'status' => $order->status,
             'kitchen_status' => $kitchenStatus,
-            'total'          => $order->total,
-            'items'          => $order->items,
+            'total' => $order->total,
+            'items' => $order->items,
         ]);
     }
 
     public function orderStatus(int $id): JsonResponse
     {
         $order = QrOrder::with('items')->findOrFail($id);
+
         return response()->json(['status' => $order->status, 'order' => $order]);
     }
 
@@ -187,20 +187,20 @@ class QrOrderController extends Controller
     {
         $data = $request->validate([
             'table_name' => 'required|string|max:50',
-            'capacity'   => 'nullable|integer|min:1|max:50',
-            'branch_id'  => 'nullable|integer',
+            'capacity' => 'nullable|integer|min:1|max:50',
+            'branch_id' => 'nullable|integer',
         ]);
 
         $table = QrTable::create([
-            'branch_id'  => $data['branch_id'] ?? auth()->user()->branch_id,
+            'branch_id' => $data['branch_id'] ?? auth()->user()->branch_id,
             'table_name' => $data['table_name'],
-            'token'      => QrTable::generateToken(),
-            'capacity'   => $data['capacity'] ?? 4,
-            'is_active'  => true,
+            'token' => QrTable::generateToken(),
+            'capacity' => $data['capacity'] ?? 4,
+            'is_active' => true,
         ]);
 
         return response()->json([
-            'table'   => $table,
+            'table' => $table,
             'menu_url' => $table->menu_url,
             'message' => 'QR table created. Share the link or print the QR code.',
         ], 201);

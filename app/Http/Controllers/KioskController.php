@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Services\InvoiceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 /**
  * Phase 11 — Customer Self-Service Kiosk Controller
@@ -30,12 +31,12 @@ class KioskController extends Controller
             ->select(['id', 'name', 'price', 'image', 'category', 'quantity', 'description', 'barcode'])
             ->get()
             ->map(fn ($p) => [
-                'id'            => $p->id,
-                'name'          => $p->name,
-                'sale_price'    => (float) $p->price,
+                'id' => $p->id,
+                'name' => $p->name,
+                'sale_price' => (float) $p->price,
                 'category_name' => $p->category,
-                'image_url'     => $p->image ? asset('storage/' . $p->image) : null,
-                'in_stock'      => $p->quantity > 0,
+                'image_url' => $p->image ? asset('storage/' . $p->image) : null,
+                'in_stock' => $p->quantity > 0,
             ]);
 
         return response()->json(['success' => true, 'products' => $products]);
@@ -45,28 +46,28 @@ class KioskController extends Controller
     public function checkout(Request $request): JsonResponse
     {
         $request->validate([
-            'items'                 => 'required|array|min:1',
-            'items.*.product_id'    => 'required|exists:products,id',
-            'items.*.quantity'      => 'required|numeric|min:1',
-            'items.*.unit_price'    => 'required|numeric|min:0',
-            'payment_method'        => 'required|in:cash,card',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|numeric|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'payment_method' => 'required|in:cash,card',
         ]);
 
         try {
             $invoice = $this->invoiceService->createInvoice([
-                'items'          => $request->items,
+                'items' => $request->items,
                 'payment_method' => $request->payment_method,
-                'source'         => 'kiosk',
-                'status'         => 'completed',
-                'discount'       => 0,
+                'source' => 'kiosk',
+                'status' => 'completed',
+                'discount' => 0,
             ]);
 
             return response()->json([
-                'success'        => true,
+                'success' => true,
                 'invoice_number' => $invoice->invoice_number,
-                'total'          => $invoice->total,
+                'total' => $invoice->total,
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }

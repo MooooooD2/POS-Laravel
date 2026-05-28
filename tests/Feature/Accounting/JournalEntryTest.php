@@ -35,7 +35,7 @@ class JournalEntryTest extends TestCase
         $this->cashier->assignRole('cashier');
 
         // Account model uses account_code / account_name / account_type (no factory)
-        $this->debitAcc  = Account::create([
+        $this->debitAcc = Account::create([
             'account_code' => 'DEBIT001',
             'account_name' => 'Test Debit Account',
             'account_type' => 'asset',
@@ -117,9 +117,9 @@ class JournalEntryTest extends TestCase
         // storeJournalEntry() → {success: true, entry: {...}}
         $res = $this->actingAs($this->admin)
             ->postJson('/api/journal-entries', [
-                'entry_date'  => now()->toDateString(),
+                'entry_date' => now()->toDateString(),
                 'description' => 'Opening entry',
-                'lines'       => [
+                'lines' => [
                     ['account_id' => $this->debitAcc->id,  'debit' => 1000, 'credit' => 0],
                     ['account_id' => $this->creditAcc->id, 'debit' => 0,    'credit' => 1000],
                 ],
@@ -135,7 +135,7 @@ class JournalEntryTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/journal-entries', [
                 'entry_date' => now()->toDateString(),
-                'lines'      => [
+                'lines' => [
                     ['account_id' => $this->debitAcc->id,  'debit' => 500, 'credit' => 0],
                     ['account_id' => $this->creditAcc->id, 'debit' => 0,   'credit' => 300],
                 ],
@@ -148,7 +148,7 @@ class JournalEntryTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/journal-entries', [
                 'entry_date' => now()->addDays(5)->toDateString(),
-                'lines'      => [
+                'lines' => [
                     ['account_id' => $this->debitAcc->id,  'debit' => 100, 'credit' => 0],
                     ['account_id' => $this->creditAcc->id, 'debit' => 0,   'credit' => 100],
                 ],
@@ -162,7 +162,7 @@ class JournalEntryTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/journal-entries', [
                 'entry_date' => now()->toDateString(),
-                'lines'      => [
+                'lines' => [
                     ['account_id' => $this->debitAcc->id, 'debit' => 100, 'credit' => 0],
                 ],
             ])->assertStatus(422);
@@ -174,7 +174,7 @@ class JournalEntryTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson('/api/journal-entries', [
                 'entry_date' => now()->toDateString(),
-                'lines'      => [
+                'lines' => [
                     ['account_id' => $this->debitAcc->id,  'debit' => 100, 'credit' => 0],
                     ['account_id' => $this->creditAcc->id, 'debit' => 0,   'credit' => 100],
                 ],
@@ -189,9 +189,9 @@ class JournalEntryTest extends TestCase
         // description is required by AccountingService (not nullable in practice)
         $res = $this->actingAs($this->admin)
             ->postJson('/api/journal-entries', [
-                'entry_date'  => now()->toDateString(),
+                'entry_date' => now()->toDateString(),
                 'description' => 'Post test entry',
-                'lines'       => [
+                'lines' => [
                     ['account_id' => $this->debitAcc->id,  'debit' => 200, 'credit' => 0],
                     ['account_id' => $this->creditAcc->id, 'debit' => 0,   'credit' => 200],
                 ],
@@ -211,9 +211,9 @@ class JournalEntryTest extends TestCase
         // Create — description required by AccountingService
         $res = $this->actingAs($this->admin)
             ->postJson('/api/journal-entries', [
-                'entry_date'  => now()->toDateString(),
+                'entry_date' => now()->toDateString(),
                 'description' => 'Reverse test entry',
-                'lines'       => [
+                'lines' => [
                     ['account_id' => $this->debitAcc->id,  'debit' => 300, 'credit' => 0],
                     ['account_id' => $this->creditAcc->id, 'debit' => 0,   'credit' => 300],
                 ],

@@ -12,14 +12,17 @@ use App\Services\Printing\ThermalPrinterService;
 use App\Services\SettingService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class InvoiceController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(
         private InvoiceService $invoiceService,
@@ -50,7 +53,7 @@ class InvoiceController extends Controller
         $request->validate(['query' => 'required|string|min:1|max:100', 'exact' => 'nullable|boolean']);
         $result = $this->invoiceService->searchProduct(
             $request->string('query')->toString(),
-            $request->boolean('exact')
+            $request->boolean('exact'),
         );
 
         if ($result === null) {
@@ -82,7 +85,7 @@ class InvoiceController extends Controller
             if ($this->settingService->get('print_on_sale', false)) {
                 try {
                     $printResult = $this->printerService->printInvoice($invoice);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     Log::warning('Auto-print failed for invoice', [
                         'invoice_id' => $invoice->id,
                         'error' => $e->getMessage(),
@@ -102,7 +105,7 @@ class InvoiceController extends Controller
             ]);
 
             return $this->error(__('pos.invoice_creation_failed'), 500);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
     }
@@ -130,12 +133,13 @@ class InvoiceController extends Controller
     public function cancel(Invoice $invoice)
     {
         $this->authorize('cancel', $invoice);
+
         try {
             $cancelled = $this->invoiceService->cancelInvoice($invoice);
             $this->audit('invoice.cancelled', Invoice::class, $invoice->id, ['total' => $invoice->final_total]);
 
             return $this->success(['invoice' => new InvoiceResource($cancelled)]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
     }
@@ -154,8 +158,18 @@ class InvoiceController extends Controller
         ]);
 
         $query = Invoice::query()
-            ->select('id', 'invoice_number', 'final_total', 'tax_amount', 'status',
-                'eta_status', 'eta_uuid', 'eta_submitted_at', 'date', 'cashier_name')
+            ->select(
+                'id',
+                'invoice_number',
+                'final_total',
+                'tax_amount',
+                'status',
+                'eta_status',
+                'eta_uuid',
+                'eta_submitted_at',
+                'date',
+                'cashier_name',
+            )
             ->orderByDesc('date');
 
         if ($request->filled('status')) {

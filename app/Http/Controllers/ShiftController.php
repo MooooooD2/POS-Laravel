@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Services\ShiftService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 /**
  * Phase 2 — Shift & Employee Management Controller
@@ -28,7 +29,7 @@ class ShiftController extends Controller
     /** My shift page (employee) */
     public function myShift()
     {
-        $shift   = $this->service->activeShift(auth()->user());
+        $shift = $this->service->activeShift(auth()->user());
         $history = $this->service->history(auth()->user(), 14);
 
         return view('shifts.my-shift', compact('shift', 'history'));
@@ -38,7 +39,7 @@ class ShiftController extends Controller
     public function clockIn(Request $request): JsonResponse
     {
         $request->validate([
-            'branch_id'         => 'nullable|exists:branches,id',
+            'branch_id' => 'nullable|exists:branches,id',
             'shift_template_id' => 'nullable|exists:shift_templates,id',
         ]);
 
@@ -46,7 +47,7 @@ class ShiftController extends Controller
             $shift = $this->service->clockIn(auth()->user(), $request->all());
 
             return response()->json(['success' => true, 'shift' => $shift]);
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }
@@ -57,14 +58,14 @@ class ShiftController extends Controller
         $request->validate([
             'cash_collected' => 'nullable|numeric|min:0',
             'card_collected' => 'nullable|numeric|min:0',
-            'cashier_note'   => 'nullable|string|max:1000',
+            'cashier_note' => 'nullable|string|max:1000',
         ]);
 
         try {
             $shift = $this->service->clockOut(auth()->user(), $request->all());
 
             return response()->json(['success' => true, 'shift' => $shift->load('summary')]);
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }

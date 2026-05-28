@@ -7,6 +7,7 @@ use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use App\Models\WarehouseTransfer;
 use App\Models\WarehouseTransferItem;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -55,10 +56,10 @@ class WarehouseService
     public function delete(Warehouse $warehouse): void
     {
         if ($warehouse->is_default) {
-            throw new \Exception(__('pos.cannot_delete_default_warehouse'));
+            throw new Exception(__('pos.cannot_delete_default_warehouse'));
         }
         if ($warehouse->stock()->where('quantity', '>', 0)->exists()) {
-            throw new \Exception(__('pos.warehouse_has_stock'));
+            throw new Exception(__('pos.warehouse_has_stock'));
         }
         $warehouse->delete();
     }
@@ -82,7 +83,7 @@ class WarehouseService
     {
         return WarehouseStock::firstOrCreate(
             ['warehouse_id' => $warehouseId, 'product_id' => $productId],
-            ['quantity' => 0, 'reserved_qty' => 0, 'min_stock' => 0]
+            ['quantity' => 0, 'reserved_qty' => 0, 'min_stock' => 0],
         );
     }
 
@@ -109,7 +110,8 @@ class WarehouseService
 
                 if (! $stock || $stock->quantity < $item['quantity']) {
                     $product = Product::find($item['product_id']);
-                    throw new \Exception(__('pos.insufficient_stock', ['name' => $product?->name ?? "#{$item['product_id']}"]));
+
+                    throw new Exception(__('pos.insufficient_stock', ['name' => $product?->name ?? "#{$item['product_id']}"]));
                 }
 
                 // Reserve stock
@@ -136,7 +138,7 @@ class WarehouseService
     public function receiveTransfer(WarehouseTransfer $transfer): WarehouseTransfer
     {
         if ($transfer->status !== 'in_transit') {
-            throw new \Exception(__('pos.transfer_not_in_transit'));
+            throw new Exception(__('pos.transfer_not_in_transit'));
         }
 
         return DB::transaction(function () use ($transfer) {
@@ -158,9 +160,12 @@ class WarehouseService
                 $product = Product::find($item->product_id);
                 if ($product) {
                     $this->stockService->logTransferMovement(
-                        $product, $item->quantity,
-                        $transfer->from_warehouse_id, $transfer->to_warehouse_id,
-                        $transfer->id, $item->batch_id
+                        $product,
+                        $item->quantity,
+                        $transfer->from_warehouse_id,
+                        $transfer->to_warehouse_id,
+                        $transfer->id,
+                        $item->batch_id,
                     );
                 }
             }
@@ -183,7 +188,7 @@ class WarehouseService
     public function cancelTransfer(WarehouseTransfer $transfer): void
     {
         if (! \in_array($transfer->status, ['pending', 'in_transit'], true)) {
-            throw new \Exception(__('pos.transfer_cannot_be_cancelled'));
+            throw new Exception(__('pos.transfer_cannot_be_cancelled'));
         }
 
         DB::transaction(function () use ($transfer) {

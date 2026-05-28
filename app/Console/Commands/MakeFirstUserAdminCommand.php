@@ -42,7 +42,7 @@ class MakeFirstUserAdminCommand extends Command
             }
 
             $adminRole = Role::firstOrCreate(
-                ['name' => 'admin', 'guard_name' => 'web']
+                ['name' => 'admin', 'guard_name' => 'web'],
             );
 
             $allPerms = Permission::all();

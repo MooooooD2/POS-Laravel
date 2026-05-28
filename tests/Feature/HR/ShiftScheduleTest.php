@@ -29,7 +29,7 @@ class ShiftScheduleTest extends TestCase
 
         foreach (['manage_hr', 'view_hr', 'view_shifts', 'manage_shifts'] as $perm) {
             $p = \Spatie\Permission\Models\Permission::firstOrCreate(
-                ['name' => $perm, 'guard_name' => 'web']
+                ['name' => $perm, 'guard_name' => 'web'],
             );
             $this->hrManager->givePermissionTo($p);
         }
@@ -70,13 +70,13 @@ class ShiftScheduleTest extends TestCase
     /** @test */
     public function schedule_returns_assigned_shifts_for_week(): void
     {
-        $employee  = User::factory()->create(['is_active' => true]);
+        $employee = User::factory()->create(['is_active' => true]);
         $weekStart = now()->startOfWeek(\Carbon\Carbon::SATURDAY)->toDateString();
 
         DB::table('employee_shifts')->insert([
-            'user_id'    => $employee->id,
+            'user_id' => $employee->id,
             'shift_date' => $weekStart,
-            'status'     => 'scheduled',
+            'status' => 'scheduled',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -95,20 +95,20 @@ class ShiftScheduleTest extends TestCase
     public function can_assign_shift_to_employee(): void
     {
         $employee = User::factory()->create(['is_active' => true]);
-        $date     = now()->addDay()->toDateString();
+        $date = now()->addDay()->toDateString();
 
         $response = $this->actingAs($this->hrManager)
             ->postJson('/api/hr/shifts/schedule', [
-                'user_id'    => $employee->id,
+                'user_id' => $employee->id,
                 'shift_date' => $date,
             ]);
 
         $response->assertOk()->assertJson(['success' => true]);
 
         $this->assertDatabaseHas('employee_shifts', [
-            'user_id'    => $employee->id,
+            'user_id' => $employee->id,
             'shift_date' => $date,
-            'status'     => 'scheduled',
+            'status' => 'scheduled',
         ]);
     }
 
@@ -116,19 +116,19 @@ class ShiftScheduleTest extends TestCase
     public function cannot_assign_duplicate_shift_same_day(): void
     {
         $employee = User::factory()->create(['is_active' => true]);
-        $date     = now()->addDay()->toDateString();
+        $date = now()->addDay()->toDateString();
 
         DB::table('employee_shifts')->insert([
-            'user_id'    => $employee->id,
+            'user_id' => $employee->id,
             'shift_date' => $date,
-            'status'     => 'scheduled',
+            'status' => 'scheduled',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         $response = $this->actingAs($this->hrManager)
             ->postJson('/api/hr/shifts/schedule', [
-                'user_id'    => $employee->id,
+                'user_id' => $employee->id,
                 'shift_date' => $date,
             ]);
 
@@ -162,7 +162,7 @@ class ShiftScheduleTest extends TestCase
         $response->assertOk();
         $names = collect($response->json('templates'))->pluck('name');
 
-        $this->assertContains('Morning',  $names->toArray());
+        $this->assertContains('Morning', $names->toArray());
         $this->assertNotContains('Archived', $names->toArray());
     }
 
@@ -189,7 +189,7 @@ class ShiftScheduleTest extends TestCase
         $response->assertOk();
         $userIds = collect($response->json('shifts'))->pluck('user_id');
 
-        $this->assertContains($empA->id,    $userIds->toArray());
+        $this->assertContains($empA->id, $userIds->toArray());
         $this->assertNotContains($empB->id, $userIds->toArray());
     }
 }

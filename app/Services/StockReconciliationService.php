@@ -40,7 +40,7 @@ class StockReconciliationService
                     $this->stockService->adjustStock(
                         $product,
                         $physical,
-                        $item['reason'] ?? 'جرد دوري — تعديل تلقائي'
+                        $item['reason'] ?? 'جرد دوري — تعديل تلقائي',
                     );
                     $reconciled[] = $product->id;
                 }

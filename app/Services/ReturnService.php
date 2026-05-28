@@ -10,6 +10,7 @@ use App\Models\InvoicePayment;
 use App\Models\ProductBatch;
 use App\Models\ReturnItem;
 use App\Models\SalesReturn;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +29,7 @@ class ReturnService
             $invoice = Invoice::with('items')->lockForUpdate()->findOrFail($data['invoice_id']);
 
             if ($invoice->status !== 'completed') {
-                throw new \Exception(__('pos.invoice_not_completed'));
+                throw new Exception(__('pos.invoice_not_completed'));
             }
 
             $returnableQtys = $this->getReturnableQuantities($invoice);
@@ -36,7 +37,7 @@ class ReturnService
             foreach ($data['items'] as $item) {
                 $max = $returnableQtys[$item['product_id']] ?? 0;
                 if ($item['quantity'] <= 0 || $item['quantity'] > $max) {
-                    throw new \Exception(__('pos.return_quantity_exceeded', [
+                    throw new Exception(__('pos.return_quantity_exceeded', [
                         'name' => $item['product_id'],
                         'max' => $max,
                     ]));
@@ -63,7 +64,7 @@ class ReturnService
             $refundAmount = round($totalAmount * $discountRatio, 2);
 
             if (! \in_array($refundMethod, ['cash', 'store_credit', 'exchange'], true)) {
-                throw new \Exception(__('pos.invalid_refund_method'));
+                throw new Exception(__('pos.invalid_refund_method'));
             }
 
             if ($refundMethod === 'exchange') {
@@ -145,7 +146,7 @@ class ReturnService
                         'return',
                         $restoreCost,
                         $invoice->warehouse_id,
-                        $batchId
+                        $batchId,
                     );
                 }
             }
@@ -235,7 +236,7 @@ class ReturnService
     {
         $already = ReturnItem::whereHas(
             'salesReturn',
-            fn ($q) => $q->where('invoice_id', $invoice->id)->where('status', 'completed')
+            fn ($q) => $q->where('invoice_id', $invoice->id)->where('status', 'completed'),
         )->selectRaw('product_id, SUM(quantity) as total_returned')
             ->groupBy('product_id')
             ->pluck('total_returned', 'product_id');

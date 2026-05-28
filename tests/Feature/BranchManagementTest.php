@@ -44,9 +44,9 @@ class BranchManagementTest extends TestCase
     private function makeBranch(string $code = 'BR01', array $extra = []): Branch
     {
         return Branch::create(array_merge([
-            'name'       => "Branch {$code}",
-            'code'       => $code,
-            'is_active'  => true,
+            'name' => "Branch {$code}",
+            'code' => $code,
+            'is_active' => true,
             'is_default' => false,
         ], $extra));
     }
@@ -85,10 +85,10 @@ class BranchManagementTest extends TestCase
     {
         $res = $this->actingAs($this->admin)
             ->postJson('/api/branches', [
-                'name'    => 'Downtown Branch',
-                'code'    => 'DT01',
+                'name' => 'Downtown Branch',
+                'code' => 'DT01',
                 'address' => '123 Main St',
-                'phone'   => '0101234567',
+                'phone' => '0101234567',
             ]);
 
         $res->assertStatus(201)

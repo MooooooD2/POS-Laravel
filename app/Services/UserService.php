@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\Repositories\UserRepositoryInterface;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use Exception;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -47,10 +48,10 @@ class UserService
     public function delete(User $user): void
     {
         if ((int) $user->id === (int) Auth::id()) {
-            throw new \Exception(__('pos.cannot_delete_self'));
+            throw new Exception(__('pos.cannot_delete_self'));
         }
         if ($user->hasRole('admin')) {
-            throw new \Exception(__('pos.cannot_delete_admin'));
+            throw new Exception(__('pos.cannot_delete_admin'));
         }
         $this->userRepo->delete($user);
     }
@@ -58,7 +59,7 @@ class UserService
     public function toggleActive(User $user): User
     {
         if ($user->hasRole('admin')) {
-            throw new \Exception(__('pos.cannot_deactivate_admin'));
+            throw new Exception(__('pos.cannot_deactivate_admin'));
         }
 
         return $this->userRepo->toggleActive($user);

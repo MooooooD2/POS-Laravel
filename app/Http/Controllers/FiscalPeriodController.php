@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FiscalPeriod;
 use App\Services\PeriodClosingService;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -39,7 +40,7 @@ class FiscalPeriodController extends Controller
             $period = $this->closingService->openPeriod($data);
 
             return response()->json($period, 201);
-        } catch (\DomainException $e) {
+        } catch (DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
     }
@@ -68,7 +69,7 @@ class FiscalPeriodController extends Controller
             $period = $this->closingService->closePeriod($fiscalPeriod, $data['retained_earnings_account_id']);
 
             return response()->json($period->load('closingEntry'));
-        } catch (\DomainException $e) {
+        } catch (DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
     }

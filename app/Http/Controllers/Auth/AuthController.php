@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Stancl\Tenancy\Facades\Tenancy;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -34,7 +35,7 @@ class AuthController extends Controller
         ]);
 
         // Per-account lockout: keyed by tenant+username so it survives across IPs
-        $lockKey = 'login:'.strtolower($credentials['tenant_code']).':'.strtolower($credentials['username']);
+        $lockKey = 'login:' . strtolower($credentials['tenant_code']) . ':' . strtolower($credentials['username']);
         $maxAttempts = (int) config('security.login.max_attempts', 5);
         $decaySecs = (int) config('security.login.lockout_seconds', 900); // 15 minutes
 
@@ -79,7 +80,8 @@ class AuthController extends Controller
             // Phase 6: Track device session
             try {
                 app(DeviceSessionService::class)->register($user, $request);
-            } catch (\Throwable) {}
+            } catch (Throwable) {
+            }
 
             return response()->json(['success' => true, 'redirect' => route('dashboard')]);
         }
@@ -144,7 +146,7 @@ class AuthController extends Controller
                 'user_agent' => $this->sanitizeUa($request->userAgent()),
                 'created_at' => now(),
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('auth.audit_db_failed', ['action' => 'auth.logout', 'error' => $e->getMessage()]);
         }
 
@@ -183,7 +185,7 @@ class AuthController extends Controller
         // surfaced to the application log so they are not silently lost.
         try {
             Log::channel('audit')->info($action, $context);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('auth.audit_channel_failed', ['action' => $action, 'error' => $e->getMessage()]);
         }
 
@@ -199,7 +201,7 @@ class AuthController extends Controller
                 'changes' => $extra ?: null,
                 'created_at' => now(),
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('auth.audit_db_failed', ['action' => $action, 'error' => $e->getMessage()]);
         }
     }

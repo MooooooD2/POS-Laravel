@@ -6,12 +6,14 @@ use App\Models\User;
 use App\Services\RoleService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 
 class RolePermissionController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(private RoleService $roleService) {}
 
@@ -41,9 +43,10 @@ class RolePermissionController extends Controller
     {
         $request->validate(['name' => "required|string|max:100|unique:roles,name,{$role->id}"]);
         $oldName = $role->name;
+
         try {
             $updated = $this->roleService->update($role, $request->only('name'));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 403);
         }
         $this->audit('role.updated', Role::class, (int) $role->id, [
@@ -57,9 +60,10 @@ class RolePermissionController extends Controller
     public function destroyRole(Role $role)
     {
         $roleName = $role->name;
+
         try {
             $this->roleService->delete($role);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $code = str_contains($e->getMessage(), 'protected') ? 403 : 422;
 
             return $this->error($e->getMessage(), $code);
@@ -82,7 +86,7 @@ class RolePermissionController extends Controller
 
         try {
             $this->roleService->syncPermissions($role, $after);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 403);
         }
 

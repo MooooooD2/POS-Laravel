@@ -9,8 +9,8 @@ class PromotionService
     /**
      * Find all valid promotions applicable to the given cart.
      *
-     * @param  array  $items  [['product_id', 'quantity', 'subtotal', 'product' => Product], ...]
-     * @param  float  $orderTotal  cart total before promotion
+     * @param array $items [['product_id', 'quantity', 'subtotal', 'product' => Product], ...]
+     * @param float $orderTotal cart total before promotion
      * @return array ['discount' => float, 'applied' => [['name', 'discount'], ...], 'free_items' => [...]]
      */
     public function apply(array $items, float $orderTotal): array

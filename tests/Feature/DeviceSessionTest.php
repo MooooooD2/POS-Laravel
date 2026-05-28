@@ -45,11 +45,11 @@ class DeviceSessionTest extends TestCase
     private function createSession(User $user): DeviceSession
     {
         return DeviceSession::create([
-            'user_id'        => $user->id,
-            'session_token'  => Str::random(40),
-            'device_name'    => 'Test Device',
-            'device_type'    => 'desktop',
-            'ip_address'     => '127.0.0.1',
+            'user_id' => $user->id,
+            'session_token' => Str::random(40),
+            'device_name' => 'Test Device',
+            'device_type' => 'desktop',
+            'ip_address' => '127.0.0.1',
             'last_active_at' => now(),
         ]);
     }
@@ -103,7 +103,7 @@ class DeviceSessionTest extends TestCase
     #[Test]
     public function user_cannot_revoke_another_users_session(): void
     {
-        $other   = User::factory()->create(['is_active' => true]);
+        $other = User::factory()->create(['is_active' => true]);
         $other->assignRole('cashier');
         $session = $this->createSession($other);
 

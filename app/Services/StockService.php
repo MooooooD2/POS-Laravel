@@ -9,9 +9,11 @@ use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
+use InvalidArgumentException;
 
 class StockService
 {
@@ -31,11 +33,11 @@ class StockService
         string $referenceType = 'manual',
         ?float $unitCost = null,
         ?int $warehouseId = null,
-        ?int $batchId = null
+        ?int $batchId = null,
     ): void {
         // FIX: validate quantity
         if ($quantity <= 0) {
-            throw new \InvalidArgumentException("addStock: quantity must be > 0 (got {$quantity})");
+            throw new InvalidArgumentException("addStock: quantity must be > 0 (got {$quantity})");
         }
 
         DB::transaction(function () use ($product, $quantity, $reason, $referenceId, $referenceType, $unitCost, $warehouseId, $batchId) {
@@ -79,15 +81,15 @@ class StockService
         ?int $referenceId = null,
         string $referenceType = 'manual',
         ?int $warehouseId = null,
-        ?int $batchId = null
+        ?int $batchId = null,
     ): float {
         // FIX: validate quantity
         if ($quantity <= 0) {
-            throw new \InvalidArgumentException("deductLockedStock: quantity must be > 0 (got {$quantity})");
+            throw new InvalidArgumentException("deductLockedStock: quantity must be > 0 (got {$quantity})");
         }
 
         if ($lockedProduct->quantity < $quantity) {
-            throw new \Exception(__('pos.insufficient_stock', ['name' => $lockedProduct->name]));
+            throw new Exception(__('pos.insufficient_stock', ['name' => $lockedProduct->name]));
         }
 
         // Deduct from FIFO/LIFO cost layers and get the actual unit COGS
@@ -119,11 +121,11 @@ class StockService
         ?int $referenceId = null,
         string $referenceType = 'manual',
         ?int $warehouseId = null,
-        ?int $batchId = null
+        ?int $batchId = null,
     ): void {
         // FIX: validate quantity
         if ($quantity <= 0) {
-            throw new \InvalidArgumentException("deductStock: quantity must be > 0 (got {$quantity})");
+            throw new InvalidArgumentException("deductStock: quantity must be > 0 (got {$quantity})");
         }
 
         DB::transaction(function () use ($product, $quantity, $type, $reason, $referenceId, $referenceType, $warehouseId, $batchId) {
@@ -131,7 +133,7 @@ class StockService
             $fresh = $this->productRepo->lockForUpdate([$product->id])->firstOrFail();
 
             if ($fresh->quantity < $quantity) {
-                throw new \Exception(__('pos.insufficient_stock', ['name' => $fresh->name]));
+                throw new Exception(__('pos.insufficient_stock', ['name' => $fresh->name]));
             }
 
             // FIX: consume cost layers (was missing entirely — caused FIFO/LIFO valuation drift)
@@ -165,11 +167,11 @@ class StockService
         string $reason,
         ?int $referenceId = null,
         string $referenceType = 'manual',
-        ?int $warehouseId = null
+        ?int $warehouseId = null,
     ): array {
         // FIX: validate quantity
         if ($quantity <= 0) {
-            throw new \InvalidArgumentException("deductBatchStock: quantity must be > 0 (got {$quantity})");
+            throw new InvalidArgumentException("deductBatchStock: quantity must be > 0 (got {$quantity})");
         }
 
         $allocations = [];
@@ -179,7 +181,7 @@ class StockService
             $fresh = $this->productRepo->lockForUpdate([$product->id])->firstOrFail();
 
             if ($fresh->quantity < $quantity) {
-                throw new \Exception(__('pos.insufficient_stock', ['name' => $fresh->name]));
+                throw new Exception(__('pos.insufficient_stock', ['name' => $fresh->name]));
             }
 
             // FIX: deduct cost layers for the full quantity before batch-level allocation.
@@ -227,7 +229,7 @@ class StockService
             }
 
             if ($remaining > 0) {
-                throw new \Exception(__('pos.insufficient_batch_stock', ['name' => $fresh->name]));
+                throw new Exception(__('pos.insufficient_batch_stock', ['name' => $fresh->name]));
             }
 
             // FIX: dispatch stock alert when FEFO deduction crosses min_stock threshold
@@ -277,7 +279,7 @@ class StockService
         int $fromWarehouseId,
         int $toWarehouseId,
         int $transferId,
-        ?int $batchId = null
+        ?int $batchId = null,
     ): void {
         // balance_after = total product quantity (transfers don't change total, only split)
         $balance = $product->quantity;
@@ -330,7 +332,7 @@ class StockService
 
         WarehouseStock::updateOrCreate(
             ['warehouse_id' => $wid, 'product_id' => $productId],
-            ['quantity' => 0, 'reserved_qty' => 0, 'min_stock' => 0]
+            ['quantity' => 0, 'reserved_qty' => 0, 'min_stock' => 0],
         );
 
         if ($delta > 0) {
@@ -354,7 +356,7 @@ class StockService
         ?int $warehouseId = null,
         ?int $batchId = null,
         // FIX: explicit balance_after prevents stale PHP-object reads after increment/decrement
-        ?int $balanceAfter = null
+        ?int $balanceAfter = null,
     ): void {
         $this->movementRepo->create([
             'product_id' => $product->id,

@@ -21,9 +21,9 @@ class WhiteLabel extends Model
     ];
 
     protected $casts = [
-        'hide_powered_by'   => 'boolean',
-        'domain_verified'   => 'boolean',
-        'domain_verified_at'=> 'datetime',
+        'hide_powered_by' => 'boolean',
+        'domain_verified' => 'boolean',
+        'domain_verified_at' => 'datetime',
     ];
 
     // ── Computed URLs ─────────────────────────────────────────────────────────

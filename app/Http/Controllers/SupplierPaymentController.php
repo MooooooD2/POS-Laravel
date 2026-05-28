@@ -11,7 +11,8 @@ use Illuminate\Http\Request;
 
 class SupplierPaymentController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(private SupplierPaymentService $paymentService) {}
 

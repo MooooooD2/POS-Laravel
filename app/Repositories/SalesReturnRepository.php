@@ -29,7 +29,7 @@ class SalesReturnRepository extends BaseRepository implements SalesReturnReposit
     {
         return ReturnItem::whereHas(
             'salesReturn',
-            fn ($q) => $q->where('invoice_id', $invoiceId)->where('status', 'completed')
+            fn ($q) => $q->where('invoice_id', $invoiceId)->where('status', 'completed'),
         )->selectRaw('product_id, SUM(quantity) as total_returned')
             ->groupBy('product_id')
             ->get();

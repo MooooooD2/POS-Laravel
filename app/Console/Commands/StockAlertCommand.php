@@ -61,7 +61,7 @@ class StockAlertCommand extends Command
         $this->info(sprintf(
             'Stock levels: %d low, %d out-of-stock.',
             $lowStock->count(),
-            $outOfStock->count()
+            $outOfStock->count(),
         ));
     }
 
@@ -108,7 +108,7 @@ class StockAlertCommand extends Command
             }
             $this->warn(sprintf(
                 '%d expired batch(es) still holding stock — run with --write-off-expired to clear them.',
-                $expired->count()
+                $expired->count(),
             ));
         }
     }
@@ -157,7 +157,7 @@ class StockAlertCommand extends Command
                 $r['batch_number'],
                 $r['product_name'],
                 $r['quantity'],
-                $r['expiry_date']
+                $r['expiry_date'],
             ));
         }
     }

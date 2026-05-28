@@ -5,6 +5,7 @@ namespace Tests\Unit\Services;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\StockService;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -54,7 +55,7 @@ class StockServiceTest extends TestCase
     {
         $product = Product::factory()->create(['quantity' => 3]);
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         $this->service->deductStock($product, 10, 'sale', 'Should fail');
     }
@@ -65,7 +66,7 @@ class StockServiceTest extends TestCase
 
         try {
             $this->service->deductStock($product, 6, 'sale', 'Exceeds stock');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // expected
         }
 

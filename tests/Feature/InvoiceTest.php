@@ -91,7 +91,7 @@ class InvoiceTest extends TestCase
     /** @test */
     public function disabled_user_cannot_login()
     {
-        $user = User::factory()->create(['is_active' => false, 'username' => 'dis_'.uniqid(), 'password' => bcrypt('Secret123')]);
+        $user = User::factory()->create(['is_active' => false, 'username' => 'dis_' . uniqid(), 'password' => bcrypt('Secret123')]);
 
         $response = $this->postJson('/login', [
             'tenant_code' => 'test',

@@ -10,6 +10,7 @@ use App\Models\ShiftSummary;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Phase 2 — Shift & Employee Management Service
@@ -29,37 +30,37 @@ class ShiftService
             ->first();
 
         if ($active) {
-            throw new \RuntimeException("User already has an active shift (#{$active->id}).");
+            throw new RuntimeException("User already has an active shift (#{$active->id}).");
         }
 
         $branchId = $data['branch_id'] ?? $user->branch_id ?? null;
 
         $shift = EmployeeShift::create([
-            'user_id'           => $user->id,
-            'branch_id'         => $branchId,
+            'user_id' => $user->id,
+            'branch_id' => $branchId,
             'shift_template_id' => $data['shift_template_id'] ?? null,
-            'shift_date'        => today(),
-            'clock_in_at'       => now(),
-            'status'            => 'active',
-            'opened_by'         => auth()->id(),
-            'meta'              => $data['meta'] ?? null,
+            'shift_date' => today(),
+            'clock_in_at' => now(),
+            'status' => 'active',
+            'opened_by' => auth()->id(),
+            'meta' => $data['meta'] ?? null,
         ]);
 
         // ── Mirror to attendance_records (live, incomplete until clock-out) ──
         DB::table('attendance_records')->updateOrInsert(
             ['user_id' => $user->id, 'work_date' => today()->toDateString()],
             [
-                'branch_id'       => $branchId,
-                'check_in'        => now(),
-                'check_out'       => null,
-                'hours_worked'    => null,
-                'overtime_hours'  => 0,
-                'late_minutes'    => 0,
-                'status'          => 'present',
+                'branch_id' => $branchId,
+                'check_in' => now(),
+                'check_out' => null,
+                'hours_worked' => null,
+                'overtime_hours' => 0,
+                'late_minutes' => 0,
+                'status' => 'present',
                 'check_in_method' => 'shift',
-                'updated_at'      => now(),
-                'created_at'      => now(),
-            ]
+                'updated_at' => now(),
+                'created_at' => now(),
+            ],
         );
 
         return $shift;
@@ -86,37 +87,37 @@ class ShiftService
             $sales = $this->aggregateShiftSales($shift);
             ShiftSummary::create([
                 'employee_shift_id' => $shift->id,
-                'total_sales'       => $sales['total'],
-                'invoice_count'     => $sales['count'],
-                'cash_collected'    => $data['cash_collected'] ?? 0,
-                'card_collected'    => $data['card_collected'] ?? 0,
-                'expected_cash'     => $sales['cash_expected'],
-                'cash_difference'   => ($data['cash_collected'] ?? 0) - $sales['cash_expected'],
-                'cashier_note'      => $data['cashier_note'] ?? null,
+                'total_sales' => $sales['total'],
+                'invoice_count' => $sales['count'],
+                'cash_collected' => $data['cash_collected'] ?? 0,
+                'card_collected' => $data['card_collected'] ?? 0,
+                'expected_cash' => $sales['cash_expected'],
+                'cash_difference' => ($data['cash_collected'] ?? 0) - $sales['cash_expected'],
+                'cashier_note' => $data['cashier_note'] ?? null,
             ]);
 
             // ── Mirror final data to attendance_records ──────────────────────
-            $fresh       = $shift->fresh();
+            $fresh = $shift->fresh();
             $hoursWorked = (float) ($fresh->hours_worked ?? 0);
-            $attStatus   = $hoursWorked >= 4 ? 'present' : 'half_day';
+            $attStatus = $hoursWorked >= 4 ? 'present' : 'half_day';
 
             DB::table('attendance_records')->updateOrInsert(
                 [
-                    'user_id'   => $shift->user_id,
+                    'user_id' => $shift->user_id,
                     'work_date' => $fresh->shift_date->toDateString(),
                 ],
                 [
-                    'branch_id'       => $shift->branch_id,
-                    'check_in'        => $fresh->clock_in_at,
-                    'check_out'       => $fresh->clock_out_at,
-                    'hours_worked'    => $hoursWorked,
-                    'overtime_hours'  => (float) ($fresh->overtime_hours ?? 0),
-                    'late_minutes'    => 0,
-                    'status'          => $attStatus,
+                    'branch_id' => $shift->branch_id,
+                    'check_in' => $fresh->clock_in_at,
+                    'check_out' => $fresh->clock_out_at,
+                    'hours_worked' => $hoursWorked,
+                    'overtime_hours' => (float) ($fresh->overtime_hours ?? 0),
+                    'late_minutes' => 0,
+                    'status' => $attStatus,
                     'check_in_method' => 'shift',
-                    'updated_at'      => now(),
-                    'created_at'      => now(),
-                ]
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ],
             );
         });
 
@@ -134,8 +135,8 @@ class ShiftService
 
         return ShiftBreak::create([
             'employee_shift_id' => $shift->id,
-            'started_at'        => now(),
-            'type'              => $type,
+            'started_at' => now(),
+            'type' => $type,
         ]);
     }
 
@@ -205,8 +206,8 @@ class ShiftService
             ->get();
 
         return [
-            'total'         => $invoices->sum('total'),
-            'count'         => $invoices->count(),
+            'total' => $invoices->sum('total'),
+            'count' => $invoices->count(),
             'cash_expected' => $invoices->where('payment_method', 'cash')->sum('total'),
         ];
     }

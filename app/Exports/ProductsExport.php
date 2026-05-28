@@ -7,17 +7,16 @@ namespace App\Exports;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Export products to Excel / CSV.
@@ -28,20 +27,13 @@ use Maatwebsite\Excel\Concerns\WithColumnFormatting;
  *  - active   : '1' | '0' | '' (all)
  *  - search   : free-text search on name / barcode
  */
-class ProductsExport implements
-    FromQuery,
-    WithHeadings,
-    WithMapping,
-    WithStyles,
-    WithColumnWidths,
-    WithTitle,
-    WithColumnFormatting
+class ProductsExport implements FromQuery, WithColumnFormatting, WithColumnWidths, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     public function __construct(
-        private readonly string  $category = '',
-        private readonly string  $stock    = '',
-        private readonly string  $active   = '',
-        private readonly string  $search   = '',
+        private readonly string $category = '',
+        private readonly string $stock = '',
+        private readonly string $active = '',
+        private readonly string $search = '',
     ) {}
 
     public function title(): string
@@ -52,23 +44,28 @@ class ProductsExport implements
     public function query(): Builder
     {
         return Product::query()
-            ->when($this->search !== '', fn ($q) =>
-                $q->where(fn ($q2) =>
-                    $q2->where('name',    'like', "%{$this->search}%")
-                       ->orWhere('barcode','like', "%{$this->search}%")
-                )
+            ->when(
+                $this->search !== '',
+                fn ($q) => $q->where(
+                    fn ($q2) => $q2->where('name', 'like', "%{$this->search}%")
+                        ->orWhere('barcode', 'like', "%{$this->search}%"),
+                ),
             )
-            ->when($this->category !== '', fn ($q) =>
-                $q->where('category', $this->category)
+            ->when(
+                $this->category !== '',
+                fn ($q) => $q->where('category', $this->category),
             )
-            ->when($this->active !== '', fn ($q) =>
-                $q->where('is_active', (bool) $this->active)
+            ->when(
+                $this->active !== '',
+                fn ($q) => $q->where('is_active', (bool) $this->active),
             )
-            ->when($this->stock === 'out', fn ($q) =>
-                $q->where('quantity', '<=', 0)
+            ->when(
+                $this->stock === 'out',
+                fn ($q) => $q->where('quantity', '<=', 0),
             )
-            ->when($this->stock === 'low', fn ($q) =>
-                $q->whereColumn('quantity', '<=', 'min_stock')->where('quantity', '>', 0)
+            ->when(
+                $this->stock === 'low',
+                fn ($q) => $q->whereColumn('quantity', '<=', 'min_stock')->where('quantity', '>', 0),
             )
             ->orderBy('name');
     }
@@ -106,7 +103,7 @@ class ProductsExport implements
             (float) $row->price,
             (float) $row->cost_price,
             $row->wholesale_price ? (float) $row->wholesale_price : '',
-            $row->vip_price       ? (float) $row->vip_price       : '',
+            $row->vip_price ? (float) $row->vip_price : '',
             $row->quantity,
             $row->min_stock,
             $row->description,

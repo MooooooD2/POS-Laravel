@@ -25,7 +25,7 @@ class UsbConnector implements ConnectorInterface
 
         if (! $this->handle) {
             throw new Exception(
-                "Cannot open USB device: {$this->device}. Check permissions."
+                "Cannot open USB device: {$this->device}. Check permissions.",
             );
         }
     }

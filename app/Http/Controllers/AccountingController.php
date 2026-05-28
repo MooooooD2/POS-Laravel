@@ -12,12 +12,15 @@ use App\Models\JournalEntry;
 use App\Services\AccountingService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use DomainException;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class AccountingController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(
         private AccountingService $accountingService,
@@ -93,7 +96,7 @@ class AccountingController extends Controller
             $this->audit('journal.created', JournalEntry::class, (int) $entry->id);
 
             return $this->success(['entry' => $entry], '', 201);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage());
         }
     }
@@ -110,7 +113,7 @@ class AccountingController extends Controller
             $this->audit('journal.posted', JournalEntry::class, (int) $entry->id);
 
             return $this->success(['entry' => $posted->load('lines.account')]);
-        } catch (\DomainException $e) {
+        } catch (DomainException $e) {
             return $this->error($e->getMessage(), 422);
         }
     }
@@ -133,7 +136,7 @@ class AccountingController extends Controller
             ]);
 
             return $this->success(['reversal' => $reversal], '', 201);
-        } catch (\DomainException $e) {
+        } catch (DomainException $e) {
             return $this->error($e->getMessage(), 422);
         }
     }
@@ -152,7 +155,7 @@ class AccountingController extends Controller
             $this->audit('accounting.balances_recalculated', Account::class, 0, ['accounts_updated' => $count]);
 
             return $this->success(['accounts_updated' => $count]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage(), 500);
         }
     }
@@ -172,7 +175,7 @@ class AccountingController extends Controller
         ]);
 
         $logs = AuditLogModel::query()
-            ->when($data['action'] ?? null, fn ($q, $v) => $q->where('action', 'like', '%'.Str::escapeLike($v).'%'))
+            ->when($data['action'] ?? null, fn ($q, $v) => $q->where('action', 'like', '%' . Str::escapeLike($v) . '%'))
             ->when($data['model'] ?? null, fn ($q, $v) => $q->where('model', $v))
             ->when($data['user_id'] ?? null, fn ($q, $v) => $q->where('user_id', $v))
             ->when($data['start_date'] ?? null, fn ($q, $v) => $q->whereDate('created_at', '>=', $v))

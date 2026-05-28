@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class AnomalyDetection
 {
@@ -23,7 +24,7 @@ class AnomalyDetection
         // Check if user is already temporarily blocked before processing the request.
         if (auth()->check() && $this->isBlocked(auth()->id())) {
             $this->writeAnomalyLog('anomaly.blocked_request_rejected', $request, [
-                'blocked_until' => Cache::get($this->blockKey(auth()->id()).'_until'),
+                'blocked_until' => Cache::get($this->blockKey(auth()->id()) . '_until'),
             ]);
 
             abort(429, 'تم تعليق حسابك مؤقتاً بسبب نشاط مشبوه. يرجى المحاولة لاحقاً.');
@@ -41,7 +42,7 @@ class AnomalyDetection
 
             $this->detectDiscountCapViolation($request, $response);
 
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Anomaly detection must never interrupt a business operation
         }
 
@@ -52,7 +53,7 @@ class AnomalyDetection
 
     private function blockKey(int|string $userId): string
     {
-        return 'anomaly_block_'.$userId;
+        return 'anomaly_block_' . $userId;
     }
 
     private function isBlocked(int|string $userId): bool
@@ -71,7 +72,7 @@ class AnomalyDetection
         }
 
         $userId = auth()->id();
-        $strikeKey = 'anomaly_strikes_'.$userId;
+        $strikeKey = 'anomaly_strikes_' . $userId;
 
         Cache::add($strikeKey, 0, 3600);
         $strikes = Cache::increment($strikeKey);
@@ -80,7 +81,7 @@ class AnomalyDetection
             $blockedUntil = now()->addSeconds(self::BLOCK_DURATION)->toIso8601String();
 
             Cache::put($this->blockKey($userId), true, self::BLOCK_DURATION);
-            Cache::put($this->blockKey($userId).'_until', $blockedUntil, self::BLOCK_DURATION);
+            Cache::put($this->blockKey($userId) . '_until', $blockedUntil, self::BLOCK_DURATION);
             Cache::forget($strikeKey);
 
             $this->writeAnomalyLog('anomaly.user_temporarily_blocked', $request, [
@@ -100,7 +101,7 @@ class AnomalyDetection
         }
 
         $threshold = (int) config('security.anomaly.requests_per_minute', 100);
-        $key = 'req_count_'.auth()->id().'_'.now()->format('Hi');
+        $key = 'req_count_' . auth()->id() . '_' . now()->format('Hi');
 
         Cache::add($key, 0, 60);
         $count = Cache::increment($key);
@@ -177,7 +178,7 @@ class AnomalyDetection
             return;
         }
 
-        $discountKey = 'discount_attempt_'.auth()->id();
+        $discountKey = 'discount_attempt_' . auth()->id();
         $attemptCount = Cache::increment($discountKey, 1);
         Cache::expire($discountKey, 3600);
 
@@ -206,7 +207,7 @@ class AnomalyDetection
                 ['user_id' => $userId, 'username' => $username],
                 $payload,
             ));
-        } catch (\Throwable) {
+        } catch (Throwable) {
         }
 
         try {
@@ -221,7 +222,7 @@ class AnomalyDetection
                 'changes' => $payload,
                 'created_at' => now(),
             ]);
-        } catch (\Throwable) {
+        } catch (Throwable) {
         }
     }
 }

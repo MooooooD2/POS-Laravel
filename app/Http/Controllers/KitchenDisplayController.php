@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\KitchenOrder;
 use App\Services\KitchenDisplayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,12 +36,12 @@ class KitchenDisplayController extends Controller
     public function orders(Request $request): JsonResponse
     {
         $branchId = $request->user()->branch_id ?? null;
-        $orders   = $this->kds->getActiveOrders($branchId);
-        $stats    = $this->kds->getStats($branchId);
+        $orders = $this->kds->getActiveOrders($branchId);
+        $stats = $this->kds->getStats($branchId);
 
         return response()->json([
             'orders' => $orders,
-            'stats'  => $stats,
+            'stats' => $stats,
         ]);
     }
 
@@ -53,14 +52,14 @@ class KitchenDisplayController extends Controller
     {
         $data = $request->validate([
             'table_number' => 'nullable|string|max:20',
-            'order_type'   => 'required|in:dine_in,takeaway,delivery,qr',
-            'notes'        => 'nullable|string|max:500',
-            'items'        => 'required|array|min:1',
+            'order_type' => 'required|in:dine_in,takeaway,delivery,qr',
+            'notes' => 'nullable|string|max:500',
+            'items' => 'required|array|min:1',
             'items.*.product_name' => 'required|string|max:200',
-            'items.*.product_id'   => 'nullable|integer',
-            'items.*.quantity'     => 'required|numeric|min:0.01',
-            'items.*.unit'         => 'nullable|string|max:50',
-            'items.*.notes'        => 'nullable|string|max:300',
+            'items.*.product_id' => 'nullable|integer',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.unit' => 'nullable|string|max:50',
+            'items.*.notes' => 'nullable|string|max:300',
         ]);
 
         $data['branch_id'] = $request->user()->branch_id ?? null;

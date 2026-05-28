@@ -48,7 +48,7 @@ class SecurityTest extends TestCase
 
         // يجب أن يُعالَج كـ literal string وليس SQL
         $response = $this->actingAs($admin)
-            ->getJson('/api/products?search='.urlencode("' OR '1'='1"));
+            ->getJson('/api/products?search=' . urlencode("' OR '1'='1"));
 
         $response->assertStatus(200);
         // النظام يعمل ولا يُرجع كل المنتجات

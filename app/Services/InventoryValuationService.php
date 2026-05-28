@@ -31,7 +31,7 @@ class InventoryValuationService
         float $unitCost,
         string $referenceType,
         ?int $referenceId,
-        ?int $warehouseId = null
+        ?int $warehouseId = null,
     ): void {
         if (! in_array($this->getMethod(), ['fifo', 'lifo'])) {
             return;
@@ -62,7 +62,7 @@ class InventoryValuationService
     public function deductLayers(
         Product $product,
         int $quantity,
-        ?int $warehouseId = null
+        ?int $warehouseId = null,
     ): float {
         $method = $this->getMethod();
 

@@ -61,7 +61,7 @@ class IpWhitelist
         if (str_ends_with($entry, '.*')) {
             $prefix = rtrim($entry, '.*');
 
-            return str_starts_with($ip, $prefix.'.');
+            return str_starts_with($ip, $prefix . '.');
         }
 
         // CIDR range: supports both IPv4 (10.0.0.0/8) and IPv6 (2001:db8::/32)

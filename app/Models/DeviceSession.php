@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Tracks active login devices for each user (Phase 6 — Security Hardening).
  *
- * @property int    $id
- * @property int    $user_id
+ * @property int $id
+ * @property int $user_id
  * @property string $session_token
  * @property string|null $device_name
  * @property string|null $device_type
@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $ip_address
  * @property \Carbon\Carbon|null $last_active_at
  * @property \Carbon\Carbon|null $revoked_at
- * @property bool   $is_current
+ * @property bool $is_current
  */
 class DeviceSession extends Model
 {
@@ -30,8 +30,8 @@ class DeviceSession extends Model
 
     protected $casts = [
         'last_active_at' => 'datetime',
-        'revoked_at'     => 'datetime',
-        'is_current'     => 'boolean',
+        'revoked_at' => 'datetime',
+        'is_current' => 'boolean',
     ];
 
     public function user(): BelongsTo

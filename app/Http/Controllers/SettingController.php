@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\SettingService;
+use Exception;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
@@ -33,7 +34,7 @@ class SettingController extends Controller
 
         try {
             $this->settingService->updateBatch($data['settings']);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
 

@@ -12,12 +12,12 @@ class ConnectorFactory
         return match ($printer->connection_type) {
             'network' => new NetworkConnector(
                 $printer->ip_address,
-                $printer->port
+                $printer->port,
             ),
             'usb' => new UsbConnector($printer->usb_device),
             'windows' => new WindowsConnector($printer->windows_printer_name),
             default => throw new InvalidArgumentException(
-                'Unsupported connection type: '.$printer->connection_type
+                'Unsupported connection type: ' . $printer->connection_type,
             ),
         };
     }

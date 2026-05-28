@@ -21,7 +21,7 @@ class ProfitReportController extends Controller
         ]);
 
         return $this->success($this->reportService->profitByProduct(
-            $request->only(['start_date', 'end_date', 'category'])
+            $request->only(['start_date', 'end_date', 'category']),
         ));
     }
 
@@ -33,7 +33,7 @@ class ProfitReportController extends Controller
         ]);
 
         return $this->success($this->reportService->profitDaily(
-            $request->only(['start_date', 'end_date'])
+            $request->only(['start_date', 'end_date']),
         ));
     }
 }

@@ -18,7 +18,7 @@ class WhiteLabelController extends Controller
     public function index()
     {
         $tenantId = tenant('id');
-        $wl       = WhiteLabel::firstOrCreate(['tenant_id' => $tenantId]);
+        $wl = WhiteLabel::firstOrCreate(['tenant_id' => $tenantId]);
 
         return view('white-label.index', compact('wl'));
     }
@@ -26,24 +26,24 @@ class WhiteLabelController extends Controller
     public function update(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'app_name'        => 'nullable|string|max:100',
-            'primary_color'   => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'app_name' => 'nullable|string|max:100',
+            'primary_color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'secondary_color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'accent_color'    => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'text_color'      => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'bg_color'        => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'font_family'     => 'nullable|string|max:100',
+            'accent_color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'text_color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'bg_color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'font_family' => 'nullable|string|max:100',
             'hide_powered_by' => 'nullable|boolean',
-            'custom_css'      => 'nullable|string|max:10000',
-            'footer_text'     => 'nullable|string|max:500',
-            'support_email'    => 'nullable|email',
-            'support_phone'    => 'nullable|string|max:30',
-            'website_url'      => 'nullable|url',
-            'support_website'  => 'nullable|url',   // form field alias for website_url
+            'custom_css' => 'nullable|string|max:10000',
+            'footer_text' => 'nullable|string|max:500',
+            'support_email' => 'nullable|email',
+            'support_phone' => 'nullable|string|max:30',
+            'website_url' => 'nullable|url',
+            'support_website' => 'nullable|url',   // form field alias for website_url
         ]);
 
         $tenantId = tenant('id');
-        $wl       = WhiteLabel::firstOrCreate(['tenant_id' => $tenantId]);
+        $wl = WhiteLabel::firstOrCreate(['tenant_id' => $tenantId]);
 
         // Handle logo upload
         if ($request->hasFile('logo')) {
@@ -82,7 +82,7 @@ class WhiteLabelController extends Controller
         $request->validate(['domain' => 'required|string|max:253']);
 
         $tenantId = tenant('id');
-        $domain   = strtolower(trim($request->domain));
+        $domain = strtolower(trim($request->domain));
 
         // Check domain not taken by another tenant
         $taken = WhiteLabel::where('custom_domain', $domain)
@@ -106,7 +106,7 @@ class WhiteLabelController extends Controller
     public function verifyDomain(): JsonResponse
     {
         $tenantId = tenant('id');
-        $wl       = WhiteLabel::where('tenant_id', $tenantId)->firstOrFail();
+        $wl = WhiteLabel::where('tenant_id', $tenantId)->firstOrFail();
 
         if (! $wl->custom_domain) {
             return response()->json(['success' => false, 'message' => 'No custom domain set.'], 422);
@@ -130,7 +130,7 @@ class WhiteLabelController extends Controller
     public function cssVars(): \Illuminate\Http\Response
     {
         $tenantId = tenant('id');
-        $wl       = WhiteLabel::where('tenant_id', $tenantId)->first();
+        $wl = WhiteLabel::where('tenant_id', $tenantId)->first();
 
         if (! $wl) {
             return response('', 204);

@@ -44,7 +44,7 @@ class WindowsConnector implements ConnectorInterface
 
             if ($code !== 0) {
                 throw new Exception(
-                    "Windows print failed (exit {$code}) for printer: {$this->printerName}"
+                    "Windows print failed (exit {$code}) for printer: {$this->printerName}",
                 );
             }
         }

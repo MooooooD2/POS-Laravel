@@ -78,8 +78,8 @@ class ReportTest extends TestCase
     public function admin_can_access_profit_report(): void
     {
         $response = $this->actingAs($this->admin)->getJson(
-            '/api/reports/profit?start_date='.now()->startOfMonth()->toDateString().
-            '&end_date='.now()->endOfMonth()->toDateString()
+            '/api/reports/profit?start_date=' . now()->startOfMonth()->toDateString() .
+            '&end_date=' . now()->endOfMonth()->toDateString(),
         );
 
         // Endpoint may vary — accept 200 or 404 if route name differs
@@ -133,8 +133,8 @@ class ReportTest extends TestCase
     public function admin_can_access_sales_report(): void
     {
         $response = $this->actingAs($this->admin)->getJson(
-            '/api/reports/sales?start_date='.now()->startOfMonth()->toDateString().
-            '&end_date='.now()->endOfMonth()->toDateString()
+            '/api/reports/sales?start_date=' . now()->startOfMonth()->toDateString() .
+            '&end_date=' . now()->endOfMonth()->toDateString(),
         );
 
         $this->assertContains($response->status(), [200, 404, 405]);
@@ -170,7 +170,7 @@ class ReportTest extends TestCase
         ]);
 
         DB::table('expenses')->insert([
-            'expense_number' => 'EXP-RPT-'.uniqid(),
+            'expense_number' => 'EXP-RPT-' . uniqid(),
             'category_id' => $categoryId,
             'title' => 'مصروف تقرير',
             'amount' => 500.00,
@@ -216,9 +216,9 @@ class ReportTest extends TestCase
     public function sales_report_accepts_payment_method_filter(): void
     {
         $response = $this->actingAs($this->admin)->getJson(
-            '/api/reports/sales?start_date='.now()->startOfMonth()->toDateString().
-            '&end_date='.now()->endOfMonth()->toDateString().
-            '&payment_method=cash'
+            '/api/reports/sales?start_date=' . now()->startOfMonth()->toDateString() .
+            '&end_date=' . now()->endOfMonth()->toDateString() .
+            '&payment_method=cash',
         );
         $this->assertContains($response->status(), [200, 404, 405]);
     }

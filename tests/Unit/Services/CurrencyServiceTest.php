@@ -29,12 +29,12 @@ class CurrencyServiceTest extends TestCase
     public function it_converts_same_currency_to_itself(): void
     {
         Currency::create([
-            'code'          => 'EGP',
-            'name'          => 'Egyptian Pound',
-            'symbol'        => 'ج.م',
+            'code' => 'EGP',
+            'name' => 'Egyptian Pound',
+            'symbol' => 'ج.م',
             'exchange_rate' => 1.0,
-            'is_base'       => true,
-            'is_active'     => true,
+            'is_base' => true,
+            'is_active' => true,
         ]);
 
         $result = $this->service->convert(100.0, 'EGP', 'EGP');

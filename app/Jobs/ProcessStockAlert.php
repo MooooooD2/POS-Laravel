@@ -24,11 +24,14 @@ use Illuminate\Support\Facades\Log;
  */
 class ProcessStockAlert implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     /**
-     * @param  string  $alertType  low_stock | out_of_stock | expiry_critical | expiry_warning
-     * @param  array  $extra  Optional context (batch_id, expiry_date, …)
+     * @param string $alertType low_stock | out_of_stock | expiry_critical | expiry_warning
+     * @param array $extra Optional context (batch_id, expiry_date, …)
      */
     public function __construct(
         private int $productId,

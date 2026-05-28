@@ -77,7 +77,7 @@ class SessionSecurity
                 implode('.', array_slice(explode('.', $request->ip()), 0, 3)),
                 $stableHeaders,
             ]),
-            config('app.key')
+            config('app.key'),
         );
     }
 

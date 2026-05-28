@@ -22,7 +22,7 @@ class FraudDetectionController extends Controller
      *  - sales_returns grouped by cashier — excessive-return analytical signal
      *  - audit_logs (auth.login_failed) — brute-force signal
      *
-     * @param  Request  $request  Optional ?hours=N to override the lookback window
+     * @param Request $request Optional ?hours=N to override the lookback window
      */
     public function signals(Request $request): JsonResponse
     {
@@ -86,9 +86,10 @@ class FraudDetectionController extends Controller
         // Build a HOUR() condition that spans midnight (e.g. hour >= 22 OR hour < 6)
         $rows = Invoice::where('created_at', '>=', $since)
             ->where('status', 'completed')
-            ->where(fn ($q) => $q
-                ->whereRaw('HOUR(created_at) >= ?', [$start])
-                ->orWhereRaw('HOUR(created_at) < ?', [$end])
+            ->where(
+                fn ($q) => $q
+                    ->whereRaw('HOUR(created_at) >= ?', [$start])
+                    ->orWhereRaw('HOUR(created_at) < ?', [$end]),
             )
             ->with('cashier:id,username,full_name')
             ->orderByDesc('created_at')
@@ -193,9 +194,10 @@ class FraudDetectionController extends Controller
         $offHoursEnd = config('security.anomaly.off_hours_end', 6);
         $offHoursCount = Invoice::where('created_at', '>=', $since)
             ->where('status', 'completed')
-            ->where(fn ($q) => $q
-                ->whereRaw('HOUR(created_at) >= ?', [$offHoursStart])
-                ->orWhereRaw('HOUR(created_at) < ?', [$offHoursEnd])
+            ->where(
+                fn ($q) => $q
+                    ->whereRaw('HOUR(created_at) >= ?', [$offHoursStart])
+                    ->orWhereRaw('HOUR(created_at) < ?', [$offHoursEnd]),
             )->count();
 
         return [

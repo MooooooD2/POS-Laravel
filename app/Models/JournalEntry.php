@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use DomainException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -70,14 +71,14 @@ class JournalEntry extends Model
         // Prevent any update on a posted entry
         static::updating(function (JournalEntry $entry) {
             if ($entry->getOriginal('is_posted')) {
-                throw new \DomainException(__('pos.journal_entry_posted_immutable'));
+                throw new DomainException(__('pos.journal_entry_posted_immutable'));
             }
         });
 
         // Prevent deletion of posted entries
         static::deleting(function (JournalEntry $entry) {
             if ($entry->is_posted) {
-                throw new \DomainException(__('pos.journal_entry_posted_immutable'));
+                throw new DomainException(__('pos.journal_entry_posted_immutable'));
             }
         });
     }

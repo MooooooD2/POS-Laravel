@@ -122,7 +122,7 @@ class ReportRepository extends BaseRepository implements ReportRepositoryInterfa
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->join('products', 'invoice_items.product_id', '=', 'products.id')
             ->where('invoices.status', 'completed')
-            ->whereBetween('invoices.created_at', [$start, $end.' 23:59:59'])
+            ->whereBetween('invoices.created_at', [$start, $end . ' 23:59:59'])
             ->selectRaw('
                 products.id,
                 invoice_items.product_name,
@@ -165,7 +165,7 @@ class ReportRepository extends BaseRepository implements ReportRepositoryInterfa
     {
         $rows = DB::table('invoices')
             ->where('status', 'completed')
-            ->whereBetween('created_at', [$start, $end.' 23:59:59'])
+            ->whereBetween('created_at', [$start, $end . ' 23:59:59'])
             ->selectRaw('DATE(created_at) as date, COUNT(*) as invoices_count, SUM(final_total) as revenue, SUM(discount) as total_discount')
             ->groupByRaw('DATE(created_at)')
             ->orderBy('date')
@@ -175,7 +175,7 @@ class ReportRepository extends BaseRepository implements ReportRepositoryInterfa
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->join('products', 'invoice_items.product_id', '=', 'products.id')
             ->where('invoices.status', 'completed')
-            ->whereBetween('invoices.created_at', [$start, $end.' 23:59:59'])
+            ->whereBetween('invoices.created_at', [$start, $end . ' 23:59:59'])
             ->selectRaw('DATE(invoices.created_at) as date, SUM(invoice_items.quantity * products.cost_price) as cost')
             ->groupByRaw('DATE(invoices.created_at)')
             ->pluck('cost', 'date');

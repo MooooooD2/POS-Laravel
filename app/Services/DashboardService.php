@@ -48,7 +48,7 @@ class DashboardService
                 'top_products' => $this->dashboardRepo->topProducts(
                     today()->startOfMonth()->toDateTimeString(),
                     today()->endOfDay()->toDateTimeString(),
-                    5
+                    5,
                 ),
             ];
         });

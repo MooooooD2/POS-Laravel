@@ -9,6 +9,8 @@ use App\Services\ShiftService;
 use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
+use Throwable;
 
 /**
  * Phase 11 — Staff Mobile App API
@@ -17,8 +19,8 @@ use Illuminate\Http\Request;
 class StaffMobileController extends Controller
 {
     public function __construct(
-        private readonly ShiftService  $shiftService,
-        private readonly StockService  $stockService,
+        private readonly ShiftService $shiftService,
+        private readonly StockService $stockService,
     ) {}
 
     // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -29,11 +31,11 @@ class StaffMobileController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'shift'      => $this->shiftService->activeShift($user),
-            'low_stock'  => \App\Models\Product::lowStock()->count(),
-            'today_sales'=> \App\Models\Invoice::whereDate('created_at', today())
+            'shift' => $this->shiftService->activeShift($user),
+            'low_stock' => \App\Models\Product::lowStock()->count(),
+            'today_sales' => \App\Models\Invoice::whereDate('created_at', today())
                 ->where('status', 'completed')->sum('total'),
-            'open_orders'=> \App\Models\KitchenOrder::where('status', 'pending')->count(),
+            'open_orders' => \App\Models\KitchenOrder::where('status', 'pending')->count(),
         ]);
     }
 
@@ -52,8 +54,9 @@ class StaffMobileController extends Controller
     {
         try {
             $shift = $this->shiftService->clockIn($request->user(), $request->all());
+
             return response()->json(['success' => true, 'shift' => $shift]);
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }
@@ -63,8 +66,9 @@ class StaffMobileController extends Controller
     {
         try {
             $shift = $this->shiftService->clockOut($request->user(), $request->all());
+
             return response()->json(['success' => true, 'shift' => $shift]);
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }
@@ -127,18 +131,19 @@ class StaffMobileController extends Controller
     public function quickSale(Request $request): JsonResponse
     {
         $request->validate([
-            'items'          => 'required|array|min:1',
+            'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity'   => 'required|numeric|min:0.001',
+            'items.*.quantity' => 'required|numeric|min:0.001',
             'payment_method' => 'required|in:cash,card,transfer',
-            'customer_id'    => 'nullable|exists:customers,id',
-            'discount'       => 'nullable|numeric|min:0',
+            'customer_id' => 'nullable|exists:customers,id',
+            'discount' => 'nullable|numeric|min:0',
         ]);
 
         try {
             $invoice = app(\App\Services\InvoiceService::class)->create($request->all());
+
             return response()->json(['success' => true, 'invoice' => $invoice]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }

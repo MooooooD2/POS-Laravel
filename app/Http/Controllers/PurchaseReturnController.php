@@ -8,11 +8,13 @@ use App\Models\PurchaseReturn;
 use App\Services\PurchaseReturnService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 use Illuminate\Http\Request;
 
 class PurchaseReturnController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(private PurchaseReturnService $returnService) {}
 
@@ -40,6 +42,7 @@ class PurchaseReturnController extends Controller
     public function store(StorePurchaseReturnRequest $request)
     {
         $this->authorize('create', PurchaseReturn::class);
+
         try {
             $return = $this->returnService->processReturn($request->validated());
             $this->audit('purchase_return.created', PurchaseReturn::class, (int) $return->id, [
@@ -47,7 +50,7 @@ class PurchaseReturnController extends Controller
             ]);
 
             return $this->success(['purchase_return' => $return], '', 201);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage());
         }
     }

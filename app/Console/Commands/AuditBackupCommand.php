@@ -13,8 +13,8 @@ class AuditBackupCommand extends Command
 
     public function handle(): int
     {
-        $source = storage_path('logs/audit-'.now()->subDay()->format('Y-m-d').'.log');
-        $dest = storage_path('logs/archive/audit-'.now()->subDay()->format('Y-m-d').'.log');
+        $source = storage_path('logs/audit-' . now()->subDay()->format('Y-m-d') . '.log');
+        $dest = storage_path('logs/archive/audit-' . now()->subDay()->format('Y-m-d') . '.log');
 
         if (File::exists($source)) {
             File::ensureDirectoryExists(storage_path('logs/archive'));

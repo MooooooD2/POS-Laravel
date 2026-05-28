@@ -6,6 +6,7 @@ use App\Contracts\Repositories\SupplierAccountRepositoryInterface;
 use App\Contracts\Repositories\SupplierPaymentRepositoryInterface;
 use App\Contracts\Repositories\SupplierRepositoryInterface;
 use App\Models\SupplierPayment;
+use DomainException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -34,11 +35,11 @@ class SupplierPaymentService
             $payAmount = (float) $data['amount'];
 
             if ($balance <= 0) {
-                throw new \DomainException(__('pos.supplier_no_outstanding_balance'));
+                throw new DomainException(__('pos.supplier_no_outstanding_balance'));
             }
 
             if ($payAmount > $balance) {
-                throw new \DomainException(__('pos.supplier_payment_exceeds_balance', [
+                throw new DomainException(__('pos.supplier_payment_exceeds_balance', [
                     'amount' => number_format($payAmount, 2),
                     'balance' => number_format($balance, 2),
                 ]));

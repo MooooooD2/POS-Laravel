@@ -13,15 +13,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 /**
  * Phase 2 — Employee Shift
  *
- * @property int         $id
- * @property int         $user_id
- * @property int|null    $branch_id
- * @property string      $shift_date
+ * @property int $id
+ * @property int $user_id
+ * @property int|null $branch_id
+ * @property string $shift_date
  * @property string|null $clock_in_at
  * @property string|null $clock_out_at
- * @property float|null  $hours_worked
- * @property float       $overtime_hours
- * @property string      $status
+ * @property float|null $hours_worked
+ * @property float $overtime_hours
+ * @property string $status
  */
 class EmployeeShift extends Model
 {
@@ -32,12 +32,12 @@ class EmployeeShift extends Model
     ];
 
     protected $casts = [
-        'shift_date'    => 'date',
-        'clock_in_at'   => 'datetime',
-        'clock_out_at'  => 'datetime',
-        'hours_worked'  => 'decimal:2',
-        'overtime_hours'=> 'decimal:2',
-        'meta'          => 'array',
+        'shift_date' => 'date',
+        'clock_in_at' => 'datetime',
+        'clock_out_at' => 'datetime',
+        'hours_worked' => 'decimal:2',
+        'overtime_hours' => 'decimal:2',
+        'meta' => 'array',
     ];
 
     // ── Relations ────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ class EmployeeShift extends Model
     {
         $this->update([
             'clock_in_at' => now(),
-            'status'      => 'active',
+            'status' => 'active',
         ]);
     }
 
@@ -99,10 +99,10 @@ class EmployeeShift extends Model
         $clockIn = $this->clock_in_at;
         $clockOut = now();
 
-        $totalMinutes   = $clockIn ? $clockIn->diffInMinutes($clockOut) : 0;
-        $breakMinutes   = $this->breaks()->whereNotNull('ended_at')
-                              ->sum('duration_minutes');
-        $workedMinutes  = max(0, $totalMinutes - $breakMinutes);
+        $totalMinutes = $clockIn ? $clockIn->diffInMinutes($clockOut) : 0;
+        $breakMinutes = $this->breaks()->whereNotNull('ended_at')
+            ->sum('duration_minutes');
+        $workedMinutes = max(0, $totalMinutes - $breakMinutes);
         $standardMinutes = ($this->template->start_time ?? null)
             ? $this->template->end_time->diffInMinutes($this->template->start_time)
             : 480; // 8 hours default
@@ -110,10 +110,10 @@ class EmployeeShift extends Model
         $overtime = max(0, $workedMinutes - $standardMinutes);
 
         $this->update([
-            'clock_out_at'   => $clockOut,
-            'hours_worked'   => round($workedMinutes / 60, 2),
+            'clock_out_at' => $clockOut,
+            'hours_worked' => round($workedMinutes / 60, 2),
             'overtime_hours' => round($overtime / 60, 2),
-            'status'         => 'completed',
+            'status' => 'completed',
         ]);
     }
 }

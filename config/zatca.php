@@ -10,7 +10,7 @@
  *   ZATCA_ENV=sandbox  # or: production
  */
 return [
-    'enabled'    => env('ZATCA_ENABLED', false),
+    'enabled' => env('ZATCA_ENABLED', false),
     'vat_number' => env('ZATCA_VAT_NUMBER', ''),
     'cert_token' => env('ZATCA_CERT_TOKEN', ''),
 
@@ -23,11 +23,11 @@ return [
 
     // Seller details (for XML generation)
     'seller' => [
-        'name'           => env('ZATCA_SELLER_NAME', env('APP_NAME', 'My Store')),
-        'city'           => env('ZATCA_SELLER_CITY', 'Riyadh'),
-        'postal_code'    => env('ZATCA_SELLER_POSTAL', '12345'),
-        'building_no'    => env('ZATCA_SELLER_BUILDING', '1234'),
-        'street'         => env('ZATCA_SELLER_STREET', 'King Fahd Road'),
-        'crn'            => env('ZATCA_SELLER_CRN', ''),        // Commercial Registration Number
+        'name' => env('ZATCA_SELLER_NAME', env('APP_NAME', 'My Store')),
+        'city' => env('ZATCA_SELLER_CITY', 'Riyadh'),
+        'postal_code' => env('ZATCA_SELLER_POSTAL', '12345'),
+        'building_no' => env('ZATCA_SELLER_BUILDING', '1234'),
+        'street' => env('ZATCA_SELLER_STREET', 'King Fahd Road'),
+        'crn' => env('ZATCA_SELLER_CRN', ''),        // Commercial Registration Number
     ],
 ];

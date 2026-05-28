@@ -10,11 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * Supports: Happy Hour, Bulk Discounts, Day-of-week, Category, Loyalty Tier, Flat Price overrides.
  *
- * @property int    $id
+ * @property int $id
  * @property string $name
  * @property string $rule_type
  * @property string $discount_type
- * @property float  $discount_value
+ * @property float $discount_value
  * @property array|null $product_ids
  * @property array|null $category_ids
  * @property string|null $time_start
@@ -23,9 +23,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $valid_from
  * @property string|null $valid_until
  * @property float|null $min_quantity
- * @property int   $priority
- * @property bool  $is_active
- * @property bool  $stackable
+ * @property int $priority
+ * @property bool $is_active
+ * @property bool $stackable
  */
 class PriceRule extends Model
 {
@@ -38,15 +38,15 @@ class PriceRule extends Model
     ];
 
     protected $casts = [
-        'product_ids'  => 'array',
+        'product_ids' => 'array',
         'category_ids' => 'array',
         'days_of_week' => 'array',
         'discount_value' => 'float',
-        'min_quantity'   => 'float',
-        'is_active'      => 'boolean',
-        'stackable'      => 'boolean',
-        'valid_from'     => 'date',
-        'valid_until'    => 'date',
+        'min_quantity' => 'float',
+        'is_active' => 'boolean',
+        'stackable' => 'boolean',
+        'valid_from' => 'date',
+        'valid_until' => 'date',
     ];
 
     public function customerGroup(): BelongsTo
@@ -64,23 +64,33 @@ class PriceRule extends Model
      */
     public function isCurrentlyActive(): bool
     {
-        if (!$this->is_active) return false;
+        if (! $this->is_active) {
+            return false;
+        }
 
-        $now  = now();
+        $now = now();
         $date = $now->toDateString();
         $time = $now->format('H:i:s');
-        $dow  = $now->dayOfWeekIso; // 1=Mon…7=Sun
+        $dow = $now->dayOfWeekIso; // 1=Mon…7=Sun
 
         // Date range check
-        if ($this->valid_from && $date < $this->valid_from->toDateString()) return false;
-        if ($this->valid_until && $date > $this->valid_until->toDateString()) return false;
+        if ($this->valid_from && $date < $this->valid_from->toDateString()) {
+            return false;
+        }
+        if ($this->valid_until && $date > $this->valid_until->toDateString()) {
+            return false;
+        }
 
         // Day of week check
-        if ($this->days_of_week && !in_array($dow, $this->days_of_week)) return false;
+        if ($this->days_of_week && ! in_array($dow, $this->days_of_week)) {
+            return false;
+        }
 
         // Time range check (happy hour)
         if ($this->time_start && $this->time_end) {
-            if ($time < $this->time_start || $time > $this->time_end) return false;
+            if ($time < $this->time_start || $time > $this->time_end) {
+                return false;
+            }
         }
 
         return true;
@@ -93,17 +103,19 @@ class PriceRule extends Model
      */
     public function applyToPrice(float $originalPrice, float $quantity = 1): float
     {
-        if (!$this->isCurrentlyActive()) return $originalPrice;
+        if (! $this->isCurrentlyActive()) {
+            return $originalPrice;
+        }
 
         if ($this->min_quantity !== null && $quantity < $this->min_quantity) {
             return $originalPrice;
         }
 
         return match ($this->discount_type) {
-            'percentage'  => round($originalPrice * (1 - $this->discount_value / 100), 4),
+            'percentage' => round($originalPrice * (1 - $this->discount_value / 100), 4),
             'fixed_amount' => max(0, round($originalPrice - $this->discount_value, 4)),
-            'new_price'    => max(0, $this->discount_value),
-            default        => $originalPrice,
+            'new_price' => max(0, $this->discount_value),
+            default => $originalPrice,
         };
     }
 
@@ -117,11 +129,11 @@ class PriceRule extends Model
             return true;
         }
 
-        if (!empty($this->product_ids) && in_array($productId, $this->product_ids)) {
+        if (! empty($this->product_ids) && in_array($productId, $this->product_ids)) {
             return true;
         }
 
-        if ($category && !empty($this->category_ids) && in_array($category, $this->category_ids)) {
+        if ($category && ! empty($this->category_ids) && in_array($category, $this->category_ids)) {
             return true;
         }
 

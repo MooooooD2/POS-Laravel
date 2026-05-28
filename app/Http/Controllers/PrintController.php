@@ -14,6 +14,7 @@ use App\Models\SalesReturn;
 use App\Services\Printing\PrintJobManager;
 use App\Services\Printing\ThermalPrinterService;
 use App\Traits\ApiResponse;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -23,7 +24,7 @@ class PrintController extends Controller
 
     public function __construct(
         private ThermalPrinterService $printerService,
-        private PrintJobManager $jobManager
+        private PrintJobManager $jobManager,
     ) {}
 
     // ── Print Actions ──────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ class PrintController extends Controller
         if ($result['success']) {
             return $this->success(
                 array_diff_key($result, ['success' => '']),
-                'Print job sent successfully'
+                'Print job sent successfully',
             );
         }
 
@@ -143,8 +144,8 @@ class PrintController extends Controller
 
             return $this->error('Printer is not reachable', 422);
 
-        } catch (\Exception $e) {
-            return $this->error('Connection test failed: '.$e->getMessage(), 422);
+        } catch (Exception $e) {
+            return $this->error('Connection test failed: ' . $e->getMessage(), 422);
         }
     }
 

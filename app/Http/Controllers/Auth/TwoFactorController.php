@@ -26,7 +26,7 @@ class TwoFactorController extends Controller
 
     public function verify(Request $request)
     {
-        $key = '2fa:'.Auth::id();
+        $key = '2fa:' . Auth::id();
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
@@ -67,7 +67,7 @@ class TwoFactorController extends Controller
         $qrCodeUrl = $google2fa->getQRCodeUrl(
             config('app.name'),
             $user->username,
-            $secret
+            $secret,
         );
 
         return view('auth.2fa.setup', compact('secret', 'qrCodeUrl'));
@@ -111,7 +111,7 @@ class TwoFactorController extends Controller
 
     public function recoverWithCode(Request $request)
     {
-        $key = '2fa_recover:'.Auth::id();
+        $key = '2fa_recover:' . Auth::id();
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);

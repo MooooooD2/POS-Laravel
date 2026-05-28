@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\WhatsAppMessage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class WhatsAppService
 {
@@ -24,7 +25,7 @@ class WhatsAppService
         $this->phoneNumberId = config('whatsapp.phone_number_id', '');
         $this->accessToken = config('whatsapp.access_token', '');
         $this->language = config('whatsapp.language', 'ar');
-        $this->apiBase = config('whatsapp.base_url').'/'.config('whatsapp.api_version');
+        $this->apiBase = config('whatsapp.base_url') . '/' . config('whatsapp.api_version');
     }
 
     public function isEnabled(): bool
@@ -207,7 +208,7 @@ class WhatsAppService
             } else {
                 $this->markFailed($log, $response->body());
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->markFailed($log, $e->getMessage());
             Log::error('whatsapp.send_failed', ['log_id' => $log->id, 'error' => $e->getMessage()]);
         }
@@ -235,7 +236,7 @@ class WhatsAppService
             return false;
         }
 
-        $expected = 'sha256='.hash_hmac('sha256', $rawBody, $secret);
+        $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
 
         return hash_equals($expected, $signatureHeader);
     }

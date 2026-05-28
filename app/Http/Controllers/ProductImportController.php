@@ -11,6 +11,8 @@ use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
+use Throwable;
+
 /**
  * Handles bulk product import / export from Excel / CSV files.
  */
@@ -24,7 +26,7 @@ class ProductImportController extends Controller
      */
     public function template()
     {
-        return Excel::download(new ProductsTemplateExport(), 'products-import-template.xlsx');
+        return Excel::download(new ProductsTemplateExport, 'products-import-template.xlsx');
     }
 
     /**
@@ -33,12 +35,12 @@ class ProductImportController extends Controller
      */
     public function export(Request $request)
     {
-        $format   = in_array($request->get('format', 'xlsx'), ['xlsx', 'csv']) ? $request->get('format', 'xlsx') : 'xlsx';
-        $export   = new ProductsExport(
+        $format = in_array($request->get('format', 'xlsx'), ['xlsx', 'csv']) ? $request->get('format', 'xlsx') : 'xlsx';
+        $export = new ProductsExport(
             category: $request->get('category', ''),
-            stock:    $request->get('stock', ''),
-            active:   $request->get('active', ''),
-            search:   $request->get('search', ''),
+            stock: $request->get('stock', ''),
+            active: $request->get('active', ''),
+            search: $request->get('search', ''),
         );
         $filename = 'products-' . now()->format('Y-m-d') . '.' . $format;
 
@@ -60,8 +62,8 @@ class ProductImportController extends Controller
             ],
         ], [
             'file.required' => __('pos.import_file_required'),
-            'file.mimes'    => __('pos.import_file_type'),
-            'file.max'      => __('pos.import_file_size'),
+            'file.mimes' => __('pos.import_file_type'),
+            'file.max' => __('pos.import_file_size'),
         ]);
 
         try {
@@ -69,32 +71,32 @@ class ProductImportController extends Controller
             Excel::import($import, $request->file('file'));
 
             return response()->json([
-                'success'   => true,
-                'imported'  => $import->importedCount,
-                'updated'   => $import->updatedCount,
-                'errors'    => $import->errors,
-                'message'   => trans_choice(
+                'success' => true,
+                'imported' => $import->importedCount,
+                'updated' => $import->updatedCount,
+                'errors' => $import->errors,
+                'message' => trans_choice(
                     'pos.import_result',
                     $import->importedCount + $import->updatedCount,
                     [
                         'imported' => $import->importedCount,
-                        'updated'  => $import->updatedCount,
-                        'errors'   => count($import->errors),
-                    ]
+                        'updated' => $import->updatedCount,
+                        'errors' => count($import->errors),
+                    ],
                 ),
             ]);
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             $failures = collect($e->failures())->map(fn ($f) => [
-                'row'   => $f->row(),
+                'row' => $f->row(),
                 'error' => implode(', ', $f->errors()),
             ])->toArray();
 
             return response()->json([
-                'success'  => false,
-                'errors'   => $failures,
-                'message'  => __('pos.import_validation_failed'),
+                'success' => false,
+                'errors' => $failures,
+                'message' => __('pos.import_validation_failed'),
             ], 422);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => __('pos.import_error') . ': ' . $e->getMessage(),

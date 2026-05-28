@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Phase 10 — HR: Payroll Calculation Engine
@@ -27,13 +27,13 @@ class PayrollService
                 ->first();
 
             if ($existing && $existing->status !== 'draft') {
-                throw new \RuntimeException("Payroll for {$year}/{$month} has already been approved.");
+                throw new RuntimeException("Payroll for {$year}/{$month} has already been approved.");
             }
 
             // Create or reset the run
             $runId = DB::table('payroll_runs')->updateOrInsert(
                 ['year' => $year, 'month' => $month, 'branch_id' => $branchId],
-                ['status' => 'draft', 'updated_at' => now(), 'created_at' => now()]
+                ['status' => 'draft', 'updated_at' => now(), 'created_at' => now()],
             );
 
             $run = DB::table('payroll_runs')
@@ -46,17 +46,17 @@ class PayrollService
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->get();
 
-            $slips    = [];
+            $slips = [];
             $totalGross = 0;
-            $totalNet   = 0;
-            $totalDed   = 0;
+            $totalNet = 0;
+            $totalDed = 0;
 
             foreach ($employees as $employee) {
                 $slip = $this->calculateSlip($employee, $year, $month, $run->id);
                 $slips[] = $slip;
                 $totalGross += $slip['gross_salary'];
-                $totalNet   += $slip['net_salary'];
-                $totalDed   += ($slip['income_tax'] + $slip['social_insurance'] + $slip['other_deductions']
+                $totalNet += $slip['net_salary'];
+                $totalDed += ($slip['income_tax'] + $slip['social_insurance'] + $slip['other_deductions']
                               + $slip['absence_deduction'] + $slip['late_deduction']);
             }
 
@@ -68,20 +68,20 @@ class PayrollService
 
             // Update run totals
             DB::table('payroll_runs')->where('id', $run->id)->update([
-                'total_gross'      => $totalGross,
+                'total_gross' => $totalGross,
                 'total_deductions' => $totalDed,
-                'total_net'        => $totalNet,
-                'updated_at'       => now(),
+                'total_net' => $totalNet,
+                'updated_at' => now(),
             ]);
 
             return [
-                'run_id'      => $run->id,
-                'year'        => $year,
-                'month'       => $month,
-                'employees'   => count($slips),
+                'run_id' => $run->id,
+                'year' => $year,
+                'month' => $month,
+                'employees' => count($slips),
                 'total_gross' => $totalGross,
-                'total_net'   => $totalNet,
-                'slips'       => $slips,
+                'total_net' => $totalNet,
+                'slips' => $slips,
             ];
         });
     }
@@ -99,74 +99,75 @@ class PayrollService
             ->latest('effective_from')
             ->first();
 
-        $basicSalary       = (float) ($structure?->basic_salary ?? 0);
-        $housingAllowance  = (float) ($structure?->housing_allowance ?? 0);
-        $transportAllow    = (float) ($structure?->transport_allowance ?? 0);
-        $mealAllow         = (float) ($structure?->meal_allowance ?? 0);
-        $otherAllowances   = (float) ($structure?->other_allowances ?? 0);
-        $otMultiplier      = (float) ($structure?->overtime_rate_multiplier ?? 1.5);
+        $basicSalary = (float) ($structure?->basic_salary ?? 0);
+        $housingAllowance = (float) ($structure?->housing_allowance ?? 0);
+        $transportAllow = (float) ($structure?->transport_allowance ?? 0);
+        $mealAllow = (float) ($structure?->meal_allowance ?? 0);
+        $otherAllowances = (float) ($structure?->other_allowances ?? 0);
+        $otMultiplier = (float) ($structure?->overtime_rate_multiplier ?? 1.5);
 
         // Attendance for this month
         $attendance = $this->getMonthAttendance($employee->id, $year, $month);
 
-        $workingDays      = $this->workingDaysInMonth($year, $month);
-        $absentDays       = $attendance['absent_days'];
-        $lateMinutes      = $attendance['late_minutes'];
-        $overtimeHours    = $attendance['overtime_hours'];
+        $workingDays = $this->workingDaysInMonth($year, $month);
+        $absentDays = $attendance['absent_days'];
+        $lateMinutes = $attendance['late_minutes'];
+        $overtimeHours = $attendance['overtime_hours'];
 
         // Deductions
-        $dailyRate        = $basicSalary / max($workingDays, 1);
-        $hourlyRate       = $basicSalary / (max($workingDays, 1) * 8);
+        $dailyRate = $basicSalary / max($workingDays, 1);
+        $hourlyRate = $basicSalary / (max($workingDays, 1) * 8);
         $absenceDeduction = round($dailyRate * $absentDays, 2);
-        $lateDeduction    = round(($hourlyRate / 60) * $lateMinutes, 2);
-        $overtimePay      = round($hourlyRate * $otMultiplier * $overtimeHours, 2);
+        $lateDeduction = round(($hourlyRate / 60) * $lateMinutes, 2);
+        $overtimePay = round($hourlyRate * $otMultiplier * $overtimeHours, 2);
 
-        $totalAllowances  = $housingAllowance + $transportAllow + $mealAllow + $otherAllowances;
-        $grossSalary      = $basicSalary + $totalAllowances + $overtimePay;
+        $totalAllowances = $housingAllowance + $transportAllow + $mealAllow + $otherAllowances;
+        $grossSalary = $basicSalary + $totalAllowances + $overtimePay;
 
         // Tax & social insurance (configurable — using Egypt defaults)
-        $incomeTax        = $this->calculateIncomeTax($grossSalary);
-        $socialInsurance  = $this->calculateSocialInsurance($basicSalary);
+        $incomeTax = $this->calculateIncomeTax($grossSalary);
+        $socialInsurance = $this->calculateSocialInsurance($basicSalary);
 
-        $netSalary = max(0,
+        $netSalary = max(
+            0,
             $grossSalary
             - $incomeTax
             - $socialInsurance
             - $absenceDeduction
-            - $lateDeduction
+            - $lateDeduction,
         );
 
         return [
-            'payroll_run_id'     => $runId,
-            'user_id'            => $employee->id,
-            'basic_salary'       => $basicSalary,
-            'total_allowances'   => $totalAllowances,
-            'overtime_pay'       => $overtimePay,
-            'bonus'              => 0,
-            'gross_salary'       => round($grossSalary, 2),
-            'income_tax'         => $incomeTax,
-            'social_insurance'   => $socialInsurance,
-            'other_deductions'   => 0,
-            'absence_deduction'  => $absenceDeduction,
-            'late_deduction'     => $lateDeduction,
-            'net_salary'         => round($netSalary, 2),
-            'working_days'       => $workingDays,
-            'absent_days'        => $absentDays,
-            'overtime_hours'     => $overtimeHours,
-            'currency_code'      => $structure?->currency_code ?? 'EGP',
-            'breakdown'          => json_encode([
-                'basic'           => $basicSalary,
-                'housing'         => $housingAllowance,
-                'transport'       => $transportAllow,
-                'meal'            => $mealAllow,
-                'other_allow'     => $otherAllowances,
-                'overtime'        => $overtimePay,
-                'gross'           => $grossSalary,
-                'tax'             => $incomeTax,
-                'social'          => $socialInsurance,
-                'absence_ded'     => $absenceDeduction,
-                'late_ded'        => $lateDeduction,
-                'net'             => $netSalary,
+            'payroll_run_id' => $runId,
+            'user_id' => $employee->id,
+            'basic_salary' => $basicSalary,
+            'total_allowances' => $totalAllowances,
+            'overtime_pay' => $overtimePay,
+            'bonus' => 0,
+            'gross_salary' => round($grossSalary, 2),
+            'income_tax' => $incomeTax,
+            'social_insurance' => $socialInsurance,
+            'other_deductions' => 0,
+            'absence_deduction' => $absenceDeduction,
+            'late_deduction' => $lateDeduction,
+            'net_salary' => round($netSalary, 2),
+            'working_days' => $workingDays,
+            'absent_days' => $absentDays,
+            'overtime_hours' => $overtimeHours,
+            'currency_code' => $structure?->currency_code ?? 'EGP',
+            'breakdown' => json_encode([
+                'basic' => $basicSalary,
+                'housing' => $housingAllowance,
+                'transport' => $transportAllow,
+                'meal' => $mealAllow,
+                'other_allow' => $otherAllowances,
+                'overtime' => $overtimePay,
+                'gross' => $grossSalary,
+                'tax' => $incomeTax,
+                'social' => $socialInsurance,
+                'absence_ded' => $absenceDeduction,
+                'late_ded' => $lateDeduction,
+                'net' => $netSalary,
             ]),
             'created_at' => now(),
             'updated_at' => now(),
@@ -184,28 +185,28 @@ class PayrollService
             ->whereMonth('work_date', $month)
             ->get();
 
-        $explicitAbsent  = $records->where('status', 'absent')->count();
-        $lateMinutes     = (float) $records->sum('late_minutes');
-        $overtimeHours   = (float) $records->sum('overtime_hours');
+        $explicitAbsent = $records->where('status', 'absent')->count();
+        $lateMinutes = (float) $records->sum('late_minutes');
+        $overtimeHours = (float) $records->sum('overtime_hours');
 
         // ── 2. Approved leave requests that fall in this month ─────────────
         $monthStart = \Carbon\Carbon::create($year, $month, 1);
-        $monthEnd   = $monthStart->copy()->endOfMonth();
+        $monthEnd = $monthStart->copy()->endOfMonth();
 
         $leaves = DB::table('leave_requests')
             ->where('user_id', $userId)
             ->where('status', 'approved')
             ->where('starts_at', '<=', $monthEnd->toDateString())
-            ->where('ends_at',   '>=', $monthStart->toDateString())
+            ->where('ends_at', '>=', $monthStart->toDateString())
             ->get();
 
         // Count working (non-weekend) days covered by each leave type
-        $unpaidLeaveDays  = 0;
-        $paidLeaveDays    = 0; // annual / sick — for reference only (no deduction)
+        $unpaidLeaveDays = 0;
+        $paidLeaveDays = 0; // annual / sick — for reference only (no deduction)
 
         foreach ($leaves as $leave) {
             $start = \Carbon\Carbon::parse($leave->starts_at)->max($monthStart);
-            $end   = \Carbon\Carbon::parse($leave->ends_at)->min($monthEnd);
+            $end = \Carbon\Carbon::parse($leave->ends_at)->min($monthEnd);
             $cursor = $start->copy();
 
             while ($cursor->lte($end)) {
@@ -225,19 +226,19 @@ class PayrollService
         $absentDays = $explicitAbsent + $unpaidLeaveDays;
 
         return [
-            'absent_days'       => $absentDays,
+            'absent_days' => $absentDays,
             'unpaid_leave_days' => $unpaidLeaveDays,
-            'paid_leave_days'   => $paidLeaveDays,
-            'late_minutes'      => $lateMinutes,
-            'overtime_hours'    => $overtimeHours,
+            'paid_leave_days' => $paidLeaveDays,
+            'late_minutes' => $lateMinutes,
+            'overtime_hours' => $overtimeHours,
         ];
     }
 
     private function workingDaysInMonth(int $year, int $month): int
     {
-        $start  = \Carbon\Carbon::create($year, $month, 1);
-        $end    = $start->copy()->endOfMonth();
-        $days   = 0;
+        $start = \Carbon\Carbon::create($year, $month, 1);
+        $end = $start->copy()->endOfMonth();
+        $days = 0;
         while ($start->lte($end)) {
             if (! $start->isWeekend()) {
                 $days++;
@@ -255,7 +256,7 @@ class PayrollService
     private function calculateIncomeTax(float $annualGross): float
     {
         $annual = $annualGross * 12;
-        $tax    = 0.0;
+        $tax = 0.0;
 
         // EGP brackets
         if ($annual <= 15_000) {
@@ -283,7 +284,7 @@ class PayrollService
     private function calculateSocialInsurance(float $basicSalary): float
     {
         $maxBase = config('hr.social_insurance.max_base', 10_000);
-        $rate    = config('hr.social_insurance.employee_rate', 0.11);
+        $rate = config('hr.social_insurance.employee_rate', 0.11);
 
         return round(min($basicSalary, $maxBase) * $rate, 2);
     }

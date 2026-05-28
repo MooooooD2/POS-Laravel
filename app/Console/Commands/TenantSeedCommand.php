@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Tenant;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Console\Command;
+use Throwable;
 
 class TenantSeedCommand extends Command
 {
@@ -25,7 +26,7 @@ class TenantSeedCommand extends Command
         }
 
         $seederClass = $this->option('class')
-            ? 'Database\\Seeders\\'.$this->option('class')
+            ? 'Database\\Seeders\\' . $this->option('class')
             : DatabaseSeeder::class;
 
         foreach ($tenants as $tenant) {
@@ -36,7 +37,7 @@ class TenantSeedCommand extends Command
             try {
                 app($seederClass)->setCommand($this)->run();
                 $this->info('  ✓ Done');
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->error("  ✗ {$e->getMessage()}");
                 tenancy()->end();
 

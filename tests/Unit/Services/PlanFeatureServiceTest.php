@@ -7,6 +7,7 @@ namespace Tests\Unit\Services;
 use App\Services\PlanFeatureService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
+use stdClass;
 use Tests\TestCase;
 
 /**
@@ -78,7 +79,7 @@ class PlanFeatureServiceTest extends TestCase
         foreach ($enterpriseOnly as $feature) {
             $this->assertTrue(
                 PlanFeatureService::has($feature),
-                "Enterprise plan should include [{$feature}]"
+                "Enterprise plan should include [{$feature}]",
             );
         }
     }
@@ -141,8 +142,8 @@ class PlanFeatureServiceTest extends TestCase
         }
 
         // Build a minimal fake tenant and inject it into the Tenancy singleton.
-        $fakeTenant       = new \stdClass();
-        $fakeTenant->id   = 'test-tenant';
+        $fakeTenant = new stdClass;
+        $fakeTenant->id = 'test-tenant';
         $fakeTenant->plan = $planId;
 
         // tenancy() resolves \Stancl\Tenancy\Tenancy::class from the container.

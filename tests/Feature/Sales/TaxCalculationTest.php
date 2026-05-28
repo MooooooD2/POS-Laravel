@@ -33,7 +33,7 @@ class TaxCalculationTest extends TestCase
                 [['key' => 'tax_enabled', 'value' => '1', 'type' => 'boolean', 'group' => 'tax', 'label_ar' => 'تفعيل الضريبة', 'label_en' => 'Enable Tax'],
                     ['key' => 'tax_rate',    'value' => '14', 'type' => 'number',  'group' => 'tax', 'label_ar' => 'نسبة الضريبة', 'label_en' => 'Tax Rate']],
                 ['key'],
-                ['value']
+                ['value'],
             );
     }
 

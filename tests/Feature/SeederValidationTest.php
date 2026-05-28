@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionMethod;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -16,11 +18,11 @@ class SeederValidationTest extends TestCase
     /** @test */
     public function seeder_throws_exception_when_admin_password_is_empty()
     {
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessageMatches('/missing required passwords/i');
 
         $seeder = new UserSeeder;
-        $method = new \ReflectionMethod($seeder, 'validatePasswords');
+        $method = new ReflectionMethod($seeder, 'validatePasswords');
         $method->setAccessible(true);
         $method->invoke($seeder, [
             'ADMIN_PASSWORD' => '',

@@ -45,8 +45,8 @@ class WarehouseManagementTest extends TestCase
     private function makeWarehouse(string $code = 'WH01', array $extra = []): Warehouse
     {
         return Warehouse::create(array_merge([
-            'name'      => "Warehouse {$code}",
-            'code'      => $code,
+            'name' => "Warehouse {$code}",
+            'code' => $code,
             'is_active' => true,
         ], $extra));
     }
@@ -81,8 +81,8 @@ class WarehouseManagementTest extends TestCase
     {
         $res = $this->actingAs($this->admin)
             ->postJson('/api/warehouses', [
-                'name'    => 'Main Warehouse',
-                'code'    => 'MW01',
+                'name' => 'Main Warehouse',
+                'code' => 'MW01',
                 'address' => '5th Industrial Zone',
             ]);
 
@@ -157,15 +157,15 @@ class WarehouseManagementTest extends TestCase
     #[Test]
     public function admin_can_adjust_warehouse_stock(): void
     {
-        $wh      = $this->makeWarehouse('ADJ1');
+        $wh = $this->makeWarehouse('ADJ1');
         $product = Product::factory()->create(['quantity' => 10]);
 
         // Controller expects 'new_quantity' (the absolute new value), not delta 'quantity'
         $this->actingAs($this->admin)
             ->postJson("/api/warehouses/{$wh->id}/adjust-stock", [
-                'product_id'  => $product->id,
+                'product_id' => $product->id,
                 'new_quantity' => 15,
-                'reason'      => 'manual adjustment',
+                'reason' => 'manual adjustment',
             ])->assertOk();
     }
 

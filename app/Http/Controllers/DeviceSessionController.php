@@ -26,26 +26,26 @@ class DeviceSessionController extends Controller
         $sessions = $this->service->getActiveSessions($request->user()->id);
 
         return response()->json($sessions->map(fn ($s) => [
-            'id'             => $s->id,
-            'device_name'    => $s->device_name,
-            'device_type'    => $s->device_type,
-            'browser'        => $s->browser,
-            'os'             => $s->os,
-            'ip_address'     => $s->ip_address,
+            'id' => $s->id,
+            'device_name' => $s->device_name,
+            'device_type' => $s->device_type,
+            'browser' => $s->browser,
+            'os' => $s->os,
+            'ip_address' => $s->ip_address,
             'last_active_at' => $s->last_active_at?->diffForHumans(),
-            'is_current'     => $s->is_current,
+            'is_current' => $s->is_current,
         ]));
     }
 
     public function revoke(Request $request, int $id): JsonResponse
     {
         // Admin can revoke any session; other users are restricted to their own.
-        $user   = $request->user();
+        $user = $request->user();
         $userId = $user->hasRole('admin') ? null : $user->id;
 
         $revoked = $this->service->revoke($id, $userId);
 
-        if (!$revoked) {
+        if (! $revoked) {
             return response()->json(['message' => 'Session not found or already revoked'], 404);
         }
 

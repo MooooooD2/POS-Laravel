@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\SalesReturn;
 use App\Models\User;
 use App\Services\ReturnService;
+use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -88,7 +89,7 @@ class ReturnServiceTest extends TestCase
     {
         [$invoice, $product] = $this->createInvoiceWithItem(2);
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         $this->service->processReturn([
             'invoice_id' => $invoice->id,
@@ -115,7 +116,7 @@ class ReturnServiceTest extends TestCase
         ]);
 
         // Second return should fail
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
 
         $this->service->processReturn([
             'invoice_id' => $invoice->id,

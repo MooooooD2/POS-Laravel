@@ -31,24 +31,24 @@ class NetProfitReportExport implements FromArray, ShouldAutoSize, WithHeadings, 
             }
             $arrow = $pct > 0 ? '▲' : ($pct < 0 ? '▼' : '→');
 
-            return $arrow.' '.abs($pct).'%';
+            return $arrow . ' ' . abs($pct) . '%';
         };
 
         return [
             ['Period', "{$this->start} – {$this->end}", ''],
-            ['Prev. Period', ($cmp['prev_start_date'] ?? '').' – '.($cmp['prev_end_date'] ?? ''), ''],
+            ['Prev. Period', ($cmp['prev_start_date'] ?? '') . ' – ' . ($cmp['prev_end_date'] ?? ''), ''],
             ['', '', ''],
             ['Gross Sales',          number_format($this->data['gross_sales'] ?? 0, 2), ''],
-            ['Discounts',            '-'.number_format($this->data['discounts'] ?? 0, 2), ''],
-            ['Tax Collected',        '-'.number_format($this->data['tax'] ?? 0, 2), ''],
-            ['Returns',              '-'.number_format($this->data['returns'] ?? 0, 2), ''],
+            ['Discounts',            '-' . number_format($this->data['discounts'] ?? 0, 2), ''],
+            ['Tax Collected',        '-' . number_format($this->data['tax'] ?? 0, 2), ''],
+            ['Returns',              '-' . number_format($this->data['returns'] ?? 0, 2), ''],
             ['Net Revenue',          number_format($this->data['net_revenue'] ?? 0, 2), ''],
-            ['COGS',                 '-'.number_format($this->data['cogs'] ?? 0, 2), $changePct($cmp['cogs_change_pct'] ?? null)],
+            ['COGS',                 '-' . number_format($this->data['cogs'] ?? 0, 2), $changePct($cmp['cogs_change_pct'] ?? null)],
             ['Gross Profit',         number_format($this->data['gross_profit'] ?? 0, 2), $changePct($cmp['gross_profit_change_pct'] ?? null)],
-            ['Gross Margin %',       ($this->data['gross_margin_pct'] ?? 0).'%', ''],
-            ['Operating Expenses',   '-'.number_format($this->data['operating_expenses'] ?? 0, 2), $changePct($cmp['operating_expenses_change_pct'] ?? null)],
+            ['Gross Margin %',       ($this->data['gross_margin_pct'] ?? 0) . '%', ''],
+            ['Operating Expenses',   '-' . number_format($this->data['operating_expenses'] ?? 0, 2), $changePct($cmp['operating_expenses_change_pct'] ?? null)],
             ['Net Profit',           number_format($this->data['net_profit'] ?? 0, 2), $changePct($cmp['net_profit_change_pct'] ?? null)],
-            ['Net Margin %',         ($this->data['net_margin_pct'] ?? 0).'%', ''],
+            ['Net Margin %',         ($this->data['net_margin_pct'] ?? 0) . '%', ''],
         ];
     }
 }

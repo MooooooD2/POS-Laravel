@@ -24,10 +24,10 @@ class ForecastController extends Controller
      */
     public function salesForecast(Request $request): JsonResponse
     {
-        $days    = (int) $request->get('days', 30);
+        $days = (int) $request->get('days', 30);
         $history = (int) $request->get('history', 90);
 
-        $days    = min(max($days, 7), 90);
+        $days = min(max($days, 7), 90);
         $history = min(max($history, 14), 365);
 
         return response()->json($this->forecasting->forecastSales($days, $history));
@@ -38,7 +38,7 @@ class ForecastController extends Controller
      */
     public function productForecast(Request $request): JsonResponse
     {
-        $topN    = (int) $request->get('top', 20);
+        $topN = (int) $request->get('top', 20);
         $history = (int) $request->get('history', 60);
 
         return response()->json($this->forecasting->forecastProducts($topN, $history));

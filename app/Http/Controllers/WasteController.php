@@ -8,13 +8,15 @@ use App\Models\WasteRecord;
 use App\Services\StockService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class WasteController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(private StockService $stockService) {}
 
@@ -39,7 +41,7 @@ class WasteController extends Controller
             $qty = (float) $data['quantity'];
 
             if ($product->quantity < $qty) {
-                throw new \Exception(__('pos.insufficient_stock', ['name' => $product->name]));
+                throw new Exception(__('pos.insufficient_stock', ['name' => $product->name]));
             }
 
             $waste = WasteRecord::create([
@@ -58,10 +60,10 @@ class WasteController extends Controller
                 $product,
                 (int) ceil($qty),
                 'waste',
-                __('pos.waste_reason_'.$data['reason']),
+                __('pos.waste_reason_' . $data['reason']),
                 $waste->id,
                 'waste',
-                $data['warehouse_id'] ?? null
+                $data['warehouse_id'] ?? null,
             );
 
             return $waste;

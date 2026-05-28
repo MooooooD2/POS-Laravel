@@ -13,7 +13,7 @@ class InvoiceFactory extends Factory
         $user = User::factory()->create();
 
         return [
-            'invoice_number' => 'INV-'.fake()->unique()->numerify('########'),
+            'invoice_number' => 'INV-' . fake()->unique()->numerify('########'),
             'total' => $total,
             'discount' => 0,
             'tax_rate' => 0,

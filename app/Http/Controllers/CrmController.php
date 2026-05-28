@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class CrmController extends Controller
 {
@@ -25,7 +26,7 @@ class CrmController extends Controller
 
     public function customer(int $id): \Illuminate\View\View
     {
-        $customer   = Customer::findOrFail($id);
+        $customer = Customer::findOrFail($id);
         $activities = CrmActivity::where('customer_id', $id)
             ->orderByDesc('created_at')
             ->with('user')
@@ -50,16 +51,16 @@ class CrmController extends Controller
             ->orderByDesc('created_at')
             ->get()
             ->map(fn ($a) => [
-                'id'           => $a->id,
-                'type'         => $a->type,
-                'type_icon'    => $a->type_icon,
-                'subject'      => $a->subject,
-                'notes'        => $a->notes,
-                'outcome'      => $a->outcome,
+                'id' => $a->id,
+                'type' => $a->type,
+                'type_icon' => $a->type_icon,
+                'subject' => $a->subject,
+                'notes' => $a->notes,
+                'outcome' => $a->outcome,
                 'scheduled_at' => $a->scheduled_at?->format('Y-m-d H:i'),
                 'completed_at' => $a->completed_at?->format('Y-m-d H:i'),
-                'created_at'   => $a->created_at->diffForHumans(),
-                'user_name'    => $a->user?->full_name,
+                'created_at' => $a->created_at->diffForHumans(),
+                'user_name' => $a->user?->full_name,
             ]);
 
         return response()->json($activities);
@@ -68,17 +69,17 @@ class CrmController extends Controller
     public function storeActivity(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'customer_id'  => 'required|integer|exists:customers,id',
-            'type'         => 'required|in:call,email,visit,whatsapp,note,complaint,follow_up,sale,return',
-            'subject'      => 'nullable|string|max:200',
-            'notes'        => 'nullable|string|max:2000',
-            'outcome'      => 'nullable|in:positive,neutral,negative,pending',
+            'customer_id' => 'required|integer|exists:customers,id',
+            'type' => 'required|in:call,email,visit,whatsapp,note,complaint,follow_up,sale,return',
+            'subject' => 'nullable|string|max:200',
+            'notes' => 'nullable|string|max:2000',
+            'outcome' => 'nullable|in:positive,neutral,negative,pending',
             'scheduled_at' => 'nullable|date',
         ]);
 
         $activity = CrmActivity::create(array_merge($data, [
-            'user_id'  => Auth::id(),
-            'outcome'  => $data['outcome'] ?? 'neutral',
+            'user_id' => Auth::id(),
+            'outcome' => $data['outcome'] ?? 'neutral',
         ]));
 
         // Update customer lifecycle stage based on activity
@@ -92,8 +93,8 @@ class CrmController extends Controller
         $activity = CrmActivity::findOrFail($id);
 
         $data = $request->validate([
-            'notes'        => 'nullable|string|max:2000',
-            'outcome'      => 'required|in:positive,neutral,negative,pending',
+            'notes' => 'nullable|string|max:2000',
+            'outcome' => 'required|in:positive,neutral,negative,pending',
             'completed_at' => 'nullable|date',
         ]);
 
@@ -145,7 +146,7 @@ class CrmController extends Controller
     private function buildStats(): array
     {
         $totalCustomers = Customer::count();
-        $newThisMonth   = Customer::whereMonth('created_at', now()->month)->count();
+        $newThisMonth = Customer::whereMonth('created_at', now()->month)->count();
         $pendingFollowUps = CrmActivity::pendingFollowUps()
             ->where('scheduled_at', '<=', now()->addDays(7))
             ->count();
@@ -161,11 +162,11 @@ class CrmController extends Controller
             ->get();
 
         return [
-            'total_customers'  => $totalCustomers,
-            'new_this_month'   => $newThisMonth,
-            'pending_followups'=> $pendingFollowUps,
-            'by_lifecycle'     => $byLifecycle,
-            'top_customers'    => $topCustomers,
+            'total_customers' => $totalCustomers,
+            'new_this_month' => $newThisMonth,
+            'pending_followups' => $pendingFollowUps,
+            'by_lifecycle' => $byLifecycle,
+            'top_customers' => $topCustomers,
         ];
     }
 
@@ -173,7 +174,9 @@ class CrmController extends Controller
     {
         try {
             $customer = Customer::find($customerId);
-            if (!$customer) return;
+            if (! $customer) {
+                return;
+            }
 
             $purchaseCount = Invoice::where('customer_id', $customerId)
                 ->where('status', 'paid')
@@ -190,21 +193,22 @@ class CrmController extends Controller
             $daysSincePurchase = $lastPurchase ? now()->diffInDays($lastPurchase) : 999;
 
             $stage = match (true) {
-                $purchaseCount === 0             => 'prospect',
-                $daysSincePurchase > 90          => 'at_risk',
-                $daysSincePurchase > 180         => 'churned',
-                $purchaseCount >= 10             => 'loyal',
-                $purchaseCount >= 3              => 'customer',
-                default                          => 'customer',
+                $purchaseCount === 0 => 'prospect',
+                $daysSincePurchase > 90 => 'at_risk',
+                $daysSincePurchase > 180 => 'churned',
+                $purchaseCount >= 10 => 'loyal',
+                $purchaseCount >= 3 => 'customer',
+                default => 'customer',
             };
 
             $customer->update([
-                'purchase_count'   => $purchaseCount,
-                'lifetime_value'   => round($ltv, 2),
+                'purchase_count' => $purchaseCount,
+                'lifetime_value' => round($ltv, 2),
                 'last_purchase_at' => $lastPurchase,
-                'lifecycle_stage'  => $stage,
+                'lifecycle_stage' => $stage,
             ]);
-        } catch (\Throwable) {}
+        } catch (Throwable) {
+        }
     }
 
     private function syncAllSegments(): void
@@ -224,9 +228,9 @@ class CrmController extends Controller
         foreach ($rules as $rule) {
             match ($rule['field'] ?? '') {
                 'lifecycle_stage' => $query->where('lifecycle_stage', $rule['value']),
-                'min_ltv'         => $query->where('lifetime_value', '>=', $rule['value']),
-                'min_purchases'   => $query->where('purchase_count', '>=', $rule['value']),
-                default           => null,
+                'min_ltv' => $query->where('lifetime_value', '>=', $rule['value']),
+                'min_purchases' => $query->where('purchase_count', '>=', $rule['value']),
+                default => null,
             };
         }
 

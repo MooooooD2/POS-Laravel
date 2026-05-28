@@ -63,7 +63,7 @@ class TenantIsolationTest extends TestCase
 
         $this->assertFalse(
             $request->session()->has('tenant_id'),
-            'Stale tenant_id must be removed from session when the tenant no longer exists'
+            'Stale tenant_id must be removed from session when the tenant no longer exists',
         );
     }
 
@@ -187,7 +187,7 @@ class TenantIsolationTest extends TestCase
         $this->assertStringNotContainsString(
             '"password"',
             $response->content(),
-            'Password field must never appear in API responses'
+            'Password field must never appear in API responses',
         );
     }
 
@@ -238,8 +238,8 @@ class TenantIsolationTest extends TestCase
         // so a real entry must exist to get 403 rather than 404.
         $entry = JournalEntry::create([
             'entry_number' => 'JE-PERM-TEST-001',
-            'entry_date'   => '2026-01-01',
-            'description'  => 'Permission test entry',
+            'entry_date' => '2026-01-01',
+            'description' => 'Permission test entry',
         ]);
 
         $this->actingAs($cashier)->postJson("/api/journal-entries/{$entry->id}/post")->assertStatus(403);

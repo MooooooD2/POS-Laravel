@@ -6,6 +6,7 @@ use App\Http\Requests\HoldInvoiceRequest;
 use App\Models\HeldInvoice;
 use App\Services\HeldInvoiceService;
 use App\Traits\ApiResponse;
+use Exception;
 
 class HeldInvoiceController extends Controller
 {
@@ -24,7 +25,7 @@ class HeldInvoiceController extends Controller
             $held = $this->heldService->hold($request->validated());
 
             return $this->success(['held_invoice' => $held], __('pos.invoice_held'), 201);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage());
         }
     }
@@ -35,7 +36,7 @@ class HeldInvoiceController extends Controller
             $held = $this->heldService->resume($heldInvoice);
 
             return $this->success(['held_invoice' => $held]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage());
         }
     }
@@ -48,7 +49,7 @@ class HeldInvoiceController extends Controller
             $this->heldService->discard($heldInvoice);
 
             return $this->success([], __('pos.invoice_discarded'));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage());
         }
     }

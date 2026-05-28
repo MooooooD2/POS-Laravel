@@ -26,7 +26,7 @@ class StockMovementRepository extends BaseRepository implements StockMovementRep
     public function byProduct(int $productId, string $from, string $to): Collection
     {
         return StockMovement::where('product_id', $productId)
-            ->whereBetween('created_at', [$from, $to.' 23:59:59'])
+            ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
             ->orderBy('created_at')
             ->get();
     }

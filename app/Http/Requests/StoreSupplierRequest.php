@@ -17,7 +17,7 @@ class StoreSupplierRequest extends FormRequest
 
         return [
             'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20|unique:suppliers,phone,'.($supplierId ?? 'NULL'),
+            'phone' => 'nullable|string|max:20|unique:suppliers,phone,' . ($supplierId ?? 'NULL'),
             'address' => 'nullable|string|max:500',
             'email' => 'nullable|email:rfc|max:255',
         ];

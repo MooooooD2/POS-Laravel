@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\Tenant;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
+use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
@@ -57,7 +58,8 @@ class TenantController extends Controller
 
         $mrr = array_sum(array_map(
             fn ($planId, $count) => ($planPrices[$planId] ?? 0) * $count,
-            array_keys($activeByPlan), $activeByPlan
+            array_keys($activeByPlan),
+            $activeByPlan,
         ));
         $arr = $mrr * 12;
 
@@ -76,24 +78,33 @@ class TenantController extends Controller
             $month = now()->startOfMonth()->subMonths($i);
             $monthlyGrowth[] = [
                 'label' => $month->format('M Y'),
-                'count' => $tenants->filter(fn ($t) => $t->created_at &&
-                    $t->created_at->format('Y-m') === $month->format('Y-m')
+                'count' => $tenants->filter(
+                    fn ($t) => $t->created_at &&
+                    $t->created_at->format('Y-m') === $month->format('Y-m'),
                 )->count(),
             ];
         }
 
         // ── Expiring soon (30 days) ───────────────────────────────────────
-        $expiringSoon = $tenants->filter(fn ($t) => ($t->subscription_ends_at || $t->trial_ends_at) &&
-            ($t->subscription_ends_at ?? $t->trial_ends_at)->between(now(), now()->addDays(30))
+        $expiringSoon = $tenants->filter(
+            fn ($t) => ($t->subscription_ends_at || $t->trial_ends_at) &&
+            ($t->subscription_ends_at ?? $t->trial_ends_at)->between(now(), now()->addDays(30)),
         )->sortBy(fn ($t) => $t->subscription_ends_at ?? $t->trial_ends_at);
 
         // ── Recent signups ────────────────────────────────────────────────
         $recentTenants = $tenants->sortByDesc('created_at')->take(5);
 
         return view('admin.cpanel', compact(
-            'tenants', 'mrr', 'arr',
-            'planModels', 'planPrices', 'activeByPlan', 'statusCounts',
-            'monthlyGrowth', 'expiringSoon', 'recentTenants'
+            'tenants',
+            'mrr',
+            'arr',
+            'planModels',
+            'planPrices',
+            'activeByPlan',
+            'statusCounts',
+            'monthlyGrowth',
+            'expiringSoon',
+            'recentTenants',
         ));
     }
 
@@ -206,8 +217,9 @@ class TenantController extends Controller
             'cancelled' => $tenants->where('subscription_status', 'cancelled')->count(),
             'mrr' => array_sum($planRevenue),
             'plan_revenue' => $planRevenue,
-            'expiring_soon' => $tenants->filter(fn ($t) => $t->subscription_ends_at &&
-                $t->subscription_ends_at->between(now(), now()->addDays(30))
+            'expiring_soon' => $tenants->filter(
+                fn ($t) => $t->subscription_ends_at &&
+                $t->subscription_ends_at->between(now(), now()->addDays(30)),
             )->count(),
         ]);
     }
@@ -270,7 +282,7 @@ class TenantController extends Controller
 
         tenancy()->initialize($tenant);
 
-        $users = \DB::table('users')
+        $users = DB::table('users')
             ->select('id', 'full_name', 'username', 'is_active', 'created_at')
             ->orderBy('id')
             ->get()
@@ -301,7 +313,7 @@ class TenantController extends Controller
 
         tenancy()->initialize($tenant);
 
-        $user = \DB::table('users')->where('id', $userId)->first();
+        $user = DB::table('users')->where('id', $userId)->first();
         if (! $user) {
             if ($caller) {
                 tenancy()->initialize($caller);
@@ -313,7 +325,7 @@ class TenantController extends Controller
         }
 
         $newState = ! ((bool) $user->is_active);
-        \DB::table('users')->where('id', $userId)->update(['is_active' => $newState]);
+        DB::table('users')->where('id', $userId)->update(['is_active' => $newState]);
 
         if ($caller) {
             tenancy()->initialize($caller);
@@ -323,7 +335,7 @@ class TenantController extends Controller
 
         return $this->success(
             ['is_active' => $newState],
-            $newState ? __('pos.user_activated') : __('pos.user_deactivated')
+            $newState ? __('pos.user_activated') : __('pos.user_deactivated'),
         );
     }
 }

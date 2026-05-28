@@ -29,8 +29,8 @@ class MobileApiTest extends TestCase
     public function it_rejects_invalid_credentials(): void
     {
         $this->postJson('/api/v1/auth/login', [
-            'email'       => 'nobody@example.com',
-            'password'    => 'wrong',
+            'email' => 'nobody@example.com',
+            'password' => 'wrong',
             'device_name' => 'TestDevice',
         ])->assertStatus(422);
     }
@@ -41,8 +41,8 @@ class MobileApiTest extends TestCase
         $user = User::factory()->create(['password' => bcrypt('secret123')]);
 
         $response = $this->postJson('/api/v1/auth/login', [
-            'email'       => $user->email,
-            'password'    => 'secret123',
+            'email' => $user->email,
+            'password' => 'secret123',
             'device_name' => 'TestDevice',
         ]);
 

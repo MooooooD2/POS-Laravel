@@ -15,7 +15,7 @@ class PlanController extends Controller
 
     private function guardMasterTenant(): void
     {
-        $masterId  = config('tenancy.master_tenant');
+        $masterId = config('tenancy.master_tenant');
         $currentId = tenancy()->tenant?->id;
         if ($masterId && $currentId && $currentId !== $masterId) {
             abort(403, __('pos.master_tenant_only'));
@@ -33,7 +33,7 @@ class PlanController extends Controller
             ->groupBy('plan')
             ->pluck('count', 'plan');
 
-        $allModules   = PlanFeatureService::allModules();
+        $allModules = PlanFeatureService::allModules();
         $moduleGroups = PlanFeatureService::moduleGroups();
 
         return view('plans.index', compact('plans', 'tenantCounts', 'allModules', 'moduleGroups'));
@@ -44,18 +44,18 @@ class PlanController extends Controller
         $this->guardMasterTenant();
 
         $data = $request->validate([
-            'id'            => 'required|string|max:50|alpha_dash|unique:plans,id',
-            'name'          => 'required|string|max:100',
+            'id' => 'required|string|max:50|alpha_dash|unique:plans,id',
+            'name' => 'required|string|max:100',
             'monthly_price' => 'required|numeric|min:0',
-            'annual_price'  => 'nullable|numeric|min:0',
-            'trial_days'    => 'required|integer|min:0|max:365',
-            'max_users'     => 'nullable|integer|min:1',
-            'max_products'  => 'nullable|integer|min:1',
-            'features'      => 'nullable|array',
-            'features.*'    => 'string|max:200',
+            'annual_price' => 'nullable|numeric|min:0',
+            'trial_days' => 'required|integer|min:0|max:365',
+            'max_users' => 'nullable|integer|min:1',
+            'max_products' => 'nullable|integer|min:1',
+            'features' => 'nullable|array',
+            'features.*' => 'string|max:200',
             'feature_flags' => 'nullable|array',
             'feature_flags.*' => 'string|max:50',
-            'sort_order'    => 'required|integer|min:0',
+            'sort_order' => 'required|integer|min:0',
         ]);
 
         $data['id'] = strtolower($data['id']);
@@ -80,17 +80,17 @@ class PlanController extends Controller
         $plan = Plan::findOrFail($id);
 
         $data = $request->validate([
-            'name'          => 'required|string|max:100',
+            'name' => 'required|string|max:100',
             'monthly_price' => 'required|numeric|min:0',
-            'annual_price'  => 'nullable|numeric|min:0',
-            'trial_days'    => 'required|integer|min:0|max:365',
-            'max_users'     => 'nullable|integer|min:1',
-            'max_products'  => 'nullable|integer|min:1',
-            'features'      => 'nullable|array',
-            'features.*'    => 'string|max:200',
+            'annual_price' => 'nullable|numeric|min:0',
+            'trial_days' => 'required|integer|min:0|max:365',
+            'max_users' => 'nullable|integer|min:1',
+            'max_products' => 'nullable|integer|min:1',
+            'features' => 'nullable|array',
+            'features.*' => 'string|max:200',
             'feature_flags' => 'nullable|array',
             'feature_flags.*' => 'string|max:50',
-            'sort_order'    => 'required|integer|min:0',
+            'sort_order' => 'required|integer|min:0',
         ]);
 
         // Only keep valid module keys

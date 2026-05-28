@@ -52,9 +52,9 @@ class WasteRecordingTest extends TestCase
         $res = $this->actingAs($this->admin)
             ->postJson('/api/waste', [
                 'product_id' => $this->product->id,
-                'quantity'   => 3,
-                'reason'     => 'expired',
-                'notes'      => 'Batch expired on shelf',
+                'quantity' => 3,
+                'reason' => 'expired',
+                'notes' => 'Batch expired on shelf',
             ]);
 
         $res->assertOk()
@@ -62,7 +62,7 @@ class WasteRecordingTest extends TestCase
 
         $this->assertDatabaseHas('waste_records', [
             'product_id' => $this->product->id,
-            'reason'     => 'expired',
+            'reason' => 'expired',
         ]);
     }
 
@@ -72,8 +72,8 @@ class WasteRecordingTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/waste', [
                 'product_id' => $this->product->id,
-                'quantity'   => 1,
-                'reason'     => 'damaged',
+                'quantity' => 1,
+                'reason' => 'damaged',
             ])->assertOk();
     }
 
@@ -83,8 +83,8 @@ class WasteRecordingTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/waste', [
                 'product_id' => $this->product->id,
-                'quantity'   => 5,
-                'reason'     => 'damaged',
+                'quantity' => 5,
+                'reason' => 'damaged',
             ])->assertOk();
 
         $this->assertEquals(15, $this->product->fresh()->quantity);
@@ -97,8 +97,8 @@ class WasteRecordingTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/waste', [
                 'product_id' => $this->product->id,
-                'quantity'   => 100,   // more than the 20 in stock
-                'reason'     => 'expired',
+                'quantity' => 100,   // more than the 20 in stock
+                'reason' => 'expired',
             ])->assertStatus(422);
     }
 
@@ -108,8 +108,8 @@ class WasteRecordingTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/waste', [
                 'product_id' => $this->product->id,
-                'quantity'   => 1,
-                'reason'     => 'aliens_ate_it',
+                'quantity' => 1,
+                'reason' => 'aliens_ate_it',
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['reason']);
     }
@@ -120,7 +120,7 @@ class WasteRecordingTest extends TestCase
         $this->actingAs($this->admin)
             ->postJson('/api/waste', [
                 'quantity' => 1,
-                'reason'   => 'expired',
+                'reason' => 'expired',
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['product_id']);
     }
@@ -132,8 +132,8 @@ class WasteRecordingTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson('/api/waste', [
                 'product_id' => $this->product->id,
-                'quantity'   => 1,
-                'reason'     => 'expired',
+                'quantity' => 1,
+                'reason' => 'expired',
             ])->assertForbidden();
     }
 
@@ -142,8 +142,8 @@ class WasteRecordingTest extends TestCase
     {
         $this->postJson('/api/waste', [
             'product_id' => $this->product->id,
-            'quantity'   => 1,
-            'reason'     => 'expired',
+            'quantity' => 1,
+            'reason' => 'expired',
         ])->assertUnauthorized();
     }
 
@@ -155,8 +155,8 @@ class WasteRecordingTest extends TestCase
         // Record one first so history is non-empty
         $this->actingAs($this->admin)->postJson('/api/waste', [
             'product_id' => $this->product->id,
-            'quantity'   => 1,
-            'reason'     => 'expired',
+            'quantity' => 1,
+            'reason' => 'expired',
         ]);
 
         $this->actingAs($this->admin)
@@ -169,7 +169,7 @@ class WasteRecordingTest extends TestCase
     public function history_can_be_filtered_by_date(): void
     {
         $from = now()->subDays(7)->toDateString();
-        $to   = now()->toDateString();
+        $to = now()->toDateString();
 
         $this->actingAs($this->admin)
             ->getJson("/api/waste?start_date={$from}&end_date={$to}")

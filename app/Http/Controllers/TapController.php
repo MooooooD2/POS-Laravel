@@ -23,7 +23,7 @@ class TapController extends Controller
     private function headers(): array
     {
         return [
-            'Authorization' => 'Bearer '.config('services.tap.secret'),
+            'Authorization' => 'Bearer ' . config('services.tap.secret'),
             'Content-Type' => 'application/json',
         ];
     }
@@ -54,7 +54,7 @@ class TapController extends Controller
         $response = Http::withHeaders($this->headers())->post("{$this->baseUrl}/charges", [
             'amount' => (float) $price,
             'currency' => $currency,
-            'description' => $plan->name.' — '.($isAnnual ? '12 months' : '1 month'),
+            'description' => $plan->name . ' — ' . ($isAnnual ? '12 months' : '1 month'),
             'metadata' => [
                 'tenant_id' => $tenant->id,
                 'plan_id' => $plan->id,

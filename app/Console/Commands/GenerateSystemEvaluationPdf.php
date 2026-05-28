@@ -14,7 +14,7 @@ class GenerateSystemEvaluationPdf extends Command
     public function handle(): int
     {
         $filename = $this->option('out');
-        $outPath = storage_path('app/'.$filename);
+        $outPath = storage_path('app/' . $filename);
 
         $this->info('Rendering evaluation report…');
 

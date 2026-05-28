@@ -52,10 +52,10 @@ class HeldInvoiceTest extends TestCase
             'notes' => 'Table 3 order',
             'items' => [
                 [
-                    'product_id'   => $this->product->id,
+                    'product_id' => $this->product->id,
                     'product_name' => 'Test Product',
-                    'quantity'     => 2,
-                    'price'        => 50.00,
+                    'quantity' => 2,
+                    'price' => 50.00,
                 ],
             ],
         ];
@@ -65,17 +65,17 @@ class HeldInvoiceTest extends TestCase
     private function makeHeldInvoice(int $cashierId, string $status = 'held'): HeldInvoice
     {
         return HeldInvoice::create([
-            'hold_number'     => 'HLD-' . uniqid(),
-            'cashier_id'      => $cashierId,
-            'cashier_name'    => 'Test Cashier',
-            'cart_data'       => [
-                'items'   => $this->holdPayload()['items'],
+            'hold_number' => 'HLD-' . uniqid(),
+            'cashier_id' => $cashierId,
+            'cashier_name' => 'Test Cashier',
+            'cart_data' => [
+                'items' => $this->holdPayload()['items'],
                 'discount' => 0,
             ],
-            'subtotal'        => 100.00,
+            'subtotal' => 100.00,
             'discount_amount' => 0.00,
-            'total'           => 100.00,
-            'status'          => $status,
+            'total' => 100.00,
+            'status' => $status,
         ]);
     }
 

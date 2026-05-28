@@ -37,8 +37,8 @@ class CashbackTest extends TestCase
         // cashback_balance is NOT in $fillable (only the service may change it)
         // Use a direct DB update to seed the test balance without bypassing the guard everywhere.
         $this->customer = Customer::create([
-            'code'      => 'CUST001',
-            'name'      => 'Test Customer',
+            'code' => 'CUST001',
+            'name' => 'Test Customer',
             'is_active' => true,
         ]);
         \Illuminate\Support\Facades\DB::table('customers')
@@ -58,9 +58,9 @@ class CashbackTest extends TestCase
     private function makeRule(bool $active = false): CashbackRule
     {
         return CashbackRule::create([
-            'name'       => 'Rule ' . uniqid(),
+            'name' => 'Rule ' . uniqid(),
             'percentage' => 5,
-            'is_active'  => $active,
+            'is_active' => $active,
         ]);
     }
 
@@ -94,7 +94,7 @@ class CashbackTest extends TestCase
         $res = $this->actingAs($this->cashier)
             ->postJson('/api/cashback/redeem', [
                 'customer_id' => $this->customer->id,
-                'amount'      => 50.00,
+                'amount' => 50.00,
             ]);
 
         $res->assertOk()
@@ -109,7 +109,7 @@ class CashbackTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson('/api/cashback/redeem', [
                 'customer_id' => $this->customer->id,
-                'amount'      => 999.00,   // exceeds balance of 100
+                'amount' => 999.00,   // exceeds balance of 100
             ])->assertStatus(422);
     }
 
@@ -119,7 +119,7 @@ class CashbackTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson('/api/cashback/redeem', [
                 'customer_id' => 99999,
-                'amount'      => 10.00,
+                'amount' => 10.00,
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['customer_id']);
     }
@@ -130,7 +130,7 @@ class CashbackTest extends TestCase
         $this->actingAs($this->cashier)
             ->postJson('/api/cashback/redeem', [
                 'customer_id' => $this->customer->id,
-                'amount'      => 0,
+                'amount' => 0,
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['amount']);
     }
@@ -172,8 +172,8 @@ class CashbackTest extends TestCase
     {
         $res = $this->actingAs($this->cashier)
             ->postJson('/api/cashback/rules', [
-                'name'         => '5% on all purchases',
-                'percentage'   => 5,
+                'name' => '5% on all purchases',
+                'percentage' => 5,
                 'min_purchase' => 50,
             ]);
 
@@ -188,7 +188,7 @@ class CashbackTest extends TestCase
     {
         $this->actingAs($this->cashier)
             ->postJson('/api/cashback/rules', [
-                'name'       => 'Invalid',
+                'name' => 'Invalid',
                 'percentage' => 0,
             ])->assertStatus(422)
             ->assertJsonValidationErrors(['percentage']);
@@ -201,7 +201,7 @@ class CashbackTest extends TestCase
 
         $this->actingAs($this->cashier)
             ->postJson('/api/cashback/rules', [
-                'name'       => 'New Active Rule',
+                'name' => 'New Active Rule',
                 'percentage' => 3,
             ])->assertStatus(201);
 

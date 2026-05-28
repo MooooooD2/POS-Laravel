@@ -132,7 +132,7 @@ class ReportController extends Controller
         return Excel::download(
             new StockReportExport(collect($report['products'])),
             'stock-report.csv',
-            \Maatwebsite\Excel\Excel::CSV
+            \Maatwebsite\Excel\Excel::CSV,
         );
     }
 
@@ -159,7 +159,7 @@ class ReportController extends Controller
         ]);
 
         return response()->json(
-            $this->reportService->accountStatement($account, $data['start_date'], $data['end_date'])
+            $this->reportService->accountStatement($account, $data['start_date'], $data['end_date']),
         );
     }
 
@@ -235,7 +235,7 @@ class ReportController extends Controller
         ]);
 
         return response()->json(
-            $this->reportService->bestSellingProducts($data['start_date'], $data['end_date'], (int) ($data['limit'] ?? 20))
+            $this->reportService->bestSellingProducts($data['start_date'], $data['end_date'], (int) ($data['limit'] ?? 20)),
         );
     }
 
@@ -248,7 +248,7 @@ class ReportController extends Controller
         ]);
 
         return response()->json(
-            $this->reportService->cashierPerformance($data['start_date'], $data['end_date'])
+            $this->reportService->cashierPerformance($data['start_date'], $data['end_date']),
         );
     }
 
@@ -350,7 +350,7 @@ class ReportController extends Controller
         ]);
 
         return response()->json(
-            $this->reportService->profitableProductsByMargin($data['start_date'], $data['end_date'], (int) ($data['limit'] ?? 20))
+            $this->reportService->profitableProductsByMargin($data['start_date'], $data['end_date'], (int) ($data['limit'] ?? 20)),
         );
     }
 

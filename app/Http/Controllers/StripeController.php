@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\Tenant;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Stripe\Checkout\Session as StripeSession;
@@ -48,7 +49,7 @@ class StripeController extends Controller
                 'price_data' => [
                     'currency' => config('services.stripe.currency', 'usd'),
                     'product_data' => [
-                        'name' => $plan->name.' — '.($isAnnual ? '12 months' : '1 month'),
+                        'name' => $plan->name . ' — ' . ($isAnnual ? '12 months' : '1 month'),
                         'description' => implode(', ', array_slice($plan->features ?? [], 0, 3)),
                     ],
                     'unit_amount' => (int) round($price * 100),
@@ -61,7 +62,7 @@ class StripeController extends Controller
                 'billing_period' => $data['billing_period'],
                 'months' => $isAnnual ? 12 : 1,
             ],
-            'success_url' => route('stripe.success').'?session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => route('stripe.success') . '?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => route('subscribe'),
             'customer_email' => auth()->user()?->email ?? null,
         ]);
@@ -84,7 +85,7 @@ class StripeController extends Controller
                 'id' => $sessionId,
                 'expand' => ['payment_intent'],
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return redirect()->route('subscribe');
         }
 
@@ -121,7 +122,7 @@ class StripeController extends Controller
             $this->activateSubscription(
                 $session->metadata['tenant_id'],
                 $planId,
-                $months
+                $months,
             );
         }
 
@@ -192,7 +193,7 @@ class StripeController extends Controller
         $this->activateSubscription(
             $session->metadata->tenant_id,
             $planId,
-            $months
+            $months,
         );
     }
 

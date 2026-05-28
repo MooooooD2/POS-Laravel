@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +32,7 @@ class PurchaseReturnService
                 ->findOrFail($data['purchase_order_id']);
 
             if (! in_array($po->status, ['received', 'partial'])) {
-                throw new \Exception(__('pos.purchase_return_po_not_received'));
+                throw new Exception(__('pos.purchase_return_po_not_received'));
             }
 
             $returnableQtys = $this->getReturnableQuantities($po);
@@ -39,7 +40,7 @@ class PurchaseReturnService
             foreach ($data['items'] as $item) {
                 $max = $returnableQtys[$item['product_id']] ?? 0;
                 if ($item['quantity'] <= 0 || $item['quantity'] > $max) {
-                    throw new \Exception(__('pos.return_quantity_exceeded', [
+                    throw new Exception(__('pos.return_quantity_exceeded', [
                         'name' => $item['product_id'],
                         'max' => $max,
                     ]));
@@ -92,7 +93,7 @@ class PurchaseReturnService
                             'return_to_supplier',
                             __('pos.purchase_return_note', ['ret' => $returnNumber]),
                             $return->id,
-                            'purchase_return'
+                            'purchase_return',
                         );
                     } else {
                         $this->stockService->deductStock(
@@ -101,7 +102,7 @@ class PurchaseReturnService
                             'return_to_supplier',
                             __('pos.purchase_return_note', ['ret' => $returnNumber]),
                             $return->id,
-                            'purchase_return'
+                            'purchase_return',
                         );
                     }
                 }
@@ -132,7 +133,7 @@ class PurchaseReturnService
     {
         $alreadyReturned = PurchaseReturnItem::whereHas(
             'purchaseReturn',
-            fn ($q) => $q->where('purchase_order_id', $po->id)->where('status', 'completed')
+            fn ($q) => $q->where('purchase_order_id', $po->id)->where('status', 'completed'),
         )->selectRaw('product_id, SUM(quantity) as total_returned')
             ->groupBy('product_id')
             ->pluck('total_returned', 'product_id');

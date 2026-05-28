@@ -25,12 +25,12 @@ class CashbackService
      */
     public function earnFromInvoice(Invoice $invoice): ?CashbackTransaction
     {
-        if (!$invoice->customer_id) {
+        if (! $invoice->customer_id) {
             return null;
         }
 
         $rule = CashbackRule::active()->orderByDesc('percentage')->first();
-        if (!$rule) {
+        if (! $rule) {
             return null;
         }
 
@@ -48,12 +48,12 @@ class CashbackService
             $invoice->update(['cashback_earned' => $amount]);
 
             return CashbackTransaction::create([
-                'customer_id'   => $customer->id,
-                'invoice_id'    => $invoice->id,
-                'type'          => 'earned',
-                'amount'        => $amount,
+                'customer_id' => $customer->id,
+                'invoice_id' => $invoice->id,
+                'type' => 'earned',
+                'amount' => $amount,
                 'balance_after' => $newBalance,
-                'description'   => "Earned from invoice #{$invoice->invoice_number}",
+                'description' => "Earned from invoice #{$invoice->invoice_number}",
             ]);
         });
     }
@@ -63,8 +63,9 @@ class CashbackService
      *
      * Throws a ValidationException if amount exceeds the customer's balance.
      *
-     * @return float Actual amount redeemed
      * @throws ValidationException
+     *
+     * @return float Actual amount redeemed
      */
     public function redeem(int $customerId, float $amount, ?int $invoiceId = null): float
     {
@@ -72,7 +73,7 @@ class CashbackService
             $customer = Customer::lockForUpdate()->findOrFail($customerId);
 
             $available = round((float) $customer->cashback_balance, 2);
-            $amount    = round($amount, 2);
+            $amount = round($amount, 2);
 
             if ($amount > $available) {
                 throw ValidationException::withMessages([
@@ -94,12 +95,12 @@ class CashbackService
             }
 
             CashbackTransaction::create([
-                'customer_id'   => $customerId,
-                'invoice_id'    => $invoiceId,
-                'type'          => 'redeemed',
-                'amount'        => $amount,
+                'customer_id' => $customerId,
+                'invoice_id' => $invoiceId,
+                'type' => 'redeemed',
+                'amount' => $amount,
                 'balance_after' => $newBalance,
-                'description'   => "Redeemed at checkout" . ($invoiceId ? " (Invoice #{$invoiceId})" : ''),
+                'description' => 'Redeemed at checkout' . ($invoiceId ? " (Invoice #{$invoiceId})" : ''),
             ]);
 
             return $amount;
@@ -130,15 +131,17 @@ class CashbackService
      */
     public function reverseFromReturn(Invoice $invoice): void
     {
-        if (!$invoice->customer_id || $invoice->cashback_earned <= 0) {
+        if (! $invoice->customer_id || $invoice->cashback_earned <= 0) {
             return;
         }
 
         DB::transaction(function () use ($invoice) {
             $customer = Customer::lockForUpdate()->findOrFail($invoice->customer_id);
-            $amount   = min($invoice->cashback_earned, $customer->cashback_balance);
+            $amount = min($invoice->cashback_earned, $customer->cashback_balance);
 
-            if ($amount <= 0) return;
+            if ($amount <= 0) {
+                return;
+            }
 
             $newBalance = round($customer->cashback_balance - $amount, 2);
 
@@ -146,12 +149,12 @@ class CashbackService
             DB::table('customers')->where('id', $customer->id)->update(['cashback_balance' => $newBalance]);
 
             CashbackTransaction::create([
-                'customer_id'   => $customer->id,
-                'invoice_id'    => $invoice->id,
-                'type'          => 'adjusted',
-                'amount'        => -$amount,
+                'customer_id' => $customer->id,
+                'invoice_id' => $invoice->id,
+                'type' => 'adjusted',
+                'amount' => -$amount,
                 'balance_after' => $newBalance,
-                'description'   => "Reversed: return of invoice #{$invoice->invoice_number}",
+                'description' => "Reversed: return of invoice #{$invoice->invoice_number}",
             ]);
         });
     }
@@ -162,6 +165,7 @@ class CashbackService
     public function getActiveRate(): float
     {
         $rule = CashbackRule::active()->orderByDesc('percentage')->first();
+
         return $rule ? $rule->percentage : 0;
     }
 }

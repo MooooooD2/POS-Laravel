@@ -16,7 +16,7 @@ class UpdateUnitRequest extends FormRequest
         $unitId = $this->route('unit')?->id;
 
         return [
-            'name' => 'required|string|max:100|unique:units,name,'.$unitId,
+            'name' => 'required|string|max:100|unique:units,name,' . $unitId,
             'abbreviation' => 'nullable|string|max:20',
             'is_active' => 'nullable|boolean',
         ];

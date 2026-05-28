@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Currency;
+use DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
+use Throwable;
 
 /**
  * Phase 10 — Multi-Currency Service
@@ -22,8 +25,10 @@ class CurrencyService
      */
     public function all(): \Illuminate\Database\Eloquent\Collection
     {
-        return Cache::remember('currencies.active', self::CACHE_TTL, fn () =>
-            Currency::active()->orderByDesc('is_base')->orderBy('code')->get()
+        return Cache::remember(
+            'currencies.active',
+            self::CACHE_TTL,
+            fn () => Currency::active()->orderByDesc('is_base')->orderBy('code')->get(),
         );
     }
 
@@ -38,7 +43,7 @@ class CurrencyService
 
         $rates = $this->getRates();
         $fromRate = $rates[$from] ?? 1.0;
-        $toRate   = $rates[$to]   ?? 1.0;
+        $toRate = $rates[$to] ?? 1.0;
 
         // Convert: amount → base → target
         $inBase = $amount / $fromRate;
@@ -51,24 +56,25 @@ class CurrencyService
      */
     public function updateRates(string $provider = 'fixer'): bool
     {
-        $apiKey  = config('services.exchange_rates.key');
+        $apiKey = config('services.exchange_rates.key');
         $baseCode = Currency::base()->code ?? 'EGP';
 
         try {
             $response = match ($provider) {
-                'fixer' => Http::get("https://data.fixer.io/api/latest", [
+                'fixer' => Http::get('https://data.fixer.io/api/latest', [
                     'access_key' => $apiKey,
-                    'base'       => $baseCode,
+                    'base' => $baseCode,
                 ]),
-                'openexchangerates' => Http::get("https://openexchangerates.org/api/latest.json", [
+                'openexchangerates' => Http::get('https://openexchangerates.org/api/latest.json', [
                     'app_id' => $apiKey,
-                    'base'   => $baseCode,
+                    'base' => $baseCode,
                 ]),
-                default => throw new \InvalidArgumentException("Unknown provider: {$provider}"),
+                default => throw new InvalidArgumentException("Unknown provider: {$provider}"),
             };
 
             if (! $response->successful()) {
                 Log::warning('Exchange rate update failed', ['provider' => $provider, 'status' => $response->status()]);
+
                 return false;
             }
 
@@ -79,16 +85,16 @@ class CurrencyService
 
                 if (isset($rates[$code])) {
                     $currency->update([
-                        'exchange_rate'   => $rates[$code],
+                        'exchange_rate' => $rates[$code],
                         'rate_updated_at' => now(),
                     ]);
 
                     // Store history
-                    \DB::table('currency_rate_history')->insert([
+                    DB::table('currency_rate_history')->insert([
                         'currency_code' => $code,
-                        'rate'          => $rates[$code],
-                        'source'        => $provider,
-                        'recorded_at'   => now(),
+                        'rate' => $rates[$code],
+                        'source' => $provider,
+                        'recorded_at' => now(),
                     ]);
                 }
             });
@@ -97,8 +103,9 @@ class CurrencyService
             Cache::forget('currencies.rates');
 
             return true;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('CurrencyService::updateRates', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -108,8 +115,10 @@ class CurrencyService
      */
     public function getRates(): array
     {
-        return Cache::remember('currencies.rates', self::CACHE_TTL, fn () =>
-            Currency::active()->pluck('exchange_rate', 'code')->toArray()
+        return Cache::remember(
+            'currencies.rates',
+            self::CACHE_TTL,
+            fn () => Currency::active()->pluck('exchange_rate', 'code')->toArray(),
         );
     }
 
@@ -119,7 +128,7 @@ class CurrencyService
     public function format(float $amount, string $currencyCode): string
     {
         $currency = Currency::active()->firstWhere('code', $currencyCode);
-        $symbol   = $currency?->symbol ?? $currencyCode;
+        $symbol = $currency?->symbol ?? $currencyCode;
 
         return $symbol . ' ' . number_format($amount, 2);
     }

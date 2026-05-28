@@ -12,7 +12,8 @@ use Illuminate\Http\Request;
 
 class RecipeController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(private RecipeService $recipeService) {}
 
@@ -35,7 +36,7 @@ class RecipeController extends Controller
     {
         $data = $request->validate([
             'ingredients' => 'required|array',
-            'ingredients.*.ingredient_id' => 'required|integer|exists:products,id|different:'.$product->id,
+            'ingredients.*.ingredient_id' => 'required|integer|exists:products,id|different:' . $product->id,
             'ingredients.*.quantity' => 'required|numeric|min:0.001',
         ]);
 

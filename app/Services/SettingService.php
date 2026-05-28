@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\Repositories\SettingRepositoryInterface;
+use Exception;
 
 class SettingService
 {
@@ -50,7 +51,7 @@ class SettingService
     {
         foreach ($settings as $item) {
             if (! in_array($item['key'], self::ALLOWED_KEYS, true)) {
-                throw new \Exception('مفتاح الإعداد غير مسموح به: '.$item['key']);
+                throw new Exception('مفتاح الإعداد غير مسموح به: ' . $item['key']);
             }
             $value = $item['value'] ?? '';
             if (is_string($value)) {

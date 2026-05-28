@@ -36,7 +36,7 @@ class AttendanceCycleTest extends TestCase
         $this->manager = User::factory()->create(['is_active' => true]);
         // Grant manage_hr permission directly (Spatie)
         $perm = \Spatie\Permission\Models\Permission::firstOrCreate(
-            ['name' => 'manage_hr', 'guard_name' => 'web']
+            ['name' => 'manage_hr', 'guard_name' => 'web'],
         );
         $this->manager->givePermissionTo($perm);
     }
@@ -58,8 +58,8 @@ class AttendanceCycleTest extends TestCase
             ->first();
 
         $this->assertNotNull($record, 'attendance_records row should be created on clock-in');
-        $this->assertNotNull($record->check_in,  'check_in should be set');
-        $this->assertNull($record->check_out,    'check_out should still be null after clock-in');
+        $this->assertNotNull($record->check_in, 'check_in should be set');
+        $this->assertNull($record->check_out, 'check_out should still be null after clock-in');
         $this->assertEquals('present', $record->status);
     }
 
@@ -92,7 +92,7 @@ class AttendanceCycleTest extends TestCase
             ->whereDate('work_date', today())
             ->first();
 
-        $this->assertNotNull($record->check_out,   'check_out should be set after clock-out');
+        $this->assertNotNull($record->check_out, 'check_out should be set after clock-out');
         $this->assertGreaterThan(0, $record->hours_worked, 'hours_worked should be positive');
         $this->assertEquals('present', $record->status);
     }
@@ -106,11 +106,11 @@ class AttendanceCycleTest extends TestCase
 
         // Insert a bare attendance record: check_in set, check_out null
         DB::table('attendance_records')->insert([
-            'user_id'    => $employee->id,
-            'work_date'  => today()->toDateString(),
-            'check_in'   => now()->subHour(),
-            'check_out'  => null,
-            'status'     => 'present',
+            'user_id' => $employee->id,
+            'work_date' => today()->toDateString(),
+            'check_in' => now()->subHour(),
+            'check_out' => null,
+            'status' => 'present',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -124,7 +124,7 @@ class AttendanceCycleTest extends TestCase
             ->firstWhere('user_id', $employee->id);
 
         $this->assertNotNull($record);
-        $this->assertTrue($record['is_working_now'],   'is_working_now should be true');
+        $this->assertTrue($record['is_working_now'], 'is_working_now should be true');
         $this->assertFalse($record['has_checked_out'], 'has_checked_out should be false');
     }
 
@@ -134,14 +134,14 @@ class AttendanceCycleTest extends TestCase
         $employee = User::factory()->create(['is_active' => true]);
 
         DB::table('attendance_records')->insert([
-            'user_id'      => $employee->id,
-            'work_date'    => today()->toDateString(),
-            'check_in'     => now()->subHours(8),
-            'check_out'    => now(),
+            'user_id' => $employee->id,
+            'work_date' => today()->toDateString(),
+            'check_in' => now()->subHours(8),
+            'check_out' => now(),
             'hours_worked' => 8,
-            'status'       => 'present',
-            'created_at'   => now(),
-            'updated_at'   => now(),
+            'status' => 'present',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $response = $this->actingAs($this->manager)
@@ -153,8 +153,8 @@ class AttendanceCycleTest extends TestCase
             ->firstWhere('user_id', $employee->id);
 
         $this->assertNotNull($record);
-        $this->assertFalse($record['is_working_now'],  'is_working_now should be false after checkout');
-        $this->assertTrue($record['has_checked_out'],  'has_checked_out should be true');
+        $this->assertFalse($record['is_working_now'], 'is_working_now should be false after checkout');
+        $this->assertTrue($record['has_checked_out'], 'has_checked_out should be true');
     }
 
     // ── 4. Virtual status filter: working_now ─────────────────────────────
@@ -162,9 +162,9 @@ class AttendanceCycleTest extends TestCase
     /** @test */
     public function working_now_filter_returns_only_checked_in_employees(): void
     {
-        $working  = User::factory()->create(['is_active' => true]);
+        $working = User::factory()->create(['is_active' => true]);
         $finished = User::factory()->create(['is_active' => true]);
-        $absent   = User::factory()->create(['is_active' => true]);
+        $absent = User::factory()->create(['is_active' => true]);
 
         DB::table('attendance_records')->insert([
             ['user_id' => $working->id,  'work_date' => today()->toDateString(), 'check_in' => now()->subHour(),   'check_out' => null,  'hours_worked' => null, 'status' => 'present', 'created_at' => now(), 'updated_at' => now()],
@@ -178,15 +178,15 @@ class AttendanceCycleTest extends TestCase
 
         $ids = collect($response->json('records'))->pluck('user_id')->toArray();
 
-        $this->assertContains($working->id,      $ids, 'working employee should appear');
-        $this->assertNotContains($finished->id,  $ids, 'finished employee should NOT appear');
-        $this->assertNotContains($absent->id,    $ids, 'absent employee should NOT appear');
+        $this->assertContains($working->id, $ids, 'working employee should appear');
+        $this->assertNotContains($finished->id, $ids, 'finished employee should NOT appear');
+        $this->assertNotContains($absent->id, $ids, 'absent employee should NOT appear');
     }
 
     /** @test */
     public function checked_out_filter_returns_only_completed_attendance(): void
     {
-        $working  = User::factory()->create(['is_active' => true]);
+        $working = User::factory()->create(['is_active' => true]);
         $finished = User::factory()->create(['is_active' => true]);
 
         DB::table('attendance_records')->insert([
@@ -201,8 +201,8 @@ class AttendanceCycleTest extends TestCase
 
         $ids = collect($response->json('records'))->pluck('user_id')->toArray();
 
-        $this->assertContains($finished->id,    $ids, 'finished employee should appear');
-        $this->assertNotContains($working->id,  $ids, 'working employee should NOT appear');
+        $this->assertContains($finished->id, $ids, 'finished employee should appear');
+        $this->assertNotContains($working->id, $ids, 'working employee should NOT appear');
     }
 
     // ── 5. Manual attendance endpoints ────────────────────────────────────
@@ -214,15 +214,15 @@ class AttendanceCycleTest extends TestCase
 
         $response = $this->actingAs($this->manager)
             ->postJson('/api/hr/attendance/checkin', [
-                'user_id'   => $employee->id,
+                'user_id' => $employee->id,
                 'work_date' => today()->toDateString(),
-                'check_in'  => '09:00',
+                'check_in' => '09:00',
             ]);
 
         $response->assertOk()->assertJson(['success' => true]);
 
         $this->assertDatabaseHas('attendance_records', [
-            'user_id'   => $employee->id,
+            'user_id' => $employee->id,
             'work_date' => today()->toDateString(),
         ]);
 
@@ -241,18 +241,18 @@ class AttendanceCycleTest extends TestCase
 
         // First create check-in
         DB::table('attendance_records')->insert([
-            'user_id'    => $employee->id,
-            'work_date'  => today()->toDateString(),
-            'check_in'   => today()->setTimeFromTimeString('09:00:00'),
-            'check_out'  => null,
-            'status'     => 'present',
+            'user_id' => $employee->id,
+            'work_date' => today()->toDateString(),
+            'check_in' => today()->setTimeFromTimeString('09:00:00'),
+            'check_out' => null,
+            'status' => 'present',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         $response = $this->actingAs($this->manager)
             ->postJson('/api/hr/attendance/checkout', [
-                'user_id'   => $employee->id,
+                'user_id' => $employee->id,
                 'work_date' => today()->toDateString(),
                 'check_out' => '17:00',
             ]);
@@ -264,7 +264,7 @@ class AttendanceCycleTest extends TestCase
             ->whereDate('work_date', today())
             ->first();
 
-        $this->assertNotNull($record->check_out,  'check_out should be set after manual checkout');
+        $this->assertNotNull($record->check_out, 'check_out should be set after manual checkout');
         $this->assertGreaterThan(0, $record->hours_worked);
     }
 
@@ -275,7 +275,7 @@ class AttendanceCycleTest extends TestCase
 
         $response = $this->actingAs($this->manager)
             ->postJson('/api/hr/attendance/checkout', [
-                'user_id'   => $employee->id,
+                'user_id' => $employee->id,
                 'work_date' => today()->toDateString(),
                 'check_out' => '17:00',
             ]);

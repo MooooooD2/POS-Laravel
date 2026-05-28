@@ -21,10 +21,10 @@ class MobileAuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
             'device_name' => 'required|string|max:100',
-            'fcm_token'   => 'nullable|string',
+            'fcm_token' => 'nullable|string',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -55,9 +55,9 @@ class MobileAuthController extends Controller
         }
 
         return response()->json([
-            'token'      => $token,
+            'token' => $token,
             'token_type' => 'Bearer',
-            'user'       => $this->userPayload($user),
+            'user' => $this->userPayload($user),
         ]);
     }
 
@@ -97,14 +97,14 @@ class MobileAuthController extends Controller
     private function userPayload(User $user): array
     {
         return [
-            'id'         => $user->id,
-            'name'       => $user->name,
-            'email'      => $user->email,
-            'role'       => $user->roles->first()?->name,
-            'permissions'=> $user->getAllPermissions()->pluck('name'),
-            'locale'     => $user->locale ?? 'ar',
-            'branch_id'  => $user->branch_id ?? null,
-            'avatar'     => $user->avatar_url ?? null,
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->roles->first()?->name,
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+            'locale' => $user->locale ?? 'ar',
+            'branch_id' => $user->branch_id ?? null,
+            'avatar' => $user->avatar_url ?? null,
         ];
     }
 }

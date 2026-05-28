@@ -21,35 +21,35 @@ return [
 
     // Breadcrumbs for better context
     'breadcrumbs' => [
-        'logs'                 => true,
-        'cache'                => true,
-        'livewire'             => true,
-        'sql_queries'          => true,
-        'sql_bindings'         => env('APP_ENV') !== 'production', // no PII in prod
-        'queue_info'           => true,
-        'command_info'         => true,
+        'logs' => true,
+        'cache' => true,
+        'livewire' => true,
+        'sql_queries' => true,
+        'sql_bindings' => env('APP_ENV') !== 'production', // no PII in prod
+        'queue_info' => true,
+        'command_info' => true,
     ],
 
     // Performance monitoring
     'tracing' => [
-        'queue_job_transactions'       => true,
-        'queue_jobs'                   => true,
-        'sql_queries'                  => true,
-        'sql_origin'                   => true,
-        'views'                        => true,
-        'http_client_requests'         => true,
-        'redis_commands'               => env('APP_ENV') !== 'production',
-        'missing_routes'               => true,
-        'livewire_components'          => true,
+        'queue_job_transactions' => true,
+        'queue_jobs' => true,
+        'sql_queries' => true,
+        'sql_origin' => true,
+        'views' => true,
+        'http_client_requests' => true,
+        'redis_commands' => env('APP_ENV') !== 'production',
+        'missing_routes' => true,
+        'livewire_components' => true,
     ],
 
     // Ignore common non-critical exceptions
     'ignore_exceptions' => [
-        \Illuminate\Auth\AuthenticationException::class,
-        \Illuminate\Auth\Access\AuthorizationException::class,
-        \Illuminate\Validation\ValidationException::class,
-        \Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class,
-        \Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException::class,
-        \Illuminate\Session\TokenMismatchException::class,
+        Illuminate\Auth\AuthenticationException::class,
+        Illuminate\Auth\Access\AuthorizationException::class,
+        Illuminate\Validation\ValidationException::class,
+        Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class,
+        Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException::class,
+        Illuminate\Session\TokenMismatchException::class,
     ],
 ];

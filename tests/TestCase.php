@@ -4,6 +4,7 @@ namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -39,7 +40,7 @@ abstract class TestCase extends BaseTestCase
             // Resolve actual drivers (not just config — a test may have extended
             // the 'tenant' resolver to return a different connection type).
             $defaultDriver = DB::connection($default)->getDriverName();
-            $tenantDriver  = DB::connection('tenant')->getDriverName();
+            $tenantDriver = DB::connection('tenant')->getDriverName();
 
             // Only merge when both connections genuinely use the same MySQL/MariaDB
             // driver.  If a test overrides 'tenant' to SQLite, leave it alone.
@@ -54,7 +55,7 @@ abstract class TestCase extends BaseTestCase
             DB::connection('tenant')
                 ->setPdo($pdo)
                 ->setReadPdo($pdo);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // If the 'tenant' connection is misconfigured (CI / other env), skip.
         }
     }

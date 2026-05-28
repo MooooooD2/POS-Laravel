@@ -61,9 +61,10 @@ class ProductRepository extends BaseRepository implements ProductRepositoryInter
         }
 
         return Product::with('unit:id,name,abbreviation')
-            ->where(fn ($q) => $q
-                ->where('name', 'like', '%'.$query.'%')
-                ->orWhere('barcode', 'like', '%'.$query.'%')
+            ->where(
+                fn ($q) => $q
+                    ->where('name', 'like', '%' . $query . '%')
+                    ->orWhere('barcode', 'like', '%' . $query . '%'),
             )
             ->tap($hasActiveBatch)
             ->orderByDesc('quantity')

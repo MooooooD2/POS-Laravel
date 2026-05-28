@@ -44,7 +44,7 @@ class StoreReturnRequest extends FormRequest
             $invoiceItemMap = $invoice->items->keyBy('product_id');
             $alreadyReturned = ReturnItem::whereHas(
                 'salesReturn',
-                fn ($q) => $q->where('invoice_id', $invoiceId)->where('status', 'completed')
+                fn ($q) => $q->where('invoice_id', $invoiceId)->where('status', 'completed'),
             )->get()->groupBy('product_id')->map(fn ($g) => $g->sum('quantity'));
 
             foreach ($this->input('items', []) as $idx => $item) {

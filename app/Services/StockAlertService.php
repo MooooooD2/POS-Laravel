@@ -9,6 +9,7 @@ use App\Models\WarehouseStock;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Centralised stock-health service.
@@ -191,8 +192,8 @@ class StockAlertService
      *
      * FIX: uses the correct column name `movement_type` (not `type`).
      *
-     * @param  int  $lookbackDays  Days of history used to estimate avg daily consumption.
-     * @param  int  $leadTimeDays  Assumed replenishment lead time for suggested-qty calculation.
+     * @param int $lookbackDays Days of history used to estimate avg daily consumption.
+     * @param int $leadTimeDays Assumed replenishment lead time for suggested-qty calculation.
      */
     public function getReorderSuggestions(int $lookbackDays = 7, int $leadTimeDays = 14): array
     {
@@ -215,7 +216,7 @@ class StockAlertService
 
                 $suggestedQty = max(
                     (int) ($p->reorder_qty ?? 0),
-                    (int) ceil($avgVelocity * $leadTimeDays)
+                    (int) ceil($avgVelocity * $leadTimeDays),
                 );
                 $suggestedQty = max(1, $suggestedQty);
 
@@ -333,7 +334,7 @@ class StockAlertService
                             $batch->id,
                             'batch_write_off',
                             $batch->warehouse_id,
-                            $batch->id
+                            $batch->id,
                         );
                     }
 
@@ -348,7 +349,7 @@ class StockAlertService
                         'expiry_date' => $batch->expiry_date?->toDateString(),
                     ];
                 });
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::warning('stock_alert.write_off_failed', [
                     'batch_id' => $batch->id,
                     'error' => $e->getMessage(),

@@ -21,7 +21,8 @@ use Illuminate\Http\Request;
  */
 class StockController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(
         private StockAlertService $alertService,
@@ -188,7 +189,7 @@ class StockController extends Controller
 
         $batches = $this->batchService->allForProduct(
             (int) $request->product_id,
-            $request->warehouse_id ? (int) $request->warehouse_id : null
+            $request->warehouse_id ? (int) $request->warehouse_id : null,
         );
 
         return $this->success(['batches' => $batches]);

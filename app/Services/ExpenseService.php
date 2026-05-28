@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\FiscalPeriod;
 use App\Models\JournalEntry;
+use DomainException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -36,7 +37,7 @@ class ExpenseService
     {
         $period = FiscalPeriod::forDate($date);
         if ($period && $period->isClosed()) {
-            throw new \DomainException(__('pos.expense_period_closed'));
+            throw new DomainException(__('pos.expense_period_closed'));
         }
     }
 
@@ -89,7 +90,7 @@ class ExpenseService
             if ($existingEntry) {
                 $this->accountingService->reverseEntry(
                     $existingEntry,
-                    __('pos.expense_update_reversal', ['number' => $expense->expense_number])
+                    __('pos.expense_update_reversal', ['number' => $expense->expense_number]),
                 );
             }
 
@@ -124,7 +125,7 @@ class ExpenseService
             if ($existingEntry) {
                 $this->accountingService->reverseEntry(
                     $existingEntry,
-                    __('pos.expense_deletion_reversal', ['number' => $expense->expense_number])
+                    __('pos.expense_deletion_reversal', ['number' => $expense->expense_number]),
                 );
             }
 

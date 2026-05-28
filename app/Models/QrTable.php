@@ -7,13 +7,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
- * @property int    $id
+ * @property int $id
  * @property int|null $branch_id
  * @property string $table_name
  * @property string $token
  * @property string|null $qr_code_path
- * @property bool   $is_active
- * @property int    $capacity
+ * @property bool $is_active
+ * @property int $capacity
  */
 class QrTable extends Model
 {

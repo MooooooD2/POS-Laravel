@@ -8,11 +8,13 @@ use App\Models\Expense;
 use App\Services\ExpenseService;
 use App\Traits\ApiResponse;
 use App\Traits\AuditLog;
+use Exception;
 use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
 {
-    use ApiResponse, AuditLog;
+    use ApiResponse;
+    use AuditLog;
 
     public function __construct(private ExpenseService $expenseService) {}
 
@@ -41,6 +43,7 @@ class ExpenseController extends Controller
     public function store(StoreExpenseRequest $request)
     {
         $this->authorize('create', Expense::class);
+
         try {
             $expense = $this->expenseService->create($request->validated());
             $this->audit('expense.created', Expense::class, (int) $expense->id, [
@@ -49,7 +52,7 @@ class ExpenseController extends Controller
             ]);
 
             return $this->success(['expense' => $expense], '', 201);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage());
         }
     }
@@ -57,11 +60,12 @@ class ExpenseController extends Controller
     public function update(UpdateExpenseRequest $request, Expense $expense)
     {
         $this->authorize('update', $expense);
+
         try {
             $expense = $this->expenseService->update($expense, $request->validated());
 
             return $this->success(['expense' => $expense]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return $this->error($e->getMessage());
         }
     }

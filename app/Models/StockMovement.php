@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use RuntimeException;
 
 class StockMovement extends Model
 {
@@ -19,11 +20,11 @@ class StockMovement extends Model
         parent::boot();
 
         static::updating(function () {
-            throw new \RuntimeException('StockMovement records are immutable — updates are not permitted.');
+            throw new RuntimeException('StockMovement records are immutable — updates are not permitted.');
         });
 
         static::deleting(function () {
-            throw new \RuntimeException('StockMovement records are immutable — deletes are not permitted.');
+            throw new RuntimeException('StockMovement records are immutable — deletes are not permitted.');
         });
     }
 
