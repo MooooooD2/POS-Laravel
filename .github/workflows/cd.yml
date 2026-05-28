@@ -35,7 +35,24 @@ jobs:
       - name: Install PHP dependencies (production)
         run: composer install --prefer-dist --no-interaction --no-dev --optimize-autoloader
 
+      # ── Check whether deploy secrets are configured ──────────────────────
+      - name: Check deploy configuration
+        id: config
+        run: |
+          if [ -n "$HOST" ]; then
+            echo "configured=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️  DEPLOY_HOST secret is not set — skipping SSH deploy."
+            echo "   Add DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_PATH"
+            echo "   to your repository secrets to enable automatic deployment."
+          fi
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+
+      # ── SSH deploy (skipped when secrets are absent) ──────────────────────
       - name: Deploy via SSH (zero-downtime)
+        if: steps.config.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -52,31 +69,30 @@ jobs:
             # Install production dependencies
             composer install --prefer-dist --no-interaction --no-dev --optimize-autoloader
 
-            # Run migrations (with backup)
-            php artisan migrate --force --backup
+            # Run migrations
+            php artisan migrate --force
 
             # Clear & rebuild all caches
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
             php artisan event:cache
-            php artisan icons:cache
 
             # Reload queue workers gracefully
             php artisan queue:restart
 
-            # Restart Horizon
-            php artisan horizon:terminate
-
             echo "✅ Deploy complete at $(date)"
 
+      # ── Sentry release (skipped when secrets are absent) ─────────────────
       - name: Notify Sentry of deployment
-        if: success()
+        if: steps.config.outputs.configured == 'true' && success()
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         run: |
+          [ -z "$SENTRY_AUTH_TOKEN" ] && exit 0   # skip if Sentry not configured
+
           curl -sS https://sentry.io/api/0/organizations/${SENTRY_ORG}/releases/ \
             -H "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
             -H "Content-Type: application/json" \
@@ -87,6 +103,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"environment\": \"${{ github.event.inputs.environment || 'production' }}\"}" || true
 
+      # ── Slack notification ────────────────────────────────────────────────
       - name: Send deploy notification
         if: always()
         uses: 8398a7/action-slack@v3
