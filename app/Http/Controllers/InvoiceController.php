@@ -150,6 +150,8 @@ class InvoiceController extends Controller
      */
     public function etaSubmissionLog(Request $request)
     {
+        $this->authorize('view_accounting');
+
         $request->validate([
             'status' => 'nullable|in:pending,submitted,valid,invalid,cancelled,rejected',
             'start_date' => 'nullable|date',

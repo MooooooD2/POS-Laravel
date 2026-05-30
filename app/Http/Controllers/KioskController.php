@@ -46,16 +46,34 @@ class KioskController extends Controller
     public function checkout(Request $request): JsonResponse
     {
         $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|numeric|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items' => 'required|array|min:1|max:50',
+            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.quantity' => 'required|numeric|min:1|max:999',
             'payment_method' => 'required|in:cash,card',
         ]);
 
+        // Fetch prices from DB — never trust client-submitted prices
+        $productIds = collect($request->items)->pluck('product_id')->unique()->toArray();
+        $products = \App\Models\Product::whereIn('id', $productIds)
+            ->where('is_active', true)
+            ->pluck('price', 'id');
+
+        $items = [];
+        foreach ($request->items as $item) {
+            $pid = $item['product_id'];
+            if (! isset($products[$pid])) {
+                return response()->json(['success' => false, 'message' => __('pos.product_not_found')], 422);
+            }
+            $items[] = [
+                'product_id' => $pid,
+                'quantity' => $item['quantity'],
+                'unit_price' => (float) $products[$pid],
+            ];
+        }
+
         try {
             $invoice = $this->invoiceService->createInvoice([
-                'items' => $request->items,
+                'items' => $items,
                 'payment_method' => $request->payment_method,
                 'source' => 'kiosk',
                 'status' => 'completed',

@@ -289,7 +289,7 @@ async function loadWarehouses() {
     ]);
     const list = Array.isArray(whRes) ? whRes : (whRes.data ?? []);
     warehousesList = Array.isArray(list) ? list : [];
-    productsList   = Array.isArray(pRes.products) ? pRes.products : [];
+    productsList   = Array.isArray(pRes.products) ? pRes.products : (Array.isArray(pRes.products?.data) ? pRes.products.data : []);
     renderWarehouses(warehousesList);
     populateSelects();
 }

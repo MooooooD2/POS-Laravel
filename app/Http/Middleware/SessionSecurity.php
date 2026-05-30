@@ -65,30 +65,14 @@ class SessionSecurity
 
     private function fingerprint(Request $request): string
     {
-        $stableHeaders = implode('|', [
+        // Only use IP subnet (first 3 octets) and Accept-Language.
+        // User-Agent is excluded: it changes on browser updates causing false session invalidations,
+        // and it can be trivially spoofed by an attacker anyway.
+        $data = implode('::', [
+            implode('.', array_slice(explode('.', $request->ip()), 0, 3)),
             $request->header('Accept-Language', ''),
-            $request->header('Accept-Encoding', ''),
-            $this->browserFamily($request->userAgent() ?? ''),
         ]);
 
-        return hash_hmac(
-            'sha256',
-            implode('::', [
-                implode('.', array_slice(explode('.', $request->ip()), 0, 3)),
-                $stableHeaders,
-            ]),
-            config('app.key'),
-        );
-    }
-
-    private function browserFamily(string $ua): string
-    {
-        return match (true) {
-            str_contains($ua, 'Firefox') => 'firefox',
-            str_contains($ua, 'Chrome') => 'chrome',
-            str_contains($ua, 'Safari') => 'safari',
-            str_contains($ua, 'Edge') => 'edge',
-            default => 'other',
-        };
+        return hash_hmac('sha256', $data, config('app.key'));
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Setting;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Cache;
 
 class StoreInvoiceRequest extends FormRequest
 {
@@ -14,9 +15,8 @@ class StoreInvoiceRequest extends FormRequest
 
     public function rules(): array
     {
-        $maxDiscountPercent = (float) Setting::get(
-            'max_discount_percent',
-            config('security.invoice.max_discount_percent', 20),
+        $maxDiscountPercent = Cache::remember('setting_max_discount', 300, fn () =>
+            (float) Setting::get('max_discount_percent', config('security.invoice.max_discount_percent', 20))
         );
 
         return [

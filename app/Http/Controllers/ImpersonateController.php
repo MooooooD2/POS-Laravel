@@ -52,7 +52,7 @@ class ImpersonateController extends Controller
 
         $admin = User::find($adminId);
 
-        if (! $admin) {
+        if (! $admin || ! $admin->is_active) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

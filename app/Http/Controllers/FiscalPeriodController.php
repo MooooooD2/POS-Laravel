@@ -30,6 +30,8 @@ class FiscalPeriodController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('manage_accounting');
+
         $data = $request->validate([
             'name' => 'required|string|max:100',
             'start_date' => 'required|date',
@@ -61,6 +63,8 @@ class FiscalPeriodController extends Controller
 
     public function close(Request $request, FiscalPeriod $fiscalPeriod): JsonResponse
     {
+        $this->authorize('manage_accounting');
+
         $data = $request->validate([
             'retained_earnings_account_id' => 'required|integer|exists:accounts,id',
         ]);

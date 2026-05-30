@@ -25,12 +25,11 @@ class WarehouseController extends Controller
         return response()->json($this->service->all());
     }
 
-    public function allProducts(): JsonResponse
+    public function allProducts(Request $request): JsonResponse
     {
         $products = Product::select('id', 'name', 'quantity')
             ->orderBy('name')
-            ->get()
-            ->toArray();
+            ->paginate(200);
 
         return response()->json(['success' => true, 'products' => $products]);
     }

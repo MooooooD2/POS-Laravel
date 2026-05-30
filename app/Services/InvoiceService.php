@@ -337,8 +337,12 @@ class InvoiceService
             SubmitInvoiceToETA::dispatch($invoice->id);
         }
 
-        app(WhatsAppService::class)->sendInvoice($invoice);
-        app(WhatsAppService::class)->sendLargeInvoiceAlert($invoice);
+        try {
+            app(WhatsAppService::class)->sendInvoice($invoice);
+            app(WhatsAppService::class)->sendLargeInvoiceAlert($invoice);
+        } catch (Throwable $e) {
+            Log::warning('whatsapp.send_failed', ['invoice_id' => $invoice->id, 'error' => $e->getMessage()]);
+        }
 
         Cache::forget('dashboard_total_revenue');
         DashboardService::forgetCache();

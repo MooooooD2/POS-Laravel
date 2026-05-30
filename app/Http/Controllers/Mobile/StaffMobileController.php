@@ -140,7 +140,9 @@ class StaffMobileController extends Controller
         ]);
 
         try {
-            $invoice = app(\App\Services\InvoiceService::class)->create($request->all());
+            $invoice = app(\App\Services\InvoiceService::class)->createInvoice($request->only([
+                'items', 'payment_method', 'customer_id', 'discount',
+            ]));
 
             return response()->json(['success' => true, 'invoice' => $invoice]);
         } catch (Throwable $e) {

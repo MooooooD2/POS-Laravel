@@ -71,11 +71,11 @@
                     <div class="row g-3 align-items-end">
                         <div class="col-md-3">
                             <label class="form-label">{{ __('pos.start_date') }}</label>
-                            <input type="date" class="form-control" id="salesStart" value="{{ date('Y-m-01') }}">
+                            <input type="date" class="form-control" id="salesStart" value="{{ date('Y-m-01') }}" max="{{ date('Y-m-d') }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">{{ __('pos.end_date') }}</label>
-                            <input type="date" class="form-control" id="salesEnd" value="{{ date('Y-m-d') }}">
+                            <input type="date" class="form-control" id="salesEnd" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">{{ __('pos.payment_method') }}</label>
@@ -196,11 +196,11 @@
                     <div class="row g-3 align-items-end">
                         <div class="col-md-3">
                             <label class="form-label">{{ __('pos.start_date') }}</label>
-                            <input type="date" class="form-control" id="returnsStart" value="{{ date('Y-m-01') }}">
+                            <input type="date" class="form-control" id="returnsStart" value="{{ date('Y-m-01') }}" max="{{ date('Y-m-d') }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">{{ __('pos.end_date') }}</label>
-                            <input type="date" class="form-control" id="returnsEnd" value="{{ date('Y-m-d') }}">
+                            <input type="date" class="form-control" id="returnsEnd" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">{{ __('pos.status') }} </label>
@@ -1029,6 +1029,17 @@
             </tr>`).join('') :
                 '<tr><td colspan="8" class="text-center text-muted py-4">{{ __('pos.no_data') }}</td></tr>';
         }
+        function validateDateRange(startId, endId) {
+            const s = new Date(document.getElementById(startId).value);
+            const e = new Date(document.getElementById(endId).value);
+            const diffDays = (e - s) / (1000 * 60 * 60 * 24);
+            if (diffDays > 365) {
+                alert({{ app()->getLocale() === 'ar' ? '"النطاق الزمني لا يتجاوز سنة واحدة."' : '"Date range cannot exceed one year."' }});
+                return false;
+            }
+            return true;
+        }
+
         document.addEventListener('click', function (e) {
             const exportBtn = e.target.closest('[data-export-type]');
             if (exportBtn) {
@@ -1036,11 +1047,13 @@
                 const format = exportBtn.dataset.exportFormat;
                 const params = new URLSearchParams({ format });
                 if (type === 'sales') {
+                    if (!validateDateRange('salesStart', 'salesEnd')) return;
                     params.set('start_date', document.getElementById('salesStart').value);
                     params.set('end_date',   document.getElementById('salesEnd').value);
                     const pay = document.getElementById('salesPayment').value;
                     if (pay) params.set('payment_method', pay);
                 } else if (type === 'returns') {
+                    if (!validateDateRange('returnsStart', 'returnsEnd')) return;
                     params.set('start_date', document.getElementById('returnsStart').value);
                     params.set('end_date',   document.getElementById('returnsEnd').value);
                     const st = document.getElementById('returnsStatus').value;

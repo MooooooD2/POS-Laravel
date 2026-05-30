@@ -301,7 +301,6 @@ async function selectPayment(method) {
     const items = Object.values(cart).map(i => ({
         product_id: i.product.id,
         quantity:   i.qty,
-        unit_price: parseFloat(i.product.sale_price || i.product.price || 0),
     }));
 
     try {

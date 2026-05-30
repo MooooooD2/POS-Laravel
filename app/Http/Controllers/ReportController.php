@@ -69,8 +69,16 @@ class ReportController extends Controller
     public function exportSales(Request $request)
     {
         $data = $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
+            'start_date' => 'required|date|before_or_equal:today',
+            'end_date' => [
+                'required', 'date', 'after_or_equal:start_date',
+                'before_or_equal:' . now()->toDateString(),
+                function ($attribute, $value, $fail) use ($request) {
+                    if (Carbon::parse($request->start_date)->diffInDays($value) > 365) {
+                        $fail('النطاق الزمني لا يتجاوز سنة واحدة.');
+                    }
+                },
+            ],
             'payment_method' => 'nullable|in:cash,card,transfer,wallet',
             'format' => 'required|in:csv,pdf',
         ]);
@@ -95,8 +103,16 @@ class ReportController extends Controller
     public function exportReturns(Request $request)
     {
         $data = $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
+            'start_date' => 'required|date|before_or_equal:today',
+            'end_date' => [
+                'required', 'date', 'after_or_equal:start_date',
+                'before_or_equal:' . now()->toDateString(),
+                function ($attribute, $value, $fail) use ($request) {
+                    if (Carbon::parse($request->start_date)->diffInDays($value) > 365) {
+                        $fail('النطاق الزمني لا يتجاوز سنة واحدة.');
+                    }
+                },
+            ],
             'status' => 'nullable|in:completed,cancelled',
             'format' => 'required|in:csv,pdf',
         ]);

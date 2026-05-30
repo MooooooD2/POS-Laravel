@@ -20,9 +20,11 @@ class TenantController extends Controller
         $masterId = config('tenancy.master_tenant');
         $currentId = tenancy()->tenant?->id;
 
-        // Block only when both IDs are known and they don't match.
-        // If masterId is not set the guard is disabled (dev / test environments).
-        if ($masterId && $currentId && $currentId !== $masterId) {
+        if (! $masterId) {
+            abort(403, 'Master tenant not configured.');
+        }
+
+        if ($currentId && $currentId !== $masterId) {
             abort(403, __('pos.master_tenant_only'));
         }
     }

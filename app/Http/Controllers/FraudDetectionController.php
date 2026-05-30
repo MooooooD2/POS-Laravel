@@ -26,6 +26,8 @@ class FraudDetectionController extends Controller
      */
     public function signals(Request $request): JsonResponse
     {
+        $this->authorize('view_reports');
+
         $request->validate(['hours' => 'nullable|integer|min:1|max:720']);
 
         $hours = $request->integer('hours', config('security.anomaly.signals_lookback_hours', 24));

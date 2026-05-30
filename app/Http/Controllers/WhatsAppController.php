@@ -52,11 +52,18 @@ class WhatsAppController extends Controller
 
     public function logs(Request $request): JsonResponse
     {
+        $request->validate([
+            'phone' => 'nullable|string|max:20|regex:/^[+0-9\s\-]+$/',
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'status' => 'nullable|string|max:50',
+            'type' => 'nullable|string|max:50',
+        ]);
+
         $logs = WhatsAppMessage::when($request->status, fn ($q) => $q->where('status', $request->status))
             ->when($request->type, fn ($q) => $q->where('message_type', $request->type))
-            ->when($request->phone, fn ($q) => $q->where('to_number', 'like', "%{$request->phone}%"))
+            ->when($request->phone, fn ($q) => $q->where('to_number', 'like', '%' . $request->phone . '%'))
             ->latest()
-            ->paginate($request->per_page ?? 25);
+            ->paginate(min((int) ($request->per_page ?? 25), 100));
 
         return $this->success($logs->toArray());
     }

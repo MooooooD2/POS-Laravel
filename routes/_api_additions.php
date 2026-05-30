@@ -201,7 +201,7 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('hr')->name('api.hr.')->gro
         })->name('employees.payroll');
     });
 
-    // ── HR Summary (all roles) ────────────────────────────────────────────
+    // ── HR Summary (requires HR permission) ──────────────────────────────
     Route::get('/summary', function () {
         $totalEmp = DB::table('users')->whereNull('deleted_at')->where('is_active', true)->count();
         $today = date('Y-m-d');
@@ -221,7 +221,7 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('hr')->name('api.hr.')->gro
                 'status' => $lastRun->status,
             ] : null,
         ]);
-    })->name('hr.summary');
+    })->middleware('permission:manage_hr')->name('hr.summary');
 
     // ── Attendance ────────────────────────────────────────────────────────
     Route::get('/attendance', function (Illuminate\Http\Request $req) {
@@ -371,7 +371,7 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('hr')->name('api.hr.')->gro
             'days' => $days,
             'shifts' => $rows,
         ]);
-    })->name('shifts.schedule');
+    })->middleware('permission:manage_hr')->name('shifts.schedule');
 
     // Assign a shift (schedule an employee)
     Route::post('/shifts/schedule', function (Illuminate\Http\Request $req) {
