@@ -15,8 +15,10 @@ class StoreInvoiceRequest extends FormRequest
 
     public function rules(): array
     {
-        $maxDiscountPercent = Cache::remember('setting_max_discount', 300, fn () =>
-            (float) Setting::get('max_discount_percent', config('security.invoice.max_discount_percent', 20))
+        $maxDiscountPercent = Cache::remember(
+            'setting_max_discount',
+            300,
+            fn () => (float) Setting::get('max_discount_percent', config('security.invoice.max_discount_percent', 20)),
         );
 
         return [
